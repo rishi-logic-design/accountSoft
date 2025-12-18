@@ -7,76 +7,44 @@ const settingsService = require("../../services/vendor/settingsService");
 const { generateOtp, otpExpiryMinutes } = require("../../utils/otpUtils");
 
 exports.register = asyncHandler(async (req, res) => {
-  const { name, email, role, mobile } = req.body;
-  if (!name || !mobile) {
-    return error(res, "Name and mobile are required", 400);
-  }
+  const { name, email, password, role, mobile } = req.body;
+  const existing = await UserModel.findOne({ where: { email } });
+  if (existing) return error(res, "Email already exists", 400);
 
-  // Check mobile format
-  const mobileRegex = /^[0-9]{10,15}$/;
-  if (!mobileRegex.test(mobile)) {
-    return error(res, "Invalid mobile number format", 400);
+  if (mobile) {
+    const existingMobile = await UserModel.findOne({ where: { mobile } });
+    if (existingMobile) return error(res, "Mobile number already exists", 400);
   }
-
-  // Check existing mobile
-  const existingMobile = await UserModel.findOne({ where: { mobile } });
-  if (existingMobile) {
-    return error(res, "Mobile number already exists", 400);
-  }
-
-  // Check existing email (if provided)
-  if (email) {
-    const existingEmail = await UserModel.findOne({ where: { email } });
-    if (existingEmail) {
-      return error(res, "Email already exists", 400);
-    }
-  }
-
-  // Create user without password
   const user = await UserModel.create({
     name,
-    email: email || null,
+    email,
+    password,
     mobile,
     role: role || "vendor",
   });
-
-  // Generate JWT token immediately after registration
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-  );
-
-  console.log(`✅ New user registered: ${user.name} (${mobile})`);
-
   success(
     res,
-    {
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        mobile: user.mobile,
-        role: user.role,
-      },
-    },
-    "User registered successfully",
+    { id: user.id, email: user.email, mobile: user.mobile, role: user.role },
+    "User created",
     201
   );
 });
 
 exports.login = asyncHandler(async (req, res) => {
-  const { mobile, email } = req.body;
+  const { mobile, email, password } = req.body;
 
-  if (!mobile && !email) {
-    return error(res, "Mobile/Email is required", 400);
+  if ((!mobile && !email) || !password) {
+    return error(res, "Mobile/Email and password required", 400);
   }
 
   const whereCondition = mobile ? { mobile } : { email };
   const user = await UserModel.findOne({ where: whereCondition });
 
   if (!user) return error(res, "Invalid credentials", 401);
+
+  const match = await user.comparePassword(password);
+
+  if (!match) return error(res, "Invalid credentials", 401);
 
   const token = jwt.sign(
     { id: user.id, role: user.role },
