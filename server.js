@@ -4,7 +4,6 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const { sequelize } = require("./models/");
 const errorMiddleware = require("./middleware/errorMiddleware");
-app.use("/uploads", express.static("uploads"));
 
 // Vendor Routes
 const authRoutes = require("./routes/Vendors/authRoutes");
@@ -40,6 +39,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Vendor Routes
+app.use("/uploads", express.static("uploads"));
 app.use("/auth", authRoutes);
 app.use("/vendors", vendorRoutes);
 app.use("/subscriptions", subscriptionRoutes);

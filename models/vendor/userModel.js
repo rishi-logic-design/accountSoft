@@ -19,10 +19,7 @@ module.exports = (sequelize, DataTypes) => {
         unique: true,
         validate: { isEmail: true },
       },
-      profileImage: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
+
       role: {
         type: DataTypes.ENUM("admin", "superadmin", "vendor", "customer"),
         defaultValue: "vendor",

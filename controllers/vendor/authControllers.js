@@ -52,13 +52,12 @@ exports.mobileRegister = asyncHandler(async (req, res) => {
   const profileImage = req.file
     ? `/uploads/profile/${req.file.filename}`
     : null;
-    
+
   const user = await UserModel.create({
     name,
     mobile,
     email: email || null,
     role: role || "vendor",
-    profileImage,
   });
 
   const token = jwt.sign(
@@ -77,7 +76,6 @@ exports.mobileRegister = asyncHandler(async (req, res) => {
         mobile: user.mobile,
         email: user.email,
         role: user.role,
-        profileImage: user.profileImage,
       },
     },
     "User registered successfully",
