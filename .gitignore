@@ -1,0 +1,51 @@
+# dependencies
+node_modules/
+bower_components/
+
+# build output
+dist/
+build/
+out/
+coverage/
+
+# system files
+.DS_Store
+Thumbs.db
+
+# env files (important secrets)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# IDE / Editor settings
+.vscode/
+.idea/
+*.swp
+
+# Git / temp files
+*.bak
+*.tmp
+*.orig
+*.old
+*.log
+
+# Optional cache
+.cache/
+.next/
+.nuxt/
+.sass-cache/
+.parcel-cache/
+.vercel/
+firebase-debug.log
+
+# Misc
+*.tsbuildinfo
