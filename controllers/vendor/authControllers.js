@@ -49,10 +49,6 @@ exports.mobileRegister = asyncHandler(async (req, res) => {
     }
   }
 
-  const profileImage = req.file
-    ? `/uploads/profile/${req.file.filename}`
-    : null;
-
   const user = await UserModel.create({
     name,
     mobile,
