@@ -18,10 +18,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         unique: true,
         validate: { isEmail: true },
-      },
-      password: {
-        type: DataTypes.STRING,
-        allowNull: false,
+      
       },
       role: {
         type: DataTypes.ENUM("admin", "superadmin", "vendor", "customer"),
