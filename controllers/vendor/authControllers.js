@@ -30,6 +30,58 @@ exports.register = asyncHandler(async (req, res) => {
   );
 });
 
+exports.mobileRegister = asyncHandler(async (req, res) => {
+  const { name, email, mobile, role } = req.body;
+
+  if (!name || !mobile) {
+    return error(res, "Name and mobile are required", 400);
+  }
+
+  const mobileExists = await UserModel.findOne({ where: { mobile } });
+  if (mobileExists) {
+    return error(res, "Mobile number already exists", 400);
+  }
+
+  if (email) {
+    const emailExists = await UserModel.findOne({ where: { email } });
+    if (emailExists) {
+      return error(res, "Email already exists", 400);
+    }
+  }
+
+  const profileImage = req.file
+    ? `/uploads/profile/${req.file.filename}`
+    : null;
+  const user = await UserModel.create({
+    name,
+    mobile,
+    email: email || null,
+    role: role || "vendor",
+  });
+
+  const token = jwt.sign(
+    { id: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+  );
+
+  success(
+    res,
+    {
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        mobile: user.mobile,
+        email: user.email,
+        role: user.role,
+      },
+    },
+    "User registered successfully",
+    201
+  );
+});
+
 exports.login = asyncHandler(async (req, res) => {
   const { mobile, email, password } = req.body;
 

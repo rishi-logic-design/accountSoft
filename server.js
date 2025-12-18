@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const { sequelize } = require("./models/");
 const errorMiddleware = require("./middleware/errorMiddleware");
+app.use("/uploads", express.static("uploads"));
 
 // Vendor Routes
 const authRoutes = require("./routes/Vendors/authRoutes");
@@ -69,6 +70,6 @@ const PORT = process.env.PORT || 5000;
       );
     });
   } catch (err) {
-    console.error("❌ DB connection failed:", err); 
+    console.error("❌ DB connection failed:", err);
   }
 })();
