@@ -1,4 +1,3 @@
-// models/challanItem.model.js
 module.exports = (sequelize, DataTypes) => {
   const ChallanItem = sequelize.define(
     "ChallanItem",

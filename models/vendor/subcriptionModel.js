@@ -7,10 +7,27 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
         autoIncrement: true,
       },
-      vendorId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
-      planId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
-      startDate: { type: DataTypes.DATEONLY },
-      endDate: { type: DataTypes.DATEONLY },
+
+      vendorId: {
+        type: DataTypes.INTEGER.UNSIGNED,
+        allowNull: false,
+      },
+
+      planId: {
+        type: DataTypes.INTEGER.UNSIGNED,
+        allowNull: false,
+      },
+
+      startDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: false,
+      },
+
+      endDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: false,
+      },
+
       status: {
         type: DataTypes.ENUM("active", "expired", "cancelled"),
         defaultValue: "active",
@@ -21,6 +38,18 @@ module.exports = (sequelize, DataTypes) => {
       timestamps: true,
     }
   );
+
+  Subscription.associate = (models) => {
+    Subscription.belongsTo(models.Vendor, {
+      foreignKey: "vendorId",
+      as: "vendor",
+    });
+
+    Subscription.belongsTo(models.Plan, {
+      foreignKey: "planId",
+      as: "plan",
+    });
+  };
 
   return Subscription;
 };

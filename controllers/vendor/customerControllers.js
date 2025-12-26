@@ -3,80 +3,132 @@ const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
 
 exports.createCustomer = asyncHandler(async (req, res) => {
-  const vendorId =
-    req.user.role === "vendor" ? req.user.id : req.body.vendorId || req.user.id;
-  const payload = req.body;
-  const customer = await customerService.createCustomer(vendorId, payload);
-  success(res, customer, "Customer created", 201);
+  console.log("🔥 Incoming Create Customer Request:", req.body);
+  console.log("👤 Created By User ID:", req.user?.id);
+
+  const { vendorId, ...customerData } = req.body;
+
+  // Validate vendorId
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
+
+  const customer = await customerService.createCustomer(vendorId, customerData);
+  
+  console.log("✅ Customer Created Successfully:", customer?.id);
+  success(res, customer, "Customer created successfully", 201);
 });
 
 exports.updateCustomer = asyncHandler(async (req, res) => {
-  const vendorId =
-    req.user.role === "vendor" ? req.user.id : req.body.vendorId || req.user.id;
+  console.log("🔥 Incoming Update Customer Request:", req.params.id, req.body);
+
+  const { vendorId, ...customerData } = req.body;
+
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
+
   const updated = await customerService.updateCustomer(
     vendorId,
     req.params.id,
-    req.body
+    customerData
   );
-  success(res, updated, "Customer updated");
+  
+  console.log("✅ Customer Updated Successfully:", updated?.id);
+  success(res, updated, "Customer updated successfully");
 });
 
 exports.deleteCustomer = asyncHandler(async (req, res) => {
-  const vendorId =
-    req.user.role === "vendor" ? req.user.id : req.body.vendorId || req.user.id;
+  console.log("🔥 Incoming Delete Customer Request:", req.params.id);
+
+  const { vendorId } = req.query;
+
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
+
   await customerService.deleteCustomer(vendorId, req.params.id);
-  success(res, null, "Customer deleted");
+  
+  console.log("✅ Customer Deleted Successfully:", req.params.id);
+  success(res, null, "Customer deleted successfully");
 });
 
 exports.listCustomers = asyncHandler(async (req, res) => {
-  const vendorId =
-    req.user.role === "vendor"
-      ? req.user.id
-      : req.query.vendorId || req.user.id;
-  const { page, size, search } = req.query;
+  console.log("🔥 Incoming Get Customers Request:", req.query);
+
+  const { vendorId, page, size, search } = req.query;
+
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
+
   const list = await customerService.getCustomerList(vendorId, {
     page,
     size,
     search,
   });
+  
+  console.log(`📦 Found ${list.total} customers for vendor ${vendorId}`);
   success(res, list);
 });
 
+
+
 exports.getCustomerDetail = asyncHandler(async (req, res) => {
-  const vendorId =
-    req.user.role === "vendor"
-      ? req.user.id
-      : req.query.vendorId || req.user.id;
-  const detail = await customerService.getCustomerDetail(
-    vendorId,
-    req.params.id
-  );
+  console.log("🔥 Incoming Get Customer Detail Request:", req.params.id);
+
+  const { vendorId } = req.query;
+
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
+
+  const detail = await customerService.getCustomerDetail(vendorId, req.params.id);
+  
+  console.log("✅ Customer Detail Retrieved Successfully");
   success(res, detail);
 });
 
 exports.addTransaction = asyncHandler(async (req, res) => {
-  const vendorId =
-    req.user.role === "vendor" ? req.user.id : req.body.vendorId || req.user.id;
+  console.log("🔥 Incoming Add Transaction Request:", req.params.customerId, req.body);
+
+  const { vendorId } = req.body;
   const { customerId } = req.params;
-  const payload = req.body; // amount, type, description, challanNumber, transactionDate
-  const result = await customerService.addTransaction(
-    vendorId,
-    customerId,
-    payload
-  );
-  success(res, result, "Transaction added", 201);
+
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
+
+  const result = await customerService.addTransaction(vendorId, customerId, req.body);
+  
+  console.log("✅ Transaction Added Successfully");
+  success(res, result, "Transaction added successfully", 201);
 });
 
 exports.transactionReport = asyncHandler(async (req, res) => {
-  const vendorId =
-    req.user.role === "vendor"
-      ? req.user.id
-      : req.query.vendorId || req.user.id;
+  console.log("🔥 Incoming Transaction Report Request:", req.query);
+
+  const { vendorId } = req.query;
+
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
+
   const rows = await customerService.getTransactionReport(vendorId, {
     fromDate: req.query.fromDate,
     toDate: req.query.toDate,
     customerId: req.query.customerId,
   });
-  // For now return JSON; frontend can convert to CSV/pdf
+  
+  console.log(`📊 Generated report with ${rows.length} transactions`);
   success(res, rows);
+});
+
+exports.getCustomerCountByVendor = asyncHandler(async (req, res) => {
+  console.log("🔥 Incoming Get Customer Count Request");
+
+  const counts = await customerService.getCustomerCountByVendor();
+  
+  console.log("✅ Customer counts retrieved successfully");
+  success(res, counts);
 });

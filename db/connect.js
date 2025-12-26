@@ -13,19 +13,11 @@ const sequelize = new Sequelize(
     timezone: "+05:30",
     logging: false,
 
-    // SSL 
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
-    },
-
     pool: {
-      max: parseInt(process.env.DB_POOL_MAX) || 5,
-      min: parseInt(process.env.DB_POOL_MIN) || 0,
-      acquire: parseInt(process.env.DB_POOL_ACQUIRE) || 30000,
-      idle: parseInt(process.env.DB_POOL_IDLE) || 10000,
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
     },
   }
 );
@@ -37,7 +29,7 @@ const sequelize = new Sequelize(
   } catch (err) {
     console.error("❌ Database connection failed!");
     console.error("Reason:", err.message);
-    process.exit(1);
+    // process.exit(1);
   }
 })();
 

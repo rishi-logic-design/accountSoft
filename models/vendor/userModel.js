@@ -19,7 +19,10 @@ module.exports = (sequelize, DataTypes) => {
         unique: true,
         validate: { isEmail: true },
       },
-
+      password: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
       role: {
         type: DataTypes.ENUM("admin", "superadmin", "vendor", "customer"),
         defaultValue: "vendor",
@@ -30,6 +33,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         unique: true,
         validate: { is: /^[0-9]{10,15}$/ },
+        
       },
       isActive: {
         type: DataTypes.BOOLEAN,

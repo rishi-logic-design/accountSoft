@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 // Vendor / Admin User Model
-const { UserModel } = require("../models/vendor/userModel");
+const { UserModel } = require("../models");
 
 module.exports = async (req, res, next) => {
   try {

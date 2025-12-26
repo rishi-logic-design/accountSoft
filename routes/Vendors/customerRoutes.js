@@ -5,11 +5,12 @@ const auth = require("../../middleware/authMiddleware");
 const role = require("../../middleware/roleMiddleware");
 
 router.use(auth);
-router.use(role(["vendor", "admin"]));
+router.use(role(["vendor", "admin", "superadmin"]));
 
-// CRUD
+// Customer CRUD
 router.post("/", customerCtrl.createCustomer);
 router.get("/", customerCtrl.listCustomers);
+router.get("/count-by-vendor", customerCtrl.getCustomerCountByVendor);
 router.get("/:id", customerCtrl.getCustomerDetail);
 router.put("/:id", customerCtrl.updateCustomer);
 router.delete("/:id", customerCtrl.deleteCustomer);

@@ -16,13 +16,10 @@ const billRoutes = require("./routes/Vendors/billRoutes");
 const paymentRoutes = require("./routes/Vendors/paymentRoutes");
 const settingsRoutes = require("./routes/Vendors/settingsRoutes");
 const createBillRoutes = require("./routes/Vendors/billRoutes");
-
+const uploadRoutes = require("./routes/Vendors/uploadRoutes");
 // Customer Routes
 const transactionRoutes = require("./routes/Customer/transactionRoutes");
 const summaryRoutes = require("./routes/Customer/summaryRoutes");
-
-// Admin Routes
-const adminAuthRoutes = require("./routes/Vendors/authRoutes");
 
 const app = express();
 
@@ -52,7 +49,7 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/bills/create", createBillRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/summary", summaryRoutes);
-
+app.use("/api/upload", uploadRoutes);
 app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 5000;
@@ -73,3 +70,4 @@ const PORT = process.env.PORT || 5000;
     console.error("❌ DB connection failed:", err);
   }
 })();
+

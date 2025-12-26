@@ -115,7 +115,6 @@ exports.listChallans = async ({
   if (search) {
     where[Op.or] = [
       { challanNumber: { [Op.like]: `%${search}%` } },
-      // searching by customer name requires join; handled via include + where in include
     ];
   }
 
@@ -127,7 +126,6 @@ exports.listChallans = async ({
     },
   ];
 
-  // If search includes customer name, we can add condition on included model by using Sequelize literal OR implement further logic.
   // Basic implementation:
   const result = await ChallanModel.findAndCountAll({
     where,
