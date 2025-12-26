@@ -12,7 +12,12 @@ const sequelize = new Sequelize(
     dialect: process.env.DB_DIALECT || "mysql",
     timezone: "+05:30",
     logging: false,
-
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
     pool: {
       max: 5,
       min: 0,
