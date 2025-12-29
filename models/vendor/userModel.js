@@ -19,10 +19,6 @@ module.exports = (sequelize, DataTypes) => {
         unique: true,
         validate: { isEmail: true },
       },
-      password: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
       role: {
         type: DataTypes.ENUM("admin", "superadmin", "vendor", "customer"),
         defaultValue: "vendor",
@@ -33,7 +29,6 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         unique: true,
         validate: { is: /^[0-9]{10,15}$/ },
-        
       },
       isActive: {
         type: DataTypes.BOOLEAN,
@@ -43,24 +38,8 @@ module.exports = (sequelize, DataTypes) => {
     {
       tableName: "users",
       timestamps: true,
-      hooks: {
-        beforeCreate: async (user) => {
-          if (user.password) {
-            user.password = await bcrypt.hash(user.password, 10);
-          }
-        },
-        beforeUpdate: async (user) => {
-          if (user.changed("password")) {
-            user.password = await bcrypt.hash(user.password, 10);
-          }
-        },
-      },
     }
   );
-
-  User.prototype.comparePassword = async function (candidate) {
-    return bcrypt.compare(candidate, this.password);
-  };
 
   User.prototype.isAdmin = function () {
     return this.role === "admin" || this.role === "superadmin";
