@@ -7,7 +7,7 @@ const settingsService = require("../../services/vendor/settingsService");
 const { generateOtp, otpExpiryMinutes } = require("../../utils/otpUtils");
 
 exports.register = asyncHandler(async (req, res) => {
-  const { name, email, password, role, mobile } = req.body;
+  const { name, email, role, mobile } = req.body;
   const existing = await UserModel.findOne({ where: { email } });
   if (existing) return error(res, "Email already exists", 400);
 
@@ -18,7 +18,6 @@ exports.register = asyncHandler(async (req, res) => {
   const user = await UserModel.create({
     name,
     email,
-    password,
     mobile,
     role: role || "vendor",
   });
@@ -31,10 +30,10 @@ exports.register = asyncHandler(async (req, res) => {
 });
 
 exports.login = asyncHandler(async (req, res) => {
-  const { mobile, email, password } = req.body;
+  const { mobile, email } = req.body;
 
-  if ((!mobile && !email) || !password) {
-    return error(res, "Mobile/Email and password required", 400);
+  if (!mobile && !email) {
+    return error(res, "Mobile/Email required", 400);
   }
 
   const whereCondition = mobile ? { mobile } : { email };
