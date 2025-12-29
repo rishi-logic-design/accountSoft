@@ -1,8 +1,13 @@
+require("dotenv").config({
+  path:
+    process.env.NODE_ENV === "production"
+      ? ".env.production"
+      : ".env.development",
+});
 const express = require("express");
-require("dotenv").config();
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { sequelize } = require("./models/");
+const { sequelize } = require("./models");
 const errorMiddleware = require("./middleware/errorMiddleware");
 
 // Vendor Routes
@@ -57,17 +62,12 @@ const PORT = process.env.PORT || 5000;
 (async () => {
   try {
     await sequelize.sync();
-    console.log("✅ Database connected successfully");
+    console.log("✅ Database connected & tables synced");
+
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(
-        `🌍 Frontend URL: ${
-          process.env.FRONTEND_URL || "http://localhost:5173"
-        }`
-      );
     });
   } catch (err) {
-    console.error("❌ DB connection failed:", err);
+    console.error("❌ DB error:", err.message);
   }
 })();
-

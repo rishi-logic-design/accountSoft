@@ -1,4 +1,5 @@
 const { sequelize, Sequelize } = require("../db/connect");
+
 const User = require("./vendor/userModel");
 const Vendor = require("./vendor/vendorModel");
 const Plan = require("./vendor/planModel");
