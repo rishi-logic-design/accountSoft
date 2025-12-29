@@ -1,5 +1,3 @@
-const bcrypt = require("bcryptjs");
-
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define(
     "User",
@@ -26,9 +24,8 @@ module.exports = (sequelize, DataTypes) => {
       },
       mobile: {
         type: DataTypes.STRING(15),
-        allowNull: true,
+        allowNull: false, // ✅ Required now
         unique: true,
-        validate: { is: /^[0-9]{10,15}$/ },
       },
       isActive: {
         type: DataTypes.BOOLEAN,

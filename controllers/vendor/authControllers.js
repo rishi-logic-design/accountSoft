@@ -8,23 +8,45 @@ const { generateOtp, otpExpiryMinutes } = require("../../utils/otpUtils");
 
 exports.register = asyncHandler(async (req, res) => {
   const { name, email, role, mobile } = req.body;
-  const existing = await UserModel.findOne({ where: { email } });
-  if (existing) return error(res, "Email already exists", 400);
 
-  if (mobile) {
-    const existingMobile = await UserModel.findOne({ where: { mobile } });
-    if (existingMobile) return error(res, "Mobile number already exists", 400);
+  console.log("📥 Register Request:", { name, email, mobile, role });
+
+  // Validation
+  if (!name || !email || !mobile) {
+    return error(res, "Name, email and mobile are required", 400);
   }
+
+  // Check existing email
+  const existingEmail = await UserModel.findOne({ where: { email } });
+  if (existingEmail) {
+    return error(res, "Email already exists", 400);
+  }
+
+  // Check existing mobile
+  const existingMobile = await UserModel.findOne({ where: { mobile } });
+  if (existingMobile) {
+    return error(res, "Mobile number already exists", 400);
+  }
+
+  // Create user
   const user = await UserModel.create({
     name,
     email,
     mobile,
-    role: role || "vendor",
+    role: role || "admin",
   });
+
+  console.log("✅ User created:", user.id);
+
   success(
     res,
-    { id: user.id, email: user.email, mobile: user.mobile, role: user.role },
-    "User created",
+    {
+      id: user.id,
+      email: user.email,
+      mobile: user.mobile,
+      role: user.role,
+    },
+    "User created successfully",
     201
   );
 });

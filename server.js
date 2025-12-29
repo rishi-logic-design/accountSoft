@@ -10,7 +10,7 @@ const cors = require("cors");
 const { sequelize } = require("./models");
 const errorMiddleware = require("./middleware/errorMiddleware");
 
-// Vendor Routes
+// Routes
 const authRoutes = require("./routes/Vendors/authRoutes");
 const vendorRoutes = require("./routes/Vendors/vendorRoutes");
 const subscriptionRoutes = require("./routes/Vendors/subcriptionRoutes");
@@ -20,27 +20,42 @@ const challanRoutes = require("./routes/Vendors/challanRoutes");
 const billRoutes = require("./routes/Vendors/billRoutes");
 const paymentRoutes = require("./routes/Vendors/paymentRoutes");
 const settingsRoutes = require("./routes/Vendors/settingsRoutes");
-const createBillRoutes = require("./routes/Vendors/billRoutes");
 const uploadRoutes = require("./routes/Vendors/uploadRoutes");
-// Customer Routes
 const transactionRoutes = require("./routes/Customer/transactionRoutes");
 const summaryRoutes = require("./routes/Customer/summaryRoutes");
 
 const app = express();
 
-// CORS Configuration
+// CORS - Allow all origins for now
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: "*", // ✅ Production ke liye open kar diya
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// Body Parser
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: "50mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
 
-// Vendor Routes
+// Health check endpoint
+app.get("/", (req, res) => {
+  res.json({
+    status: "Server is running",
+    env: process.env.NODE_ENV,
+    dbConnected: sequelize
+      .authenticate()
+      .then(() => true)
+      .catch(() => false),
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({ status: "OK", timestamp: new Date() });
+});
+
+// Routes
 app.use("/uploads", express.static("uploads"));
 app.use("/auth", authRoutes);
 app.use("/vendors", vendorRoutes);
@@ -51,23 +66,35 @@ app.use("/api/challans", challanRoutes);
 app.use("/api/bills", billRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/settings", settingsRoutes);
-app.use("/api/bills/create", createBillRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/summary", summaryRoutes);
 app.use("/api/upload", uploadRoutes);
+
 app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 5000;
 
+// ✅ Database Sync & Server Start
 (async () => {
   try {
-    await sequelize.sync();
-    console.log("✅ Database connected & tables synced");
+    console.log("🔄 Connecting to database...");
+    console.log("Environment:", process.env.NODE_ENV);
+    console.log("DB Host:", process.env.DB_HOST);
 
-    app.listen(PORT, () => {
+    await sequelize.authenticate();
+    console.log("✅ Database connected successfully");
+
+    // ✅ Force sync in production (only once)
+    await sequelize.sync();
+    console.log("✅ Database tables synced");
+
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📍 Environment: ${process.env.NODE_ENV}`);
     });
   } catch (err) {
-    console.error("❌ DB error:", err.message);
+    console.error("❌ Startup Error:", err.message);
+    console.error("Full Error:", err);
+    process.exit(1);
   }
 })();
