@@ -23,7 +23,7 @@ const settingsRoutes = require("./routes/Vendors/settingsRoutes");
 const uploadRoutes = require("./routes/Vendors/uploadRoutes");
 const transactionRoutes = require("./routes/Customer/transactionRoutes");
 const summaryRoutes = require("./routes/Customer/summaryRoutes");
-
+const productRoutes = require("./routes/Vendors/productRoutes");
 const app = express();
 
 // CORS - Allow all origins for now
@@ -69,7 +69,7 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/summary", summaryRoutes);
 app.use("/api/upload", uploadRoutes);
-
+app.use("api/products", productRoutes);
 app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 5000;
