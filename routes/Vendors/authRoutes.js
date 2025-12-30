@@ -1,22 +1,31 @@
 const express = require("express");
 const router = express.Router();
-const authCtrl = require("../../controllers/vendor/authControllers");
+const productCtrl = require("../controllers/productController");
+const auth = require("../../middleware/authMiddleware");
+const role = require("../../middleware/roleMiddleware");
 
-router.post("/register", authCtrl.register);
-router.post("/login", authCtrl.login);
-router.post("/send-otp", authCtrl.sendOtp);
-router.post("/verify-otp", authCtrl.verifyOtp);
-router.post("/resend-otp", authCtrl.resendOtp);
-router.post("/check-role", authCtrl.checkUserRole);
-router.post("/exchange-firebase-token", authCtrl.exchangeFirebaseToken);
+router.use(auth);
+router.use(role(["vendor", "admin", "superadmin"]));
 
-router.post("/vendor/check", authCtrl.checkVendor);
-router.post("/vendor/send-otp", authCtrl.sendVendorOtp);
-router.post("/vendor/verify-otp", authCtrl.verifyVendorOtp);
-router.post("/vendor/resend-otp", authCtrl.resendVendorOtp);
-router.post(
-  "/vendor/exchange-firebase-token",
-  authCtrl.exchangeVendorFirebaseToken
-);
+// ========== CATEGORY MANAGEMENT ==========
+router.post("/categories", productCtrl.createCategory);
+router.get("/categories", productCtrl.listCategories);
+router.put("/categories/:id", productCtrl.updateCategory);
+router.delete("/categories/:id", productCtrl.deleteCategory);
+
+// ========== SIZE MANAGEMENT ==========
+router.post("/sizes", productCtrl.createSize);
+router.get("/sizes", productCtrl.listSizes);
+router.put("/sizes/:id", productCtrl.updateSize);
+router.delete("/sizes/:id", productCtrl.deleteSize);
+
+// ========== PRODUCT MANAGEMENT ==========
+router.post("/", productCtrl.createProduct);
+router.get("/", productCtrl.listProducts);
+router.get("/:id", productCtrl.getProductDetail);
+router.put("/:id", productCtrl.updateProduct);
+router.delete("/:id", productCtrl.deleteProduct);
+
+router.post("/stock/change", productCtrl.changeStock);
 
 module.exports = router;

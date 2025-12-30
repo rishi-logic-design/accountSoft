@@ -6,7 +6,7 @@ const role = require("../../middleware/roleMiddleware");
 
 // All protected (vendor/admin)
 router.use(auth);
-router.use(role(["vendor", "admin"]));
+router.use(role(["vendor", "admin","superadmin"]));
 
 // Category & Size management (admin or vendor can use)
 router.post("/categories", productCtrl.createCategory);
