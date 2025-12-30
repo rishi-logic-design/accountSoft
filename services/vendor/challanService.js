@@ -113,9 +113,7 @@ exports.listChallans = async ({
   if (toDate)
     where.challanDate = { ...(where.challanDate || {}), [Op.lte]: toDate };
   if (search) {
-    where[Op.or] = [
-      { challanNumber: { [Op.like]: `%${search}%` } },
-    ];
+    where[Op.or] = [{ challanNumber: { [Op.like]: `%${search}%` } }];
   }
 
   const include = [
