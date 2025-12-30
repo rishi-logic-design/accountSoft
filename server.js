@@ -70,6 +70,7 @@ app.use("/api/transactions", transactionRoutes);
 app.use("/api/summary", summaryRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("api/products", productRoutes);
+
 app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 5000;
