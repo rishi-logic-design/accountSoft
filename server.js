@@ -69,7 +69,7 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/summary", summaryRoutes);
 app.use("/api/upload", uploadRoutes);
-app.use("api/products", productRoutes);
+app.use("/api/products", productRoutes);
 
 app.use(errorMiddleware);
 
