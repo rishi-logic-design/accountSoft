@@ -1,14 +1,8 @@
-const db = require("../../models");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
 const { Op } = require("sequelize");
 
-// Models
-const Product = db.Product;
-const Category = db.Category;
-const Size = db.Size;
-const ProductSize = db.ProductSize;
-
+const { Product, Category, Size, ProductSize } = require("../../models");
 
 exports.createCategory = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
@@ -33,7 +27,6 @@ exports.listCategories = asyncHandler(async (req, res) => {
   success(res, categories, "Categories fetched successfully");
 });
 
-
 exports.updateCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, description } = req.body;
@@ -53,7 +46,6 @@ exports.updateCategory = asyncHandler(async (req, res) => {
   await cat.update({ name, description });
   success(res, cat, "Category updated successfully");
 });
-
 
 exports.deleteCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -92,14 +84,12 @@ exports.createSize = asyncHandler(async (req, res) => {
   success(res, size, "Size created successfully", 201);
 });
 
-
 exports.listSizes = asyncHandler(async (req, res) => {
   const sizes = await Size.findAll({
     order: [["inches", "ASC"]],
   });
   success(res, sizes, "Sizes fetched successfully");
 });
-
 
 exports.updateSize = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -142,7 +132,6 @@ exports.deleteSize = asyncHandler(async (req, res) => {
   success(res, null, "Size deleted successfully");
 });
 
-
 const getVendorId = (req) => {
   return req.user.role === "vendor" 
     ? req.user.id 
@@ -181,10 +170,10 @@ const validateProductData = async (data) => {
   return errors;
 };
 
-
 exports.createProduct = asyncHandler(async (req, res) => {
   const { name, sku, description, price, stock, categoryId, sizes } = req.body;
 
+  // Validate product data
   const validationErrors = await validateProductData(req.body);
   if (validationErrors.length > 0) {
     return error(res, validationErrors.join(", "), 400);
@@ -235,7 +224,6 @@ exports.createProduct = asyncHandler(async (req, res) => {
 
   success(res, fullProduct, "Product created successfully", 201);
 });
-
 
 exports.updateProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -316,7 +304,6 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   success(res, updatedProduct, "Product updated successfully");
 });
 
-
 exports.deleteProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const vendorId = getVendorId(req);
@@ -334,7 +321,6 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
 
   success(res, null, "Product deleted successfully");
 });
-
 
 exports.listProducts = asyncHandler(async (req, res) => {
   const vendorId = getVendorId(req);
@@ -391,7 +377,6 @@ exports.listProducts = asyncHandler(async (req, res) => {
   success(res, result, "Products fetched successfully");
 });
 
-
 exports.getProductDetail = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const vendorId = getVendorId(req);
@@ -414,7 +399,6 @@ exports.getProductDetail = asyncHandler(async (req, res) => {
 
   success(res, product, "Product details fetched successfully");
 });
-
 
 exports.changeStock = asyncHandler(async (req, res) => {
   const { productId, sizeId, quantity, operation } = req.body;
@@ -467,7 +451,6 @@ exports.changeStock = asyncHandler(async (req, res) => {
 
   success(res, null, "Stock updated successfully");
 });
-
 
 const calculateNewStock = (currentStock, quantity, operation) => {
   let newStock = currentStock;
