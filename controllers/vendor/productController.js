@@ -9,7 +9,7 @@ const Category = db.Category;
 const Size = db.Size;
 const ProductSize = db.ProductSize;
 
-// ========== CATEGORY MANAGEMENT ==========
+
 exports.createCategory = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
 
@@ -17,7 +17,6 @@ exports.createCategory = asyncHandler(async (req, res) => {
     return error(res, "Category name is required", 400);
   }
 
-  // Check if category already exists
   const existingCat = await Category.findOne({ where: { name } });
   if (existingCat) {
     return error(res, "Category with this name already exists", 400);
@@ -27,7 +26,6 @@ exports.createCategory = asyncHandler(async (req, res) => {
   success(res, cat, "Category created successfully", 201);
 });
 
-// List all categories
 exports.listCategories = asyncHandler(async (req, res) => {
   const categories = await Category.findAll({
     order: [["name", "ASC"]],
@@ -35,7 +33,7 @@ exports.listCategories = asyncHandler(async (req, res) => {
   success(res, categories, "Categories fetched successfully");
 });
 
-// Update category
+
 exports.updateCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, description } = req.body;
@@ -45,7 +43,6 @@ exports.updateCategory = asyncHandler(async (req, res) => {
     return error(res, "Category not found", 404);
   }
 
-  // Check if name is being changed and if it already exists
   if (name && name !== cat.name) {
     const existingCat = await Category.findOne({ where: { name } });
     if (existingCat) {
@@ -66,7 +63,6 @@ exports.deleteCategory = asyncHandler(async (req, res) => {
     return error(res, "Category not found", 404);
   }
 
-  // Check if any products use this category
   const productsCount = await Product.count({ where: { categoryId: id } });
   if (productsCount > 0) {
     return error(
@@ -80,9 +76,6 @@ exports.deleteCategory = asyncHandler(async (req, res) => {
   success(res, null, "Category deleted successfully");
 });
 
-// ========== SIZE MANAGEMENT ==========
-
-// Create new size
 exports.createSize = asyncHandler(async (req, res) => {
   const { label, inches } = req.body;
 
@@ -90,7 +83,6 @@ exports.createSize = asyncHandler(async (req, res) => {
     return error(res, "Label and inches are required", 400);
   }
 
-  // Check if size already exists
   const existingSize = await Size.findOne({ where: { label } });
   if (existingSize) {
     return error(res, "Size with this label already exists", 400);
@@ -100,7 +92,7 @@ exports.createSize = asyncHandler(async (req, res) => {
   success(res, size, "Size created successfully", 201);
 });
 
-// List all sizes
+
 exports.listSizes = asyncHandler(async (req, res) => {
   const sizes = await Size.findAll({
     order: [["inches", "ASC"]],
@@ -108,7 +100,7 @@ exports.listSizes = asyncHandler(async (req, res) => {
   success(res, sizes, "Sizes fetched successfully");
 });
 
-// Update size
+
 exports.updateSize = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { label, inches } = req.body;
@@ -118,7 +110,6 @@ exports.updateSize = asyncHandler(async (req, res) => {
     return error(res, "Size not found", 404);
   }
 
-  // Check if label is being changed and if it already exists
   if (label && label !== size.label) {
     const existingSize = await Size.findOne({ where: { label } });
     if (existingSize) {
@@ -130,7 +121,6 @@ exports.updateSize = asyncHandler(async (req, res) => {
   success(res, size, "Size updated successfully");
 });
 
-// Delete size
 exports.deleteSize = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -139,7 +129,6 @@ exports.deleteSize = asyncHandler(async (req, res) => {
     return error(res, "Size not found", 404);
   }
 
-  // Check if any product sizes use this size
   const productSizesCount = await ProductSize.count({ where: { sizeId: id } });
   if (productSizesCount > 0) {
     return error(
@@ -153,39 +142,52 @@ exports.deleteSize = asyncHandler(async (req, res) => {
   success(res, null, "Size deleted successfully");
 });
 
-// ========== PRODUCT MANAGEMENT ==========
 
-// Create product with name, category, and sizes
+const getVendorId = (req) => {
+  return req.user.role === "vendor" 
+    ? req.user.id 
+    : req.body.vendorId || req.query.vendorId || req.user.id;
+};
+
+const validateProductData = async (data) => {
+  const errors = [];
+
+  if (!data.name) {
+    errors.push("Product name is required");
+  }
+
+  if (!data.categoryId) {
+    errors.push("Category is required");
+  } else {
+    const category = await Category.findByPk(data.categoryId);
+    if (!category) {
+      errors.push("Category not found");
+    }
+  }
+
+  if (!data.sizes || !Array.isArray(data.sizes) || data.sizes.length === 0) {
+    errors.push("At least one size is required");
+  } else {
+    const sizeIds = data.sizes.map((s) => s.sizeId);
+    const existingSizes = await Size.findAll({
+      where: { id: { [Op.in]: sizeIds } },
+    });
+
+    if (existingSizes.length !== sizeIds.length) {
+      errors.push("One or more sizes not found");
+    }
+  }
+
+  return errors;
+};
+
+
 exports.createProduct = asyncHandler(async (req, res) => {
   const { name, sku, description, price, stock, categoryId, sizes } = req.body;
 
-  // Validation
-  if (!name) {
-    return error(res, "Product name is required", 400);
-  }
-
-  if (!categoryId) {
-    return error(res, "Category is required", 400);
-  }
-
-  if (!sizes || !Array.isArray(sizes) || sizes.length === 0) {
-    return error(res, "At least one size is required", 400);
-  }
-
-  // Verify category exists
-  const category = await Category.findByPk(categoryId);
-  if (!category) {
-    return error(res, "Category not found", 404);
-  }
-
-  // Verify all sizes exist
-  const sizeIds = sizes.map((s) => s.sizeId);
-  const existingSizes = await Size.findAll({
-    where: { id: { [Op.in]: sizeIds } },
-  });
-
-  if (existingSizes.length !== sizeIds.length) {
-    return error(res, "One or more sizes not found", 404);
+  const validationErrors = await validateProductData(req.body);
+  if (validationErrors.length > 0) {
+    return error(res, validationErrors.join(", "), 400);
   }
 
   // Check SKU uniqueness if provided
@@ -196,9 +198,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
     }
   }
 
-  // Get vendor ID
-  const vendorId =
-    req.user.role === "vendor" ? req.user.id : req.body.vendorId || req.user.id;
+  const vendorId = getVendorId(req);
 
   // Create product
   const product = await Product.create({
@@ -236,13 +236,12 @@ exports.createProduct = asyncHandler(async (req, res) => {
   success(res, fullProduct, "Product created successfully", 201);
 });
 
-// Update product
+
 exports.updateProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, sku, description, price, stock, categoryId, sizes } = req.body;
 
-  const vendorId =
-    req.user.role === "vendor" ? req.user.id : req.body.vendorId || req.user.id;
+  const vendorId = getVendorId(req);
 
   // Find product
   const product = await Product.findOne({
@@ -281,10 +280,8 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
   // Update sizes if provided
   if (sizes && Array.isArray(sizes) && sizes.length > 0) {
-    // Delete existing product sizes
     await ProductSize.destroy({ where: { productId: product.id } });
 
-    // Verify all sizes exist
     const sizeIds = sizes.map((s) => s.sizeId);
     const existingSizes = await Size.findAll({
       where: { id: { [Op.in]: sizeIds } },
@@ -294,7 +291,6 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       return error(res, "One or more sizes not found", 404);
     }
 
-    // Create new product sizes
     const productSizeData = sizes.map((s) => ({
       productId: product.id,
       sizeId: s.sizeId,
@@ -320,14 +316,10 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   success(res, updatedProduct, "Product updated successfully");
 });
 
-// Delete product
+
 exports.deleteProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
-
-  const vendorId =
-    req.user.role === "vendor"
-      ? req.user.id
-      : req.query.vendorId || req.user.id;
+  const vendorId = getVendorId(req);
 
   const product = await Product.findOne({
     where: { id, createdBy: vendorId },
@@ -337,22 +329,15 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
     return error(res, "Product not found or unauthorized", 404);
   }
 
-  // Delete associated product sizes first
   await ProductSize.destroy({ where: { productId: product.id } });
-
-  // Delete product
   await product.destroy();
 
   success(res, null, "Product deleted successfully");
 });
 
-// List products with filters
-exports.listProducts = asyncHandler(async (req, res) => {
-  const vendorId =
-    req.user.role === "vendor"
-      ? req.user.id
-      : req.query.vendorId || req.user.id;
 
+exports.listProducts = asyncHandler(async (req, res) => {
+  const vendorId = getVendorId(req);
   const { categoryId, sizeId, search, page = 1, limit = 20 } = req.query;
 
   // Build where clause
@@ -406,14 +391,10 @@ exports.listProducts = asyncHandler(async (req, res) => {
   success(res, result, "Products fetched successfully");
 });
 
-// Get single product detail
+
 exports.getProductDetail = asyncHandler(async (req, res) => {
   const { id } = req.params;
-
-  const vendorId =
-    req.user.role === "vendor"
-      ? req.user.id
-      : req.query.vendorId || req.user.id;
+  const vendorId = getVendorId(req);
 
   const product = await Product.findOne({
     where: { id, createdBy: vendorId },
@@ -434,12 +415,11 @@ exports.getProductDetail = asyncHandler(async (req, res) => {
   success(res, product, "Product details fetched successfully");
 });
 
-// ========== STOCK MANAGEMENT ==========
 
 exports.changeStock = asyncHandler(async (req, res) => {
   const { productId, sizeId, quantity, operation } = req.body;
 
-  if (!productId || !quantity || !operation) {
+  if (!productId || quantity === undefined || !operation) {
     return error(res, "productId, quantity, and operation are required", 400);
   }
 
@@ -447,10 +427,8 @@ exports.changeStock = asyncHandler(async (req, res) => {
     return error(res, "operation must be: add, subtract, or set", 400);
   }
 
-  const vendorId =
-    req.user.role === "vendor" ? req.user.id : req.body.vendorId || req.user.id;
+  const vendorId = getVendorId(req);
 
-  // Verify product belongs to vendor
   const product = await Product.findOne({
     where: { id: productId, createdBy: vendorId },
   });
@@ -459,8 +437,10 @@ exports.changeStock = asyncHandler(async (req, res) => {
     return error(res, "Product not found or unauthorized", 404);
   }
 
-  // If sizeId is provided, update ProductSize stock
+  const qty = parseInt(quantity);
+
   if (sizeId) {
+    // Update ProductSize stock
     const productSize = await ProductSize.findOne({
       where: { productId, sizeId },
     });
@@ -469,20 +449,10 @@ exports.changeStock = asyncHandler(async (req, res) => {
       return error(res, "Product size combination not found", 404);
     }
 
-    let newStock = productSize.stock;
-
-    if (operation === "add") {
-      newStock += parseInt(quantity);
-    } else if (operation === "subtract") {
-      newStock -= parseInt(quantity);
-      if (newStock < 0) newStock = 0;
-    } else if (operation === "set") {
-      newStock = parseInt(quantity);
-    }
-
+    let newStock = calculateNewStock(productSize.stock, qty, operation);
     await productSize.update({ stock: newStock });
 
-    // Update total product stock (sum of all size stocks)
+    // Update total product stock
     const allSizes = await ProductSize.findAll({
       where: { productId },
       attributes: ["stock"],
@@ -491,19 +461,29 @@ exports.changeStock = asyncHandler(async (req, res) => {
     await product.update({ stock: totalStock });
   } else {
     // Update main product stock
-    let newStock = product.stock;
-
-    if (operation === "add") {
-      newStock += parseInt(quantity);
-    } else if (operation === "subtract") {
-      newStock -= parseInt(quantity);
-      if (newStock < 0) newStock = 0;
-    } else if (operation === "set") {
-      newStock = parseInt(quantity);
-    }
-
+    let newStock = calculateNewStock(product.stock, qty, operation);
     await product.update({ stock: newStock });
   }
 
   success(res, null, "Stock updated successfully");
 });
+
+
+const calculateNewStock = (currentStock, quantity, operation) => {
+  let newStock = currentStock;
+
+  switch (operation) {
+    case "add":
+      newStock += quantity;
+      break;
+    case "subtract":
+      newStock -= quantity;
+      if (newStock < 0) newStock = 0;
+      break;
+    case "set":
+      newStock = quantity;
+      break;
+  }
+
+  return newStock;
+};

@@ -4,16 +4,20 @@ const productCtrl = require("../../controllers/vendor/productController");
 const auth = require("../../middleware/authMiddleware");
 const role = require("../../middleware/roleMiddleware");
 
-// All protected (vendor/admin)
 router.use(auth);
-router.use(role(["vendor", "admin","superadmin"]));
+router.use(role(["vendor", "admin", "superadmin"]));
 
-// Category & Size management (admin or vendor can use)
+// Category management
 router.post("/categories", productCtrl.createCategory);
 router.get("/categories", productCtrl.listCategories);
+router.put("/categories/:id", productCtrl.updateCategory);
+router.delete("/categories/:id", productCtrl.deleteCategory);
 
+// Size management
 router.post("/sizes", productCtrl.createSize);
 router.get("/sizes", productCtrl.listSizes);
+router.put("/sizes/:id", productCtrl.updateSize);
+router.delete("/sizes/:id", productCtrl.deleteSize);
 
 // Products
 router.post("/", productCtrl.createProduct);
