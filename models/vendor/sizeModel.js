@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
         autoIncrement: true,
       },
       label: { type: DataTypes.STRING, allowNull: false },
-      inches: { type: DataTypes.DECIMAL(6, 2), allowNull: true },
+      inches: { type: DataTypes.DECIMAL(6, 2), allowNull: false },
     },
     {
       tableName: "sizes",

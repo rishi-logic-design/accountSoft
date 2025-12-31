@@ -31,20 +31,28 @@ exports.updateCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, description } = req.body;
 
+  if (!id) {
+    return error(res, "Category ID is required", 400);
+  }
+
   const cat = await Category.findByPk(id);
   if (!cat) {
     return error(res, "Category not found", 404);
   }
 
   if (name && name !== cat.name) {
-    const existingCat = await Category.findOne({ where: { name } });
+    const existingCat = await Category.findOne({
+      where: { name, id: { [Op.ne]: id } },
+    });
     if (existingCat) {
       return error(res, "Category with this name already exists", 400);
     }
   }
 
   await cat.update({ name, description });
-  success(res, cat, "Category updated successfully");
+
+  const updateCat = await Category.findByPk(id);
+  success(res, updateCat, "Category updated successfully");
 });
 
 exports.deleteCategory = asyncHandler(async (req, res) => {
@@ -71,8 +79,12 @@ exports.deleteCategory = asyncHandler(async (req, res) => {
 exports.createSize = asyncHandler(async (req, res) => {
   const { label, inches } = req.body;
 
-  if (!label || !inches) {
-    return error(res, "Label and inches are required", 400);
+  if (!label) {
+    return error(res, "Label is required", 400);
+  }
+
+  if (!inches && inches !== 0) {
+    return error(res, "Inches is required", 400);
   }
 
   const existingSize = await Size.findOne({ where: { label } });
@@ -81,7 +93,9 @@ exports.createSize = asyncHandler(async (req, res) => {
   }
 
   const size = await Size.create({ label, inches });
-  success(res, size, "Size created successfully", 201);
+
+  const createdSize = await Size.findByPk(size.id);
+  success(res, createdSize, "Size created successfully", 201);
 });
 
 exports.listSizes = asyncHandler(async (req, res) => {
@@ -95,20 +109,32 @@ exports.updateSize = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { label, inches } = req.body;
 
+  if (!id) {
+    return error(res, "Size ID is required", 400);
+  }
+
   const size = await Size.findByPk(id);
   if (!size) {
     return error(res, "Size not found", 404);
   }
 
   if (label && label !== size.label) {
-    const existingSize = await Size.findOne({ where: { label } });
+    const existingSize = await Size.findOne({
+      where: { label, id: { [Op.ne]: id } },
+    });
     if (existingSize) {
       return error(res, "Size with this label already exists", 400);
     }
   }
 
-  await size.update({ label, inches });
-  success(res, size, "Size updated successfully");
+  const updateData = {};
+  if (label !== undefined) updateData.label = label;
+  if (inches !== undefined) updateData.inches = inches;
+
+  await size.update(updateData);
+  const updatedSize = await Size.findByPk(id);
+
+  success(res, updatedSize, "Size updated successfully");
 });
 
 exports.deleteSize = asyncHandler(async (req, res) => {
@@ -133,8 +159,8 @@ exports.deleteSize = asyncHandler(async (req, res) => {
 });
 
 const getVendorId = (req) => {
-  return req.user.role === "vendor" 
-    ? req.user.id 
+  return req.user.role === "vendor"
+    ? req.user.id
     : req.body.vendorId || req.query.vendorId || req.user.id;
 };
 
