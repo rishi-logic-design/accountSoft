@@ -349,11 +349,17 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
 });
 
 exports.listProducts = asyncHandler(async (req, res) => {
-  const vendorId = getVendorId(req);
+  const vendorId = req.user?.id;
+
+  if (!vendorId) {
+    return error(res, "Unauthorized access", 401);
+  }
+
   const { categoryId, sizeId, search, page = 1, limit = 20 } = req.query;
 
-  // Build where clause
-  const whereClause = { createdBy: vendorId };
+  const whereClause = {
+    createdBy: vendorId,
+  };
 
   if (categoryId) {
     whereClause.categoryId = categoryId;
@@ -367,36 +373,49 @@ exports.listProducts = asyncHandler(async (req, res) => {
     ];
   }
 
-  // Build include clause
   const includeClause = [
-    { model: Category, as: "category" },
+    {
+      model: Category,
+      as: "category",
+      attributes: ["id", "name"],
+    },
     {
       model: ProductSize,
       as: "productSizes",
-      include: [{ model: Size, as: "size" }],
-      ...(sizeId && { where: { sizeId } }),
+      attributes: ["id", "price", "stock"],
+      include: [
+        {
+          model: Size,
+          as: "size",
+          attributes: ["id", "label", "inches"],
+        },
+      ],
+      ...(sizeId ? { where: { sizeId } } : {}),
+      required: !!sizeId, 
     },
   ];
 
-  // Pagination
-  const offset = (parseInt(page) - 1) * parseInt(limit);
+  // 🔹 Pagination
+  const pageNumber = parseInt(page);
+  const pageLimit = parseInt(limit);
+  const offset = (pageNumber - 1) * pageLimit;
 
   const { count, rows } = await Product.findAndCountAll({
     where: whereClause,
     include: includeClause,
-    limit: parseInt(limit),
-    offset: offset,
+    limit: pageLimit,
+    offset,
     order: [["createdAt", "DESC"]],
-    distinct: true,
+    distinct: true, 
   });
 
   const result = {
     products: rows,
     pagination: {
       total: count,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(count / parseInt(limit)),
+      page: pageNumber,
+      limit: pageLimit,
+      totalPages: Math.ceil(count / pageLimit),
     },
   };
 
@@ -445,7 +464,6 @@ exports.getProductDetail = asyncHandler(async (req, res) => {
 
   success(res, product, "Product details fetched successfully");
 });
-
 
 exports.changeStock = asyncHandler(async (req, res) => {
   const { productId, sizeId, quantity, operation } = req.body;
