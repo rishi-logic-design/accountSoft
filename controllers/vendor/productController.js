@@ -405,26 +405,47 @@ exports.listProducts = asyncHandler(async (req, res) => {
 
 exports.getProductDetail = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const vendorId = getVendorId(req);
+
+  // Vendor isolation – always from token
+  const vendorId = req.user?.id;
+
+  if (!vendorId) {
+    return error(res, "Unauthorized access", 401);
+  }
 
   const product = await Product.findOne({
-    where: { id, createdBy: vendorId },
+    where: {
+      id,
+      createdBy: vendorId,
+    },
     include: [
-      { model: Category, as: "category" },
+      {
+        model: Category,
+        as: "category",
+        attributes: ["id", "name", "description"],
+      },
       {
         model: ProductSize,
         as: "productSizes",
-        include: [{ model: Size, as: "size" }],
+        attributes: ["id", "price", "stock"],
+        include: [
+          {
+            model: Size,
+            as: "size",
+            attributes: ["id", "label", "inches"],
+          },
+        ],
       },
     ],
   });
 
   if (!product) {
-    return error(res, "Product not found or unauthorized", 404);
+    return error(res, "Product not found", 404);
   }
 
   success(res, product, "Product details fetched successfully");
 });
+
 
 exports.changeStock = asyncHandler(async (req, res) => {
   const { productId, sizeId, quantity, operation } = req.body;

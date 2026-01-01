@@ -8,13 +8,13 @@ router.use(auth);
 router.use(role(["vendor", "admin", "superadmin"]));
 
 // Customer CRUD
+router.get("/search", customerCtrl.searchCustomers);
 router.post("/", customerCtrl.createCustomer);
 router.get("/", customerCtrl.listCustomers);
-router.get("/count-by-vendor", customerCtrl.getCustomerCountByVendor);
 router.get("/:id", customerCtrl.getCustomerDetail);
 router.put("/:id", customerCtrl.updateCustomer);
 router.delete("/:id", customerCtrl.deleteCustomer);
-router.get("/search", customerCtrl.searchCustomers);
+router.get("/count-by-vendor", customerCtrl.getCustomerCountByVendor);
 
 // Transactions
 router.post("/:customerId/transactions", customerCtrl.addTransaction);
