@@ -174,10 +174,10 @@ exports.getChallanById = async (challanId, vendorId) => {
   return { challan, payments, due };
 };
 
-exports.markChallanPaid = async (challanId, vendorId, payload) => {
+exports.markChallanPaid = async (challanNumber, vendorId, payload) => {
   return await sequelize.transaction(async (t) => {
     const challan = await ChallanModel.findOne({
-      where: { id: challanId, vendorId },
+      where: { id: challanNumber, vendorId },
       transaction: t,
     });
     if (!challan) throw new Error("Challan not found");
@@ -189,7 +189,7 @@ exports.markChallanPaid = async (challanId, vendorId, payload) => {
     const trx = await TransactionModel.create(
       {
         vendorId,
-        customerId: challan.customerId,
+        customerId: challan.challanNumber,
         amount: paymentAmount,
         type: "payment",
         description: payload.note || `Payment for ${challan.challanNumber}`,
@@ -204,7 +204,7 @@ exports.markChallanPaid = async (challanId, vendorId, payload) => {
       where: {
         vendorId,
         customerId: challan.customerId,
-        challanId: challan.id,
+        challanNumber: challan.id,
       },
       transaction: t,
     });
