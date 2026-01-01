@@ -14,7 +14,7 @@ exports.createCustomer = asyncHandler(async (req, res) => {
   }
 
   const customer = await customerService.createCustomer(vendorId, customerData);
-  
+
   console.log("✅ Customer Created Successfully:", customer?.id);
   success(res, customer, "Customer created successfully", 201);
 });
@@ -33,7 +33,7 @@ exports.updateCustomer = asyncHandler(async (req, res) => {
     req.params.id,
     customerData
   );
-  
+
   console.log("✅ Customer Updated Successfully:", updated?.id);
   success(res, updated, "Customer updated successfully");
 });
@@ -48,7 +48,7 @@ exports.deleteCustomer = asyncHandler(async (req, res) => {
   }
 
   await customerService.deleteCustomer(vendorId, req.params.id);
-  
+
   console.log("✅ Customer Deleted Successfully:", req.params.id);
   success(res, null, "Customer deleted successfully");
 });
@@ -67,12 +67,37 @@ exports.listCustomers = asyncHandler(async (req, res) => {
     size,
     search,
   });
-  
+
   console.log(`📦 Found ${list.total} customers for vendor ${vendorId}`);
   success(res, list);
 });
 
+exports.searchCustomers = asyncHandler(async (req, res) => {
+  console.log("🔥 Incoming Search Customers Request:", req.query);
 
+  const { vendorId, q } = req.query;
+
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
+
+  if (!q || q.trim() === "") {
+    return error(res, "Search query is required", 400);
+  }
+
+  const customers = await customerService.searchCustomers(vendorId, q);
+
+  console.log(`🔎 Found ${customers.length} customers matching query "${q}"`);
+
+  success(
+    res,
+    {
+      total: customers.length,
+      rows: customers,
+    },
+    "Customers found successfully"
+  );
+});
 
 exports.getCustomerDetail = asyncHandler(async (req, res) => {
   console.log("🔥 Incoming Get Customer Detail Request:", req.params.id);
@@ -83,14 +108,21 @@ exports.getCustomerDetail = asyncHandler(async (req, res) => {
     return error(res, "Vendor ID is required", 400);
   }
 
-  const detail = await customerService.getCustomerDetail(vendorId, req.params.id);
-  
+  const detail = await customerService.getCustomerDetail(
+    vendorId,
+    req.params.id
+  );
+
   console.log("✅ Customer Detail Retrieved Successfully");
   success(res, detail);
 });
 
 exports.addTransaction = asyncHandler(async (req, res) => {
-  console.log("🔥 Incoming Add Transaction Request:", req.params.customerId, req.body);
+  console.log(
+    "🔥 Incoming Add Transaction Request:",
+    req.params.customerId,
+    req.body
+  );
 
   const { vendorId } = req.body;
   const { customerId } = req.params;
@@ -99,8 +131,12 @@ exports.addTransaction = asyncHandler(async (req, res) => {
     return error(res, "Vendor ID is required", 400);
   }
 
-  const result = await customerService.addTransaction(vendorId, customerId, req.body);
-  
+  const result = await customerService.addTransaction(
+    vendorId,
+    customerId,
+    req.body
+  );
+
   console.log("✅ Transaction Added Successfully");
   success(res, result, "Transaction added successfully", 201);
 });
@@ -119,7 +155,7 @@ exports.transactionReport = asyncHandler(async (req, res) => {
     toDate: req.query.toDate,
     customerId: req.query.customerId,
   });
-  
+
   console.log(`📊 Generated report with ${rows.length} transactions`);
   success(res, rows);
 });
@@ -128,7 +164,7 @@ exports.getCustomerCountByVendor = asyncHandler(async (req, res) => {
   console.log("🔥 Incoming Get Customer Count Request");
 
   const counts = await customerService.getCustomerCountByVendor();
-  
+
   console.log("✅ Customer counts retrieved successfully");
   success(res, counts);
 });

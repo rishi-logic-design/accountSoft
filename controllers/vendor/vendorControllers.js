@@ -3,7 +3,6 @@ const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
 const { Op } = require("sequelize");
 
-// 🟢 Create Vendor
 exports.createVendor = asyncHandler(async (req, res) => {
   console.log("🔥 Incoming Create Vendor Request:", req.body);
   console.log("👤 Created By User ID:", req.user?.id);
@@ -54,7 +53,6 @@ exports.createVendor = asyncHandler(async (req, res) => {
   success(res, vendor, "Vendor created successfully", 201);
 });
 
-// 🟣 Update Vendor
 exports.updateVendor = asyncHandler(async (req, res) => {
   console.log("🔥 Incoming Update Vendor Request:", req.params, req.body);
 
@@ -87,7 +85,6 @@ exports.updateVendor = asyncHandler(async (req, res) => {
   success(res, vendor, "Vendor updated successfully");
 });
 
-// 🟠 Get All Vendors
 exports.getVendors = asyncHandler(async (req, res) => {
   console.log("🔥 Incoming Get Vendors Request:", req.query);
 
@@ -124,7 +121,6 @@ exports.getVendors = asyncHandler(async (req, res) => {
   });
 });
 
-// 🔵 Get Vendor by ID
 exports.getVendorById = asyncHandler(async (req, res) => {
   console.log("🔥 Incoming Get Vendor By ID Request:", req.params.id);
 
@@ -141,7 +137,6 @@ exports.getVendorById = asyncHandler(async (req, res) => {
   success(res, vendor);
 });
 
-// 🔴 Delete Vendor
 exports.deleteVendor = asyncHandler(async (req, res) => {
   console.log("🔥 Incoming Delete Vendor Request:", req.params.id);
 

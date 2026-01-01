@@ -7,10 +7,11 @@ const {
   TransactionModel,
   VendorModel,
   sequelize,
-} = require("../../models/index");
+} = require("../../models");
 const { Op } = require("sequelize");
 const path = require("path");
 const fs = require("fs");
+const vendorModel = require("../../models/vendor/vendorModel");
 
 exports.createCustomer = async (vendorId, payload) => {
   if (!payload.customerName || !payload.mobileNumber) {
@@ -74,9 +75,17 @@ exports.updateCustomer = async (vendorId, customerId, data) => {
   }
 
   // Delete old image if new image is uploaded
-  if (data.customerImage && customer.customerImage && data.customerImage !== customer.customerImage) {
+  if (
+    data.customerImage &&
+    customer.customerImage &&
+    data.customerImage !== customer.customerImage
+  ) {
     try {
-      const oldImagePath = path.join(__dirname, "../../", customer.customerImage);
+      const oldImagePath = path.join(
+        __dirname,
+        "../../",
+        customer.customerImage
+      );
       if (fs.existsSync(oldImagePath)) {
         fs.unlinkSync(oldImagePath);
         console.log("🗑️ Old customer image deleted:", customer.customerImage);
@@ -125,7 +134,10 @@ exports.deleteCustomer = async (vendorId, customerId) => {
   return true;
 };
 
-exports.getCustomerList = async (vendorId, { page = 1, size = 20, search } = {}) => {
+exports.getCustomerList = async (
+  vendorId,
+  { page = 1, size = 20, search } = {}
+) => {
   const where = { createdBy: vendorId };
 
   // Search filter
@@ -187,6 +199,33 @@ exports.getCustomerDetail = async (vendorId, customerId) => {
   return { customer, transactions, due };
 };
 
+exports.searchCustomers = async (vendorId, searchQuery) => {
+  if (!searchQuery || searchQuery.trim() === "") {
+    throw new Error("Search query is required");
+  }
+
+  const vendor = await vendorModel.findByPk(vendorId);
+  if (!vendor) {
+    throw new Error("Invalid vendor. Vendor does not exist.");
+  }
+
+  const whrere = {
+    createdBy: vendorId,
+    [Op.or]: [
+      { customerName: { [Op.like]: `%${searchQuery}%` } },
+      { businessName: { [Op.like]: `%${searchQuery}%` } },
+      { mobileNumber: { [Op.like]: `%${searchQuery}%` } },
+    ],
+  };
+
+  const customers = await CustomerModel.findAll({
+    where: whrere,
+    limit: 50,
+    order: [["createdAt", "DESC"]],
+  });
+
+  return customers;
+};
 
 exports.addTransaction = async (vendorId, customerId, payload) => {
   return await sequelize.transaction(async (t) => {
@@ -239,7 +278,10 @@ exports.addTransaction = async (vendorId, customerId, payload) => {
   });
 };
 
-exports.getTransactionReport = async (vendorId, { fromDate, toDate, customerId } = {}) => {
+exports.getTransactionReport = async (
+  vendorId,
+  { fromDate, toDate, customerId } = {}
+) => {
   const where = { vendorId };
 
   // Date filters
@@ -275,7 +317,6 @@ exports.getTransactionReport = async (vendorId, { fromDate, toDate, customerId }
   return rows;
 };
 
-
 exports.createCategory = async (payload) => {
   return await CategoryModel.create(payload);
 };
@@ -291,7 +332,6 @@ exports.createSize = async (payload) => {
 exports.listSizes = async () => {
   return SizeModel.findAll({ order: [["inches", "ASC"]] });
 };
-
 
 exports.createProduct = async (vendorId, payload) => {
   const { name, sku, description, price, stock, categoryId, sizes } = payload;
@@ -477,7 +517,10 @@ exports.getProductDetail = async (vendorId, productId) => {
   return product;
 };
 
-exports.changeStock = async (vendorId, { productId, sizeId = null, delta = 0 }) => {
+exports.changeStock = async (
+  vendorId,
+  { productId, sizeId = null, delta = 0 }
+) => {
   return await sequelize.transaction(async (t) => {
     // Verify vendor exists
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });

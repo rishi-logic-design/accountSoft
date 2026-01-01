@@ -14,6 +14,7 @@ router.get("/count-by-vendor", customerCtrl.getCustomerCountByVendor);
 router.get("/:id", customerCtrl.getCustomerDetail);
 router.put("/:id", customerCtrl.updateCustomer);
 router.delete("/:id", customerCtrl.deleteCustomer);
+router.get("/search", customerCtrl.searchCustomers);
 
 // Transactions
 router.post("/:customerId/transactions", customerCtrl.addTransaction);
