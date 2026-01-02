@@ -174,47 +174,64 @@ exports.getChallanById = async (challanId, vendorId) => {
   return { challan, payments, due };
 };
 
-exports.markChallanPaid = async (challanNumber, vendorId, payload) => {
+exports.markChallanPaid = async (challanId, vendorId, payload) => {
   return await sequelize.transaction(async (t) => {
     const challan = await ChallanModel.findOne({
-      where: { id: challanNumber, vendorId },
+      where: {
+        id: challanId,
+        vendorId,
+      },
       transaction: t,
     });
-    if (!challan) throw new Error("Challan not found");
 
-    const paymentAmount = toNumber(payload.paymentAmount);
-    if (paymentAmount <= 0) throw new Error("paymentAmount should be > 0");
+    if (!challan) {
+      throw new Error("Challan not found");
+    }
 
-    // create transaction record (assumes TransactionModel has fields: vendorId, customerId, amount, type, description, transactionDate, challanId)
-    const trx = await TransactionModel.create(
+    const paymentAmount = Number(payload.paymentAmount);
+    if (!paymentAmount || paymentAmount <= 0) {
+      throw new Error("paymentAmount should be > 0");
+    }
+
+    const payment = await TransactionModel.create(
       {
-        vendorId,
-        customerId: challan.challanNumber,
+        vendorId: challan.vendorId,
+        customerId: challan.customerId,
         amount: paymentAmount,
         type: "payment",
         description: payload.note || `Payment for ${challan.challanNumber}`,
         transactionDate: payload.transactionDate || new Date(),
-        challanId: challan.id,
+        challanNumber: challan.challanNumber,
       },
       { transaction: t }
     );
 
-    // compute paid total
     const payments = await TransactionModel.findAll({
       where: {
-        vendorId,
+        vendorId: challan.vendorId,
         customerId: challan.customerId,
-        challanNumber: challan.id,
+        challanNumber: challan.challanNumber,
+        type: "payment",
       },
       transaction: t,
     });
-    const paid = payments.reduce((s, p) => s + toNumber(p.amount), 0);
-    const due = +(toNumber(challan.totalWithGST) - paid).toFixed(2);
 
+    const paid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+
+    const due = Number((Number(challan.totalWithGST) - paid).toFixed(2));
+
+    // 5️⃣ Update challan status
     const status = due <= 0 ? "paid" : paid > 0 ? "partial" : "unpaid";
+
     await challan.update({ status }, { transaction: t });
 
-    return { challan, payment: trx, due };
+    return {
+      challan,
+      payment,
+      paid,
+      due,
+      status,
+    };
   });
 };
 
