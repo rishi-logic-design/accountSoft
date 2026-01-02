@@ -19,7 +19,6 @@ const Firm = require("./vendor/firmModel");
 const GstSlab = require("./vendor/gstSlabModel");
 const CustomerOtp = require("./customer/customerOtpModel");
 const Transaction = require("./customer/transactionModel");
-const customerModel = require("./vendor/customerModel");
 
 const UserModel = User(sequelize, Sequelize);
 const VendorModel = Vendor(sequelize, Sequelize);
