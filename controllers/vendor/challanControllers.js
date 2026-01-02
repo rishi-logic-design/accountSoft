@@ -64,16 +64,10 @@ exports.deleteChallan = asyncHandler(async (req, res) => {
 });
 
 exports.downloadChallanPdf = asyncHandler(async (req, res) => {
-  let vendorId;
-
-  if (req.user.role === "vendor") {
-    vendorId = req.user.id;
-  } else {
-    vendorId = req.query.vendorId;
-
-    if (!vendorId) {
-      return error(res, "vendorId is required for admin", 400);
-    }
+  const vendorId =
+    req.user.role === "vendor" ? req.user.id : req.body.vendorId || req.user.id;
+  if (!vendorId) {
+    return error(res, "vendorId is required for admin", 400);
   }
 
   const buffer = await challanService.generateChallanPdf(
