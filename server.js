@@ -24,11 +24,12 @@ const uploadRoutes = require("./routes/Vendors/uploadRoutes");
 const transactionRoutes = require("./routes/Customer/transactionRoutes");
 const summaryRoutes = require("./routes/Customer/summaryRoutes");
 const productRoutes = require("./routes/Vendors/productRoutes");
+const LengerRoutes = require("./routes/Vendors/ledgerRoutes");
 const app = express();
 
 app.use(
   cors({
-    origin: "*", 
+    origin: "*",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -68,6 +69,7 @@ app.use("/api/transactions", transactionRoutes);
 app.use("/api/summary", summaryRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/ledger", LengerRoutes);
 
 app.use(errorMiddleware);
 

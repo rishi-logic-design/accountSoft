@@ -17,7 +17,6 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT || 15307,
     dialect: "mysql",
-    logging: console.log, // ✅ Enable logging to see queries
 
     dialectOptions: isProduction
       ? {
@@ -44,7 +43,6 @@ const sequelize = new Sequelize(
   }
 );
 
-// Test connection immediately
 (async () => {
   try {
     await sequelize.authenticate();
