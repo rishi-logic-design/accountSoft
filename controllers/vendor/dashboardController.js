@@ -4,9 +4,7 @@ const { success } = require("../../utils/apiResponse");
 const { Sequelize } = require("sequelize");
 
 exports.getDashboard = asyncHandler(async (req, res) => {
-  // 1. total vendors
   const totalVendors = await VendorModel.count();
-  // 2. total revenue (sum of plan prices for active subs) - basic approach
   const totalRevenue = await SubscriptionModel.findAll({
     where: { status: "active" },
     include: [
@@ -23,7 +21,6 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     if (s.plan) revenueMonthly += parseFloat(s.plan.priceMonthly || 0);
   });
 
-  // 3. analysis graph data - example: subscriptions per month (simple)
   const subsPerMonth = await SubscriptionModel.findAll({
     attributes: [
       [Sequelize.fn("MONTH", Sequelize.col("startDate")), "month"],

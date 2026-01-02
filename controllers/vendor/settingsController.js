@@ -2,7 +2,6 @@ const settingsService = require("../services/settings.service");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
 
-/* Firm endpoints */
 exports.getFirm = asyncHandler(async (req, res) => {
   const vendorId =
     req.user.role === "vendor"
@@ -17,13 +16,11 @@ exports.upsertFirm = asyncHandler(async (req, res) => {
     req.user.role === "vendor"
       ? req.user.id
       : Number(req.body.vendorId || req.user.id);
-  // minimal validation
   if (!req.body.firmName) return error(res, "firmName required", 400);
   const updated = await settingsService.upsertFirm(vendorId, req.body);
   success(res, updated, "Firm updated");
 });
 
-/* GST slab endpoints */
 exports.createGstSlab = asyncHandler(async (req, res) => {
   const vendorId =
     req.user.role === "vendor"

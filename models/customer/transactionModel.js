@@ -28,7 +28,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       billId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
       challanId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
-      paymentId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true }, // optional link to payment entry
+      paymentId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
     },
     {
       tableName: "transactions",
