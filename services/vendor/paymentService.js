@@ -18,7 +18,7 @@ exports.createPayment = async (vendorId, payload) => {
   const {
     type,
     customerId,
-    amout,
+    amount,
     paymentDate,
     method,
     reference,
@@ -26,7 +26,7 @@ exports.createPayment = async (vendorId, payload) => {
     billId,
     challanId,
     attachments = [],
-    bankname,
+    bankName,
     accountNumber,
     ifscCode,
     upiId,
