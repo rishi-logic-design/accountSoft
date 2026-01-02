@@ -26,13 +26,4 @@ router.post(
 );
 router.use(auth);
 
-router.get("/firm", authCtrl.getFirm);
-router.post("/firm", authCtrl.upsertFirm);
-
-router.post("/gst", authCtrl.createGstSlab);
-router.get("/gst", authCtrl.listGstSlabs);
-router.get("/gst/:id", authCtrl.getGstSlab);
-router.put("/gst/:id", authCtrl.updateGstSlab);
-router.delete("/gst/:id", authCtrl.deleteGstSlab);
-
 module.exports = router;

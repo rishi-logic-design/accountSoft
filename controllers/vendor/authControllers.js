@@ -3,7 +3,6 @@ require("dotenv").config();
 const { UserModel, VendorModel } = require("../../models");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
-const settingsService = require("../../services/vendor/settingsService");
 const { generateOtp, otpExpiryMinutes } = require("../../utils/otpUtils");
 
 exports.register = asyncHandler(async (req, res) => {
@@ -121,73 +120,6 @@ exports.exchangeFirebaseToken = asyncHandler(async (req, res) => {
     },
     "Token generated"
   );
-});
-
-exports.getFirm = asyncHandler(async (req, res) => {
-  const vendorId = req.user?.id;
-  if (!vendorId) return error(res, "Unauthorized", 401);
-  const firm = await settingsService.getFirm(vendorId);
-  success(res, { firm }, "Firm fetched");
-});
-
-exports.upsertFirm = asyncHandler(async (req, res) => {
-  const vendorId = req.user?.id;
-  if (!vendorId) return error(res, "Unauthorized", 401);
-  const payload = req.body || {};
-  const saved = await settingsService.upsertFirm(vendorId, payload);
-  success(res, { firm: saved }, "Firm upserted");
-});
-
-exports.createGstSlab = asyncHandler(async (req, res) => {
-  const vendorId = req.user?.id;
-  if (!vendorId) return error(res, "Unauthorized", 401);
-  const payload = req.body || {};
-  const created = await settingsService.createGstSlab(vendorId, payload);
-  success(res, { gst: created }, "GST slab created", 201);
-});
-
-exports.listGstSlabs = asyncHandler(async (req, res) => {
-  const vendorId = req.user?.id;
-  if (!vendorId) return error(res, "Unauthorized", 401);
-  const includeInactive =
-    req.query &&
-    (req.query.includeInactive === "true" || req.query.includeInactive === "1");
-  const list = await settingsService.listGstSlabs(vendorId, {
-    includeInactive,
-  });
-  success(res, { gst: list }, "GST slabs listed");
-});
-
-exports.getGstSlab = asyncHandler(async (req, res) => {
-  const vendorId = req.user?.id;
-  if (!vendorId) return error(res, "Unauthorized", 401);
-  const { id } = req.params;
-  const slab = await settingsService.getGstSlab(vendorId, Number(id));
-  success(res, { gst: slab }, "GST slab fetched");
-});
-
-exports.updateGstSlab = asyncHandler(async (req, res) => {
-  const vendorId = req.user?.id;
-  if (!vendorId) return error(res, "Unauthorized", 401);
-  const { id } = req.params;
-  const payload = req.body || {};
-  const updated = await settingsService.updateGstSlab(
-    vendorId,
-    Number(id),
-    payload
-  );
-  success(res, { gst: updated }, "GST slab updated");
-});
-
-exports.deleteGstSlab = asyncHandler(async (req, res) => {
-  const vendorId = req.user?.id;
-  if (!vendorId) return error(res, "Unauthorized", 401);
-  const { id } = req.params;
-
-  const hard =
-    req.query && (req.query.hard === "true" || req.query.hard === "1");
-  await settingsService.deleteGstSlab(vendorId, Number(id), !hard);
-  success(res, { id: Number(id) }, "GST slab deleted");
 });
 
 const otpStore = new Map();
