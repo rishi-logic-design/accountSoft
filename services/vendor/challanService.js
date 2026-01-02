@@ -262,6 +262,11 @@ exports.getWhatsappDataForChallan = async (challanId, vendorId) => {
 };
 
 exports.generateChallanPdf = async (challanId, vendorId) => {
+  if (!vendorId) {
+    throw new Error("vendorId is required");
+  }
+
+  
   const challan = await ChallanModel.findOne({
     where: { id: challanId, vendorId },
   });
@@ -304,7 +309,9 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
 
   if (full.customer) {
     doc.text(
-      `Customer: ${full.customer.customerName || ""} (${full.customer.businessName || ""})`
+      `Customer: ${full.customer.customerName || ""} (${
+        full.customer.businessName || ""
+      })`
     );
     doc.text(`Mobile: ${full.customer.mobileNumber || ""}`);
   }
@@ -338,4 +345,3 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
   doc.end();
   return await endPromise;
 };
-

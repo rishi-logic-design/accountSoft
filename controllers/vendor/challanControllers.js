@@ -1,4 +1,3 @@
-
 const challanService = require("../../services/vendor/challanService");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
@@ -65,17 +64,31 @@ exports.deleteChallan = asyncHandler(async (req, res) => {
 });
 
 exports.downloadChallanPdf = asyncHandler(async (req, res) => {
-  const vendorId =
-    req.user.role === "vendor" ? req.user.id : req.query.vendorId;
+  let vendorId;
+
+  if (req.user.role === "vendor") {
+    vendorId = req.user.id;
+  } else {
+    vendorId = req.query.vendorId;
+
+    if (!vendorId) {
+      return error(res, "vendorId is required for admin", 400);
+    }
+  }
+
   const buffer = await challanService.generateChallanPdf(
     req.params.id,
     vendorId
   );
-  if (!buffer) return error(res, "PDF not generated", 500);
+  if (!buffer) {
+    return error(res, "Failed to generate PDF", 500);
+  }
+
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
     `attachment; filename=challan_${req.params.id}.pdf`
   );
+
   res.send(buffer);
 });
