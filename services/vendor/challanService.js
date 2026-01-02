@@ -5,7 +5,7 @@ const {
   TransactionModel,
   sequelize,
   VendorModel,
-} = require("../../models/index");
+} = require("../../models");
 const { Op } = require("sequelize");
 const { generateChallanNumber } = require("../../utils/challan");
 const PDFDocument = require("pdfkit");
@@ -266,7 +266,7 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
     throw new Error("vendorId is required");
   }
 
-  
+
   const challan = await ChallanModel.findOne({
     where: { id: challanId, vendorId },
   });
