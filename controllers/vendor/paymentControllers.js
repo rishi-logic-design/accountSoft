@@ -53,7 +53,9 @@ exports.getPayment = asyncHandler(async (req, res) => {
 
 exports.updatePayment = asyncHandler(async (req, res) => {
   const vendorId =
-    req.user.role === "vendor" ? req.user.id : req.query.vendorId;
+    req.user.role === "vendor"
+      ? req.user.id
+      : req.body.vendorId || req.query.vendorId;
   const payload = req.body;
 
   const payment = await paymentService.updatePayment(
