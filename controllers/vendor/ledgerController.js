@@ -1,5 +1,5 @@
 const asyncHandler = require("../../utils/asyncHandler");
-const op = require("../../utils/op");
+const { Op } = require("sequelize");
 const {
   ChallanModel,
   TransactionModel,
@@ -7,7 +7,6 @@ const {
 } = require("../../models");
 const PDFDocument = require("pdfkit");
 const { parser } = require("json2csv");
-const challanModel = require("../../models/vendor/challanModel");
 
 exports.getLedgerSummary = asyncHandler(async (req, res) => {
   const vendorId = req.user.id;
