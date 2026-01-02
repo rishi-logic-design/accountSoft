@@ -262,10 +262,14 @@ exports.getWhatsappDataForChallan = async (challanId, vendorId) => {
 };
 
 exports.generateChallanPdf = async (challanId, vendorId) => {
-  const { challan } = await this.getChallanById(challanId, vendorId); // reuses getChallanById (returns { challan, payments, due })
-  if (!challan) throw new Error("Challan not found");
+  const challan = await ChallanModel.findOne({
+    where: { id: challanId, vendorId },
+  });
 
-  // get fresh challan with items
+  if (!challan) {
+    throw new Error("Challan not found");
+  }
+
   const full = await ChallanModel.findOne({
     where: { id: challan.id },
     include: [
@@ -275,36 +279,41 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
     ],
   });
 
-  // Create PDF
+  if (!full) {
+    throw new Error("Challan details not found");
+  }
+
   const doc = new PDFDocument({ size: "A4", margin: 40 });
   const buffers = [];
   doc.on("data", buffers.push.bind(buffers));
-  const endPromise = new Promise((resolve) =>
-    doc.on("end", () => resolve(Buffer.concat(buffers)))
-  );
 
-  // Header
-  doc.fontSize(18).text(`Challan - ${full.challanNumber}`, { align: "center" });
+  const endPromise = new Promise((resolve) => {
+    doc.on("end", () => resolve(Buffer.concat(buffers)));
+  });
+
+  doc.fontSize(18).text(`Challan - ${full.challanNumber}`, {
+    align: "center",
+  });
+
   doc.moveDown();
   doc.fontSize(10);
-  // Vendor info
+
   if (full.vendor) {
     doc.text(`Vendor: ${full.vendor.vendorName || ""}`);
   }
+
   if (full.customer) {
     doc.text(
-      `Customer: ${full.customer.customerName || ""} (${
-        full.customer.businessName || ""
-      })`
+      `Customer: ${full.customer.customerName || ""} (${full.customer.businessName || ""})`
     );
     doc.text(`Mobile: ${full.customer.mobileNumber || ""}`);
   }
+
   doc.text(`Date: ${full.challanDate}`);
   doc.moveDown();
 
-  // Table header
   doc.fontSize(10).text("Items:", { underline: true });
-  doc.moveDown(0.2);
+  doc.moveDown(0.3);
 
   full.items.forEach((it, idx) => {
     doc.text(
@@ -320,6 +329,7 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
   doc.text(`Subtotal: ₹${full.subtotal}`);
   doc.text(`GST Total: ₹${full.gstTotal}`);
   doc.text(`Total (Incl GST): ₹${full.totalWithGST}`);
+
   if (full.note) {
     doc.moveDown();
     doc.text(`Note: ${full.note}`);
@@ -328,3 +338,4 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
   doc.end();
   return await endPromise;
 };
+
