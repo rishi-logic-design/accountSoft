@@ -16,8 +16,8 @@ function toNumber(v) {
 
 exports.createPayment = async (vendorId, payload) => {
   const {
-    type,
     customerId,
+    type,
     amount,
     paymentDate,
     method,
@@ -25,84 +25,98 @@ exports.createPayment = async (vendorId, payload) => {
     note,
     billId,
     challanId,
-    attachments = [],
+    attachments,
     bankName,
     accountNumber,
     ifscCode,
     upiId,
-    status = "completed",
+    chequeNumber,
+    chequeDate,
+    chequeBankName,
+    status,
+    adjustedInvoices,
   } = payload;
 
-  if (!type || !["inward", "outward"].includes(type)) {
-    throw new Error("Invalid payment type. Must be 'inward' or 'outward'");
-  }
-  if (!amount || toNumber(amount) <= 0) {
-    throw new Error("Amount must be greater than 0");
-  }
-  if (!paymentDate) {
-    throw new Error("Payment date is required");
-  }
-  if (method === "bank") {
-    if (!bankName) throw new Error("Bank name is required for bank payments");
-    if (!accountNumber)
-      throw new Error("Account number is required for bank payments");
-    if (!ifscCode) throw new Error("IFSC code is required for bank payments");
-  }
-  if (method === "online" && !upiId) {
-    throw new Error("UPI ID is required for online payments");
-  }
-
   return await sequelize.transaction(async (t) => {
+    // Verify vendor exists
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) throw new Error("Vendor not found");
 
-    if (customerId) {
-      const cust = await CustomerModel.findByPk(customerId, { transaction: t });
-      if (!cust) throw new Error("Customer not found");
-    }
+    // Verify customer exists
+    const customer = await CustomerModel.findByPk(customerId, {
+      transaction: t,
+    });
+    if (!customer) throw new Error("Customer not found");
 
+    // Verify bill/challan if provided
     if (billId) {
       const bill = await BillModel.findByPk(billId, { transaction: t });
       if (!bill) throw new Error("Bill not found");
     }
 
     if (challanId) {
-      const ch = await ChallanModel.findByPk(challanId, { transaction: t });
-      if (!ch) throw new Error("Challan not found");
+      const challan = await ChallanModel.findByPk(challanId, {
+        transaction: t,
+      });
+      if (!challan) throw new Error("Challan not found");
     }
 
+    // Calculate current outstanding
+    const currentOutstanding = await calculateCustomerOutstanding(
+      vendorId,
+      customerId,
+      t
+    );
+
+    // Calculate outstanding after payment
+    let outstandingAfter = currentOutstanding;
+    if (type === "credit") {
+      outstandingAfter -= toNumber(amount);
+    } else if (type === "debit") {
+      outstandingAfter += toNumber(amount);
+    }
+
+    // Generate unique payment number
     const paymentNumber = await generatePaymentNumber(PaymentModel, t);
 
+    // Create payment record
     const payment = await PaymentModel.create(
       {
         paymentNumber,
         vendorId,
-        customerId: customerId || null,
+        customerId,
         type,
         amount: toNumber(amount).toFixed(2),
         paymentDate,
-        method: method || "cash",
+        method,
         reference: reference || null,
         note: note || null,
-        attachments: attachments.length ? JSON.stringify(attachments) : null,
+        attachments: attachments || null,
         billId: billId || null,
         challanId: challanId || null,
         bankName: bankName || null,
         accountNumber: accountNumber || null,
         ifscCode: ifscCode || null,
         upiId: upiId || null,
+        chequeNumber: chequeNumber || null,
+        chequeDate: chequeDate || null,
+        chequeBankName: chequeBankName || null,
         status: status || "completed",
+        totalOutstanding: toNumber(currentOutstanding).toFixed(2),
+        outstandingAfterPayment: toNumber(outstandingAfter).toFixed(2),
+        adjustedInvoices: adjustedInvoices || null,
       },
       { transaction: t }
     );
 
+    // Create transaction record
     if (TransactionModel) {
       await TransactionModel.create(
         {
           vendorId,
-          customerId: customerId || null,
+          customerId,
           amount: toNumber(amount).toFixed(2),
-          type: "payment",
+          type: type === "credit" ? "payment_received" : "payment_made",
           description: note || `Payment ${paymentNumber}`,
           transactionDate: paymentDate,
           billId: billId || null,
@@ -112,22 +126,50 @@ exports.createPayment = async (vendorId, payload) => {
         { transaction: t }
       );
     }
+
+    // Update bill/challan status if applicable
+    if (adjustedInvoices && adjustedInvoices.length > 0) {
+      for (const invoice of adjustedInvoices) {
+        if (invoice.billId) {
+          const bill = await BillModel.findByPk(invoice.billId, {
+            transaction: t,
+          });
+          if (bill) {
+            const paidAmount =
+              toNumber(bill.paidAmount || 0) + toNumber(invoice.payAmount);
+            const pendingAmount = toNumber(bill.totalAmount) - paidAmount;
+
+            await bill.update(
+              {
+                paidAmount: paidAmount.toFixed(2),
+                pendingAmount: pendingAmount.toFixed(2),
+                status: pendingAmount <= 0 ? "paid" : "partial",
+              },
+              { transaction: t }
+            );
+          }
+        }
+      }
+    }
+
     return payment;
   });
 };
 
-exports.listPayments = async ({
-  vendorId,
-  type,
-  customerId,
-  method,
-  status,
-  fromDate,
-  toDate,
-  page = 1,
-  size = 20,
-  search,
-} = {}) => {
+exports.listPayments = async (options = {}) => {
+  const {
+    vendorId,
+    type,
+    customerId,
+    method,
+    status,
+    fromDate,
+    toDate,
+    page = 1,
+    size = 20,
+    search,
+  } = options;
+
   const where = {};
 
   if (vendorId) where.vendorId = vendorId;
@@ -146,6 +188,7 @@ exports.listPayments = async ({
     where[Op.or] = [
       { paymentNumber: { [Op.like]: `%${search}%` } },
       { reference: { [Op.like]: `%${search}%` } },
+      { note: { [Op.like]: `%${search}%` } },
     ];
   }
 
@@ -155,7 +198,7 @@ exports.listPayments = async ({
       {
         model: CustomerModel,
         as: "customer",
-        attributes: ["id", "customerName", "businessName", "mobileNumber"],
+        attributes: ["id", "customerName", "businessName", "mobile", "email"],
       },
     ],
     limit: Number(size),
@@ -171,6 +214,7 @@ exports.listPayments = async ({
     total: result.count,
     rows: result.rows,
     page: Number(page),
+    size: Number(size),
     totalPages: Math.ceil(result.count / Number(size)),
   };
 };
@@ -189,50 +233,36 @@ exports.getPaymentById = async (id, vendorId) => {
           "id",
           "customerName",
           "businessName",
-          "mobileNumber",
+          "mobile",
           "email",
+          "address",
         ],
       },
       {
         model: BillModel,
         as: "bill",
-        attributes: ["id", "billNumber", "totalAmount"],
+        attributes: [
+          "id",
+          "billNumber",
+          "totalAmount",
+          "paidAmount",
+          "pendingAmount",
+        ],
       },
       {
         model: ChallanModel,
         as: "challan",
-        attributes: ["id", "challanNumber"],
+        attributes: ["id", "challanNumber", "totalAmount"],
       },
     ],
   });
 
   if (!payment) throw new Error("Payment not found");
 
-  const txn = TransactionModel
-    ? await TransactionModel.findOne({ where: { paymentId: payment.id } })
-    : null;
-
-  return { payment, transaction: txn };
+  return payment;
 };
 
 exports.updatePayment = async (id, vendorId, payload) => {
-  const {
-    customerId,
-    amount,
-    paymentDate,
-    method,
-    reference,
-    note,
-    billId,
-    challanId,
-    attachments,
-    bankName,
-    accountNumber,
-    ifscCode,
-    upiId,
-    status,
-  } = payload;
-
   return await sequelize.transaction(async (t) => {
     const payment = await PaymentModel.findOne({
       where: { id, vendorId },
@@ -241,40 +271,60 @@ exports.updatePayment = async (id, vendorId, payload) => {
 
     if (!payment) throw new Error("Payment not found");
 
-    // Validations
-    if (amount && toNumber(amount) <= 0) {
-      throw new Error("Amount must be greater than 0");
-    }
+    const {
+      amount,
+      paymentDate,
+      method,
+      reference,
+      note,
+      attachments,
+      bankName,
+      accountNumber,
+      ifscCode,
+      upiId,
+      chequeNumber,
+      chequeDate,
+      chequeBankName,
+      status,
+    } = payload;
 
-    if (method === "bank") {
-      if (!bankName && !payment.bankName)
-        throw new Error("Bank name is required");
-      if (!accountNumber && !payment.accountNumber)
-        throw new Error("Account number is required");
-      if (!ifscCode && !payment.ifscCode)
-        throw new Error("IFSC code is required");
-    }
-
-    // Update payment
+    // Build update object
     const updateData = {};
-    if (customerId !== undefined) updateData.customerId = customerId;
-    if (amount) updateData.amount = toNumber(amount).toFixed(2);
+    if (amount !== undefined) updateData.amount = toNumber(amount).toFixed(2);
     if (paymentDate) updateData.paymentDate = paymentDate;
     if (method) updateData.method = method;
     if (reference !== undefined) updateData.reference = reference;
     if (note !== undefined) updateData.note = note;
-    if (billId !== undefined) updateData.billId = billId;
-    if (challanId !== undefined) updateData.challanId = challanId;
-    if (attachments) updateData.attachments = JSON.stringify(attachments);
+    if (attachments !== undefined) updateData.attachments = attachments;
     if (bankName !== undefined) updateData.bankName = bankName;
     if (accountNumber !== undefined) updateData.accountNumber = accountNumber;
     if (ifscCode !== undefined) updateData.ifscCode = ifscCode;
     if (upiId !== undefined) updateData.upiId = upiId;
+    if (chequeNumber !== undefined) updateData.chequeNumber = chequeNumber;
+    if (chequeDate !== undefined) updateData.chequeDate = chequeDate;
+    if (chequeBankName !== undefined)
+      updateData.chequeBankName = chequeBankName;
     if (status) updateData.status = status;
+
+    // Recalculate outstanding if amount changed
+    if (amount !== undefined) {
+      const oldAmount = toNumber(payment.amount);
+      const newAmount = toNumber(amount);
+      const difference = newAmount - oldAmount;
+
+      let newOutstanding = toNumber(payment.outstandingAfterPayment);
+      if (payment.type === "credit") {
+        newOutstanding += difference;
+      } else if (payment.type === "debit") {
+        newOutstanding -= difference;
+      }
+
+      updateData.outstandingAfterPayment = newOutstanding.toFixed(2);
+    }
 
     await payment.update(updateData, { transaction: t });
 
-    // Update transaction if exists
+    // Update transaction record if exists
     if (TransactionModel && (amount || paymentDate || note)) {
       const txn = await TransactionModel.findOne({
         where: { paymentId: payment.id },
@@ -318,8 +368,10 @@ exports.deletePayment = async (id, vendorId) => {
   });
 };
 
-exports.getPaymentStats = async (vendorId, { fromDate, toDate } = {}) => {
-  const where = { vendorId };
+exports.getPaymentStats = async (vendorId, options = {}) => {
+  const { fromDate, toDate } = options;
+
+  const where = { vendorId, status: "completed" };
 
   if (fromDate || toDate) {
     where.paymentDate = {};
@@ -327,18 +379,119 @@ exports.getPaymentStats = async (vendorId, { fromDate, toDate } = {}) => {
     if (toDate) where.paymentDate[Op.lte] = toDate;
   }
 
-  const [inward, outward] = await Promise.all([
-    PaymentModel.sum("amount", { where: { ...where, type: "inward" } }),
-    PaymentModel.sum("amount", { where: { ...where, type: "outward" } }),
-  ]);
-
-  const totalPayments = await PaymentModel.count({ where });
+  const [totalCredit, totalDebit, totalPayments, paymentsByMethod] =
+    await Promise.all([
+      PaymentModel.sum("amount", { where: { ...where, type: "credit" } }),
+      PaymentModel.sum("amount", { where: { ...where, type: "debit" } }),
+      PaymentModel.count({ where }),
+      PaymentModel.findAll({
+        where,
+        attributes: [
+          "method",
+          [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+          [sequelize.fn("SUM", sequelize.col("amount")), "total"],
+        ],
+        group: ["method"],
+        raw: true,
+      }),
+    ]);
 
   return {
-    totalInward: parseFloat(inward || 0).toFixed(2),
-    totalOutward: parseFloat(outward || 0).toFixed(2),
-    netAmount: parseFloat((inward || 0) - (outward || 0)).toFixed(2),
+    totalCredit: parseFloat(totalCredit || 0).toFixed(2),
+    totalDebit: parseFloat(totalDebit || 0).toFixed(2),
+    netAmount: parseFloat((totalCredit || 0) - (totalDebit || 0)).toFixed(2),
     totalPayments,
+    paymentsByMethod,
   };
 };
 
+exports.getCustomerOutstanding = async (vendorId, customerId) => {
+  const outstanding = await calculateCustomerOutstanding(vendorId, customerId);
+
+  const recentPayments = await PaymentModel.findAll({
+    where: { vendorId, customerId },
+    order: [["paymentDate", "DESC"]],
+    limit: 5,
+  });
+
+  return {
+    customerId: parseInt(customerId),
+    outstanding: parseFloat(outstanding).toFixed(2),
+    recentPayments,
+  };
+};
+
+exports.getCustomerPendingInvoices = async (vendorId, customerId) => {
+  // Get all bills with pending amount
+  const pendingBills = await BillModel.findAll({
+    where: {
+      vendorId,
+      customerId,
+      status: ["pending", "partial"],
+    },
+    attributes: [
+      "id",
+      "billNumber",
+      "billDate",
+      "totalAmount",
+      "paidAmount",
+      "pendingAmount",
+    ],
+    order: [["billDate", "ASC"]],
+  });
+
+  // Get all challans with pending amount
+  const pendingChallans = await ChallanModel.findAll({
+    where: {
+      vendorId,
+      customerId,
+      status: ["pending", "partial"],
+    },
+    attributes: [
+      "id",
+      "challanNumber",
+      "challanDate",
+      "totalAmount",
+      "paidAmount",
+      "pendingAmount",
+    ],
+    order: [["challanDate", "ASC"]],
+  });
+
+  return {
+    bills: pendingBills || [],
+    challans: pendingChallans || [],
+    totalPending: [...(pendingBills || []), ...(pendingChallans || [])]
+      .reduce((sum, item) => sum + toNumber(item.pendingAmount), 0)
+      .toFixed(2),
+  };
+};
+
+async function calculateCustomerOutstanding(
+  vendorId,
+  customerId,
+  transaction = null
+) {
+  // Get total billed amount
+  const totalBilled = await BillModel.sum("totalAmount", {
+    where: { vendorId, customerId, status: { [Op.ne]: "cancelled" } },
+    transaction,
+  });
+
+  // Get total paid amount (credit payments)
+  const totalPaid = await PaymentModel.sum("amount", {
+    where: { vendorId, customerId, type: "credit", status: "completed" },
+    transaction,
+  });
+
+  // Get total debit payments
+  const totalDebit = await PaymentModel.sum("amount", {
+    where: { vendorId, customerId, type: "debit", status: "completed" },
+    transaction,
+  });
+
+  const outstanding =
+    toNumber(totalBilled) - toNumber(totalPaid) + toNumber(totalDebit);
+
+  return parseFloat(outstanding).toFixed(2);
+}

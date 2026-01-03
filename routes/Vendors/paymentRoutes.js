@@ -8,9 +8,25 @@ router.use(auth);
 router.use(role(["vendor", "admin", "superadmin"]));
 
 router.post("/", paymentCtrl.createPayment);
+
 router.get("/", paymentCtrl.listPayments);
+
 router.get("/stats", paymentCtrl.getPaymentStats);
+
+router.get(
+  "/customer/:customerId/outstanding",
+  paymentCtrl.getCustomerOutstanding
+);
+
+router.get(
+  "/customer/:customerId/invoices",
+  paymentCtrl.getCustomerPendingInvoices
+);
+
 router.get("/:id", paymentCtrl.getPayment);
+
 router.put("/:id", paymentCtrl.updatePayment);
+
 router.delete("/:id", paymentCtrl.deletePayment);
+
 module.exports = router;

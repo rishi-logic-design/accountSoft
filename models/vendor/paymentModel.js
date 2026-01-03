@@ -18,11 +18,12 @@ module.exports = (sequelize, DataTypes) => {
       },
       customerId: {
         type: DataTypes.INTEGER.UNSIGNED,
-        allowNull: true,
+        allowNull: false,
       },
       type: {
-        type: DataTypes.ENUM("inward", "outward"),
+        type: DataTypes.ENUM("credit", "debit"),
         allowNull: false,
+        comment: "credit = money received, debit = money paid",
       },
       amount: {
         type: DataTypes.DECIMAL(12, 2),
@@ -34,30 +35,43 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
       },
       method: {
-        type: DataTypes.ENUM("cash", "bank", "cheque", "online", "other"),
+        type: DataTypes.ENUM(
+          "cash",
+          "bank",
+          "cheque",
+          "online",
+          "upi",
+          "card",
+          "other"
+        ),
         allowNull: false,
         defaultValue: "cash",
       },
       reference: {
         type: DataTypes.STRING,
         allowNull: true,
+        comment: "Reference/Transaction ID",
       },
       note: {
         type: DataTypes.TEXT,
         allowNull: true,
       },
       attachments: {
-        type: DataTypes.STRING,
+        type: DataTypes.JSON,
         allowNull: true,
+        comment: "Array of attachment URLs",
       },
       billId: {
         type: DataTypes.INTEGER.UNSIGNED,
         allowNull: true,
+        comment: "Linked bill ID if payment is against a bill",
       },
       challanId: {
         type: DataTypes.INTEGER.UNSIGNED,
         allowNull: true,
+        comment: "Linked challan ID if payment is against a challan",
       },
+      // Bank transfer details
       bankName: {
         type: DataTypes.STRING,
         allowNull: true,
@@ -70,20 +84,62 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      // Online payment details
       upiId: {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      // Cheque details
+      chequeNumber: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      chequeDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+      },
+      chequeBankName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      // Payment status
       status: {
         type: DataTypes.ENUM("pending", "completed", "failed", "cancelled"),
         allowNull: false,
         defaultValue: "completed",
+      },
+      // Outstanding tracking
+      totalOutstanding: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true,
+        defaultValue: 0.0,
+        comment: "Total outstanding before this payment",
+      },
+      outstandingAfterPayment: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true,
+        defaultValue: 0.0,
+        comment: "Outstanding after this payment",
+      },
+      // Invoice adjustments
+      adjustedInvoices: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        comment: "Array of invoices adjusted with this payment",
       },
     },
     {
       tableName: "payments",
       timestamps: true,
       paranoid: true,
+      indexes: [
+        { fields: ["vendorId"] },
+        { fields: ["customerId"] },
+        { fields: ["paymentDate"] },
+        { fields: ["type"] },
+        { fields: ["status"] },
+        { fields: ["paymentNumber"], unique: true },
+      ],
     }
   );
 
