@@ -16,6 +16,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
   const {
     customerId,
     type,
+    subType,
     amount,
     paymentDate,
     method,
@@ -42,6 +43,21 @@ exports.createPayment = asyncHandler(async (req, res) => {
 
   if (!type || !["credit", "debit"].includes(type)) {
     return error(res, "Payment type is required (credit/debit)", 400);
+  }
+
+  if (
+    !subType ||
+    ![
+      "customer",
+      "vendor",
+      "cash-deposit",
+      "cash-withdrawal",
+      "bank-charges",
+      "electricity-bill",
+      "miscellaneous",
+    ].includes(subType)
+  ) {
+    return error(res, "Payment sub-type is required", 400);
   }
 
   if (!amount || parseFloat(amount) <= 0) {
@@ -122,6 +138,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
   const payload = {
     customerId,
     type,
+    subType,
     amount,
     paymentDate,
     method,

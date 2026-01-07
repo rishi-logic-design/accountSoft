@@ -18,6 +18,7 @@ exports.createPayment = async (vendorId, payload) => {
   const {
     customerId,
     type,
+    subType,
     amount,
     paymentDate,
     method,
@@ -38,16 +39,16 @@ exports.createPayment = async (vendorId, payload) => {
   } = payload;
 
   return await sequelize.transaction(async (t) => {
-    // Verify vendor exists
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) throw new Error("Vendor not found");
 
     // Verify customer exists
-    const customer = await CustomerModel.findByPk(customerId, {
-      transaction: t,
-    });
-    if (!customer) throw new Error("Customer not found");
-
+    if (customerId && ["customer", "vendor"].includes(subType)) {
+      const customer = await CustomerModel.findByPk(customerId, {
+        transaction: t,
+      });
+      if (!customer) throw new Error("Customer not found");
+    }
     // Verify bill if provided
     if (billId) {
       const bill = await BillModel.findByPk(billId, { transaction: t });
@@ -63,18 +64,23 @@ exports.createPayment = async (vendorId, payload) => {
     }
 
     // Calculate current outstanding
-    const currentOutstanding = await calculateCustomerOutstanding(
-      vendorId,
-      customerId,
-      t
-    );
+    let currentOutstanding = 0;
+    if (customerId && subType === "customer") {
+      currentOutstanding = await calculateCustomerOutstanding(
+        vendorId,
+        customerId,
+        t
+      );
+    }
 
     // Calculate outstanding after payment
     let outstandingAfter = toNumber(currentOutstanding);
-    if (type === "credit") {
-      outstandingAfter -= toNumber(amount);
-    } else if (type === "debit") {
-      outstandingAfter += toNumber(amount);
+    if (customerId && subType === "customer") {
+      if (type === "credit") {
+        outstandingAfter -= toNumber(amount);
+      } else if (type === "debit") {
+        outstandingAfter += toNumber(amount);
+      }
     }
 
     // Generate unique payment number
@@ -87,6 +93,7 @@ exports.createPayment = async (vendorId, payload) => {
         vendorId,
         customerId,
         type,
+        subType,
         amount: toNumber(amount).toFixed(2),
         paymentDate,
         method,

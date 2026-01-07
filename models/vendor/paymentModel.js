@@ -18,12 +18,26 @@ module.exports = (sequelize, DataTypes) => {
       },
       customerId: {
         type: DataTypes.INTEGER.UNSIGNED,
-        allowNull: false,
+        allowNull: false, 
       },
       type: {
         type: DataTypes.ENUM("credit", "debit"),
         allowNull: false,
         comment: "credit = money received, debit = money paid",
+      },
+      subType: {
+        type: DataTypes.ENUM(
+          "customer",
+          "vendor",
+          "cash-deposit",
+          "cash-withdrawal",
+          "bank-charges",
+          "electricity-bill",
+          "miscellaneous"
+        ),
+        allowNull: false,
+        defaultValue: "customer",
+        comment: "Payment sub-category",
       },
       amount: {
         type: DataTypes.DECIMAL(12, 2),
@@ -137,6 +151,7 @@ module.exports = (sequelize, DataTypes) => {
         { fields: ["customerId"] },
         { fields: ["paymentDate"] },
         { fields: ["type"] },
+        { fields: ["subType"] },
         { fields: ["status"] },
         { fields: ["paymentNumber"], unique: true },
       ],
