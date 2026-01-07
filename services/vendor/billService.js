@@ -123,7 +123,6 @@ exports.createBill = async (vendorId, payload) => {
         gstTotal: gstTotal,
         totalWithoutGST,
         totalWithGST,
-        totalAmount: totalWithGST, // Set totalAmount same as totalWithGST
         paidAmount: 0.0, // Initially unpaid
         pendingAmount: totalWithGST, // Initially full amount pending
         status: "pending",
