@@ -15,6 +15,22 @@ module.exports = (sequelize, DataTypes) => {
       gstTotal: { type: DataTypes.DECIMAL(12, 2), defaultValue: 0.0 },
       totalWithoutGST: { type: DataTypes.DECIMAL(12, 2), defaultValue: 0.0 },
       totalWithGST: { type: DataTypes.DECIMAL(12, 2), defaultValue: 0.0 },
+      totalAmount: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.0,
+        comment: "Total bill amount (same as totalWithGST)",
+      },
+      paidAmount: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.0,
+        comment: "Total amount paid against this bill",
+      },
+      pendingAmount: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.0,
+        comment: "Remaining amount to be paid",
+      },
+
       status: {
         type: DataTypes.ENUM("pending", "paid", "partial", "cancelled"),
         defaultValue: "pending",
