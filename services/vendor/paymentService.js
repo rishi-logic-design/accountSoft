@@ -117,8 +117,12 @@ exports.createPayment = async (vendorId, payload) => {
           vendorId,
           customerId,
           amount: toNumber(amount).toFixed(2),
-          type: type === "credit" ? "payment_received" : "payment_made",
-          description: note || `Payment ${paymentNumber}`,
+          type: "payment",
+          description:
+            note ||
+            `Payment ${paymentNumber} (${
+              type === "credit" ? "Received" : "Made"
+            })`,
           transactionDate: paymentDate,
           billId: billId || null,
           challanId: challanId || null,

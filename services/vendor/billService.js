@@ -7,7 +7,7 @@ const {
   CustomerModel,
   VendorModel,
   sequelize,
-} = require("../../models/index");
+} = require("../../models");
 const { Op } = require("sequelize");
 const { generateBillNumber } = require("../../utils/billUtil");
 const PDFDocument = require("pdfkit");
