@@ -8,20 +8,19 @@ const {
 const PDFDocument = require("pdfkit");
 const { Parser } = require("json2csv");
 const { success, error } = require("../../utils/apiResponse");
+const {
+  buildDateFilter,
+  buildVendorFilter,
+} = require("../../utils/filterUtils");
 
 exports.getLedgerSummary = asyncHandler(async (req, res) => {
   const vendorId = req.user.id;
   const { fromDate, toDate } = req.query;
 
-  const dateFilter = {};
-  if (fromDate && toDate) {
-    dateFilter.createdAt = {
-      [Op.between]: [new Date(fromDate), new Date(toDate)],
-    };
-  }
+  const dateFilter = buildDateFilter(fromDate, toDate, "createdAt");
 
   const challans = await ChallanModel.findAll({
-    where: { vendorId, ...dateFilter },
+    where: buildVendorFilter(vendorId, dateFilter),
   });
 
   const totalInvoices = challans.reduce(
@@ -29,16 +28,17 @@ exports.getLedgerSummary = asyncHandler(async (req, res) => {
     0
   );
 
+  const transactionDateFilter = buildDateFilter(
+    fromDate,
+    toDate,
+    "transactionDate"
+  );
+
   const payments = await TransactionModel.findAll({
     where: {
-      vendorId,
+      ...buildVendorFilter(vendorId),
       type: "payment",
-      ...(fromDate &&
-        toDate && {
-          transactionDate: {
-            [Op.between]: [new Date(fromDate), new Date(toDate)],
-          },
-        }),
+      ...transactionDateFilter,
     },
   });
 
@@ -54,31 +54,21 @@ exports.getLedgerSummary = asyncHandler(async (req, res) => {
 exports.exportLedger = asyncHandler(async (req, res) => {
   const vendorId = req.user.id;
   const { fromDate, toDate, format = "pdf", sendEmail = false } = req.body;
+  const challanDateFilter = buildDateFilter(fromDate, toDate, "challanDate");
+  const transactionDateFilter = buildDateFilter(
+    fromDate,
+    toDate,
+    "transactionDate"
+  );
 
   // Fetch both challans and transactions
   const challans = await ChallanModel.findAll({
-    where: {
-      vendorId,
-      ...(fromDate &&
-        toDate && {
-          challanDate: {
-            [Op.between]: [new Date(fromDate), new Date(toDate)],
-          },
-        }),
-    },
+    where: buildVendorFilter(vendorId, challanDateFilter),
     include: [{ model: CustomerModel, as: "customer" }],
   });
 
   const transactions = await TransactionModel.findAll({
-    where: {
-      vendorId,
-      ...(fromDate &&
-        toDate && {
-          transactionDate: {
-            [Op.between]: [new Date(fromDate), new Date(toDate)],
-          },
-        }),
-    },
+    where: buildVendorFilter(vendorId, transactionDateFilter),
     include: [{ model: CustomerModel, as: "customer" }],
   });
 
