@@ -3,12 +3,12 @@ module.exports = (sequelize, DataTypes) => {
     "VendorPaymentDetails",
     {
       id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.BIGINT.UNSIGNED,
         primaryKey: true,
         autoIncrement: true,
       },
       vendorId: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.BIGINT.UNSIGNED,
         allowNull: false,
       },
       bankName: {
