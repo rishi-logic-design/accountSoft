@@ -1,7 +1,5 @@
-const jwt = require("jsonwebtoken");
 require("dotenv").config();
-
-// Vendor / Admin User Model
+const jwt = require("jsonwebtoken");
 const { UserModel } = require("../models");
 
 module.exports = async (req, res, next) => {
