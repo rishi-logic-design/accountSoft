@@ -100,7 +100,7 @@ exports.createPayment = async (vendorId, payload) => {
         reference: reference || null,
         note: note || null,
         attachments: attachments || null,
-        billId: billId || null,
+        billId: billId,
         challanId: challanId || null,
         bankName: bankName || null,
         accountNumber: accountNumber || null,
@@ -272,21 +272,23 @@ exports.getPaymentById = async (id, vendorId) => {
           "address",
         ],
       },
-      {
-        model: BillModel,
-        as: "bill",
-        attributes: ["id", "billNumber", "billDate", "totalWithGST", "status"],
-      },
-      {
-        model: ChallanModel,
-        as: "challan",
-        attributes: ["id", "challanNumber", "challanDate"],
-      },
     ],
   });
 
   if (!payment) throw new Error("Payment not found");
 
+  if (payment.billId) {
+    const bill = await BillModel.findByPk(payment.billId, {
+      attributes: ["id", "billNumber", "billDate", "totalWithGST", "status"],
+    });
+    payment.dataValues.bill = bill;
+  }
+  if (payment.challanId) {
+    const challan = await ChallanModel.findByPk(payment.challanId, {
+      attributes: ["id", "challanNumber", "challanDate"],
+    });
+    payment.dataValues.challan = challan;
+  }
   return payment;
 };
 

@@ -23,7 +23,7 @@ router.get(
   paymentCtrl.getCustomerPendingInvoices
 );
 
-router.get("/:id", paymentCtrl.getPayment);
+router.get("/:id", paymentCtrl.getPaymentById);
 
 router.put("/:id", paymentCtrl.updatePayment);
 

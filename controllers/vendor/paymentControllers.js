@@ -199,7 +199,7 @@ exports.listPayments = asyncHandler(async (req, res) => {
   success(res, list, "Payments retrieved successfully");
 });
 
-exports.getPayment = asyncHandler(async (req, res) => {
+exports.getPaymentById = asyncHandler(async (req, res) => {
   const vendorId =
     req.user?.role === "vendor" ? req.user.id : req.query.vendorId;
 

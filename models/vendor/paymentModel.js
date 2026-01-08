@@ -77,7 +77,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       billId: {
         type: DataTypes.INTEGER.UNSIGNED,
-        allowNull: true,
+        allowNull: false,
         comment: "Linked bill ID if payment is against a bill",
       },
       challanId: {
