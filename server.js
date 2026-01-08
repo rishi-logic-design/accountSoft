@@ -26,6 +26,9 @@ const transactionRoutes = require("./routes/Customer/transactionRoutes");
 const summaryRoutes = require("./routes/Customer/summaryRoutes");
 const productRoutes = require("./routes/Vendors/productRoutes");
 const LengerRoutes = require("./routes/Vendors/ledgerRoutes");
+const vendorPaymentRoutes = require("./routes/Vendors/vendorPaymentRoutes");
+const vendorGstNumberRoutes = require("./routes/Vendors/vendorGstNumberRoutes");
+
 const app = express();
 
 app.use(
@@ -72,6 +75,8 @@ app.use("/api/summary", summaryRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/ledger", LengerRoutes);
+app.use("/api/vendor-gst-numbers", vendorGstNumberRoutes);
+app.use("/api/vendor-payments", vendorPaymentRoutes);
 
 app.use(errorMiddleware);
 

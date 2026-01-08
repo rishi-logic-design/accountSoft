@@ -18,6 +18,8 @@ const Payment = require("./vendor/paymentModel");
 const Firm = require("./vendor/firmModel");
 const GstSlab = require("./vendor/gstSlabModel");
 const CustomerOtp = require("./customer/customerOtpModel");
+const VendorGstNumber = require("./vendor/vendorGstNumberModel");
+const VendorPaymentDetails = require("./vendor/vendorPaymentModel");
 
 const UserModel = User(sequelize, Sequelize);
 const VendorModel = Vendor(sequelize, Sequelize);
@@ -37,6 +39,8 @@ const PaymentModel = Payment(sequelize, Sequelize);
 const FirmModel = Firm(sequelize, Sequelize);
 const GstSlabModel = GstSlab(sequelize, Sequelize);
 const CustomerOtpModel = CustomerOtp(sequelize, Sequelize);
+const VendorGstNumberModel = VendorGstNumber(sequelize, Sequelize);
+const VendorPaymentDetailsModel = VendorPaymentDetails(sequelize, Sequelize);
 
 // Vendor - Customer
 VendorModel.hasMany(CustomerModel, {
@@ -218,6 +222,24 @@ GstSlabModel.belongsTo(VendorModel, {
   as: "vendor",
 });
 
+VendorModel.hasOne(VendorGstNumberModel, {
+  foreignKey: "vendorId",
+  as: "gstNumber",
+});
+VendorGstNumberModel.belongsTo(VendorModel, {
+  foreignKey: "vendorId",
+  as: "vendor",
+});
+
+VendorModel.hasOne(VendorPaymentDetailsModel, {
+  foreignKey: "vendorId",
+  as: "paymentDetails",
+});
+VendorPaymentDetailsModel.belongsTo(VendorModel, {
+  foreignKey: "vendorId",
+  as: "vendor",
+});
+
 module.exports = {
   sequelize,
   Sequelize,
@@ -246,4 +268,6 @@ module.exports = {
   FirmModel,
   GstSlabModel,
   CustomerOtpModel,
+  VendorGstNumberModel,
+  VendorPaymentDetailsModel,
 };
