@@ -64,8 +64,9 @@ exports.deleteChallan = asyncHandler(async (req, res) => {
 });
 
 exports.downloadChallanPdf = asyncHandler(async (req, res) => {
-  const vendorId =
-    req.user.role === "vendor" ? req.user.id : req.body.vendorId || req.user.id;
+  const user = req.user || {};
+
+  const vendorId = user.role === "vendor" ? user.id : req.query.vendorId;
   if (!vendorId) {
     return error(res, "vendorId is required for admin", 400);
   }
