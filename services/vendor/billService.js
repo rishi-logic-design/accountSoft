@@ -156,14 +156,39 @@ exports.listBills = async ({
   fromDate,
   toDate,
   status,
+  customerId,
+  sortBy = "billDate",
+  sortOrder = "DESC",
 } = {}) => {
   const where = {};
+
   if (vendorId) where.vendorId = vendorId;
-  if (status) where.status = status;
-  if (fromDate)
-    where.billDate = { ...(where.billDate || {}), [Op.gte]: fromDate };
-  if (toDate) where.billDate = { ...(where.billDate || {}), [Op.lte]: toDate };
-  if (search) where[Op.or] = [{ billNumber: { [Op.like]: `%${search}%` } }];
+
+  if (customerId) where.customerId = customerId;
+
+  if (status) {
+    if (Array.isArray(status)) {
+      where.status = { [Op.in]: status };
+    } else {
+      where.status = status;
+    }
+  }
+
+  if (fromDate || toDate) {
+    where.billDate = {};
+    if (fromDate) {
+      where.billDate[Op.gte] = new Date(fromDate);
+    }
+    if (toDate) {
+      const endDate = new Date(toDate);
+      endDate.setHours(23, 59, 59, 999); 
+      where.billDate[Op.lte] = endDate;
+    }
+  }
+
+  if (search) {
+    where[Op.or] = [{ billNumber: { [Op.like]: `%${search}%` } }];
+  }
 
   const result = await BillModel.findAndCountAll({
     where,
@@ -172,20 +197,31 @@ exports.listBills = async ({
         model: CustomerModel,
         as: "customer",
         attributes: ["id", "customerName", "businessName", "mobile"],
+        where: search
+          ? {
+              [Op.or]: [
+                { customerName: { [Op.like]: `%${search}%` } },
+                { businessName: { [Op.like]: `%${search}%` } },
+              ],
+            }
+          : undefined,
+        required: search ? true : false,
       },
     ],
     limit: Number(size),
     offset: (Number(page) - 1) * Number(size),
-    order: [["billDate", "DESC"]],
+    order: [[sortBy, sortOrder.toUpperCase()]],
     distinct: true,
   });
 
-  return { 
-    total: result.count, 
+  return {
+    total: result.count,
     rows: result.rows,
     page: Number(page),
     size: Number(size),
-    totalPages: Math.ceil(result.count / Number(size))
+    totalPages: Math.ceil(result.count / Number(size)),
+    hasNextPage: Number(page) < Math.ceil(result.count / Number(size)),
+    hasPrevPage: Number(page) > 1,
   };
 };
 
@@ -218,7 +254,7 @@ exports.getBillById = async (billId, vendorId) => {
   const paid = payments.reduce((s, p) => s + toNumber(p.amount), 0);
   const totalAmount = toNumber(bill.totalWithGST);
   const due = +(totalAmount - paid).toFixed(2);
-  
+
   // Determine status
   let status = "pending";
   if (due <= 0) {
@@ -229,23 +265,23 @@ exports.getBillById = async (billId, vendorId) => {
 
   // Update bill if status or amounts changed
   if (
-    bill.status !== status || 
-    toNumber(bill.paidAmount) !== paid || 
+    bill.status !== status ||
+    toNumber(bill.paidAmount) !== paid ||
     toNumber(bill.pendingAmount) !== due
   ) {
-    await bill.update({ 
+    await bill.update({
       status,
       paidAmount: paid.toFixed(2),
-      pendingAmount: due.toFixed(2)
+      pendingAmount: due.toFixed(2),
     });
   }
 
-  return { 
-    bill, 
-    payments, 
+  return {
+    bill,
+    payments,
     paidAmount: paid.toFixed(2),
     pendingAmount: due.toFixed(2),
-    totalAmount: totalAmount.toFixed(2)
+    totalAmount: totalAmount.toFixed(2),
   };
 };
 
@@ -276,19 +312,19 @@ exports.markBillPaid = async (billId, vendorId, payload) => {
 
     // Calculate total paid from all transactions
     const allPayments = await TransactionModel.sum("amount", {
-      where: { 
-        vendorId, 
-        customerId: bill.customerId, 
+      where: {
+        vendorId,
+        customerId: bill.customerId,
         billId: bill.id,
-        type: "payment"
+        type: "payment",
       },
       transaction: t,
     });
-    
+
     const totalPaid = toNumber(allPayments);
     const totalAmount = toNumber(bill.totalWithGST);
     const pending = totalAmount - totalPaid;
-    
+
     // Determine status
     let status = "pending";
     if (pending <= 0) {
@@ -298,17 +334,20 @@ exports.markBillPaid = async (billId, vendorId, payload) => {
     }
 
     // Update bill with payment tracking
-    await bill.update({ 
-      status,
-      paidAmount: totalPaid.toFixed(2),
-      pendingAmount: Math.max(0, pending).toFixed(2)
-    }, { transaction: t });
+    await bill.update(
+      {
+        status,
+        paidAmount: totalPaid.toFixed(2),
+        pendingAmount: Math.max(0, pending).toFixed(2),
+      },
+      { transaction: t }
+    );
 
-    return { 
-      bill, 
-      payment: trx, 
+    return {
+      bill,
+      payment: trx,
       totalPaid: totalPaid.toFixed(2),
-      pendingAmount: Math.max(0, pending).toFixed(2)
+      pendingAmount: Math.max(0, pending).toFixed(2),
     };
   });
 };
@@ -356,19 +395,19 @@ exports.editBill = async (billId, vendorId, payload) => {
       subtotal = +subtotal.toFixed(2);
       gstTotal = +gstTotal.toFixed(2);
       const totalWithGST = +(subtotal + gstTotal).toFixed(2);
-      
+
       // Update bill totals and recalculate pending
       const paidAmount = toNumber(bill.paidAmount);
       const newPending = totalWithGST - paidAmount;
-      
+
       await bill.update(
-        { 
-          subtotal, 
-          gstTotal, 
-          totalWithoutGST: subtotal, 
+        {
+          subtotal,
+          gstTotal,
+          totalWithoutGST: subtotal,
           totalWithGST,
           totalAmount: totalWithGST,
-          pendingAmount: Math.max(0, newPending).toFixed(2)
+          pendingAmount: Math.max(0, newPending).toFixed(2),
         },
         { transaction: t }
       );
@@ -388,7 +427,10 @@ exports.editBill = async (billId, vendorId, payload) => {
 };
 
 exports.generateBillPdf = async (billId, vendorId) => {
-  const { bill, paidAmount, pendingAmount } = await this.getBillById(billId, vendorId);
+  const { bill, paidAmount, pendingAmount } = await this.getBillById(
+    billId,
+    vendorId
+  );
   if (!bill) throw new Error("Bill not found");
 
   const full = await BillModel.findOne({
@@ -461,7 +503,9 @@ exports.getWhatsappLinkForBill = async (billId, vendorId, messageOverride) => {
     messageOverride ||
     `Hello ${customer.customerName || ""}, Your Bill ${bill.billNumber} dated ${
       bill.billDate
-    } for ₹${bill.totalWithGST} is generated. Pending amount: ₹${pendingAmount}`;
+    } for ₹${
+      bill.totalWithGST
+    } is generated. Pending amount: ₹${pendingAmount}`;
   const link = whatsappLink(phone, message);
   return { phone, link, message };
 };
@@ -482,7 +526,9 @@ exports.deleteBill = async (billId, vendorId) => {
     });
 
     if (hasPayments > 0) {
-      throw new Error("Cannot delete bill with payments. Mark as cancelled instead.");
+      throw new Error(
+        "Cannot delete bill with payments. Mark as cancelled instead."
+      );
     }
 
     // Delete bill items

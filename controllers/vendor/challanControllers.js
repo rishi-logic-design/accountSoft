@@ -22,6 +22,9 @@ exports.listChallans = asyncHandler(async (req, res) => {
     fromDate,
     toDate,
     status,
+    customerId,
+    sortBy,
+    sortOrder,
   });
   success(res, list);
 });

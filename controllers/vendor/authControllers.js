@@ -1,6 +1,6 @@
-const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const { UserModel, VendorModel } = require("../../models");
+const jwt = require("jsonwebtoken");
+const { UserModel, VendorModel, CustomerModel } = require("../../models");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
 const { generateOtp, otpExpiryMinutes } = require("../../utils/otpUtils");
@@ -588,4 +588,348 @@ exports.exchangeVendorFirebaseToken = asyncHandler(async (req, res) => {
     },
     "Token generated successfully"
   );
+});
+
+exports.checkCustomer = asyncHandler(async (req, res) => {
+  const { mobile } = req.body;
+
+  if (!mobile) {
+    return error(res, "Mobile number is required", 400);
+  }
+
+  const mobileRegex = /^[0-9]{10}$/;
+  if (!mobileRegex.test(mobile)) {
+    return error(res, "Invalid mobile number format. Must be 10 digits", 400);
+  }
+
+  const customer = await CustomerModel.findOne({
+    where: { mobileNumber: mobile },
+    include: [
+      {
+        model: require("../../models").VendorModel,
+        as: "vendor",
+        attributes: ["id", "vendorName", "businessName", "status"],
+      },
+    ],
+  });
+
+  if (!customer) {
+    return error(
+      res,
+      "Customer not found. Please contact your vendor/business.",
+      404
+    );
+  }
+
+  success(
+    res,
+    {
+      customer: {
+        id: customer.id,
+        customerName: customer.customerName,
+        businessName: customer.businessName,
+        mobile: customer.mobileNumber,
+        email: customer.email,
+        vendor: {
+          id: customer.vendor?.id,
+          name: customer.vendor?.vendorName,
+          businessName: customer.vendor?.businessName,
+        },
+      },
+    },
+    "Customer verified. You can proceed with OTP login."
+  );
+});
+
+exports.sendCustomerOtp = asyncHandler(async (req, res) => {
+  const { mobile } = req.body;
+
+  if (!mobile) {
+    return error(res, "Mobile number is required", 400);
+  }
+
+  const mobileRegex = /^[0-9]{10}$/;
+  if (!mobileRegex.test(mobile)) {
+    return error(res, "Invalid mobile number format", 400);
+  }
+
+  const customer = await CustomerModel.findOne({
+    where: { mobileNumber: mobile },
+    include: [
+      {
+        model: require("../../models").VendorModel,
+        as: "vendor",
+        attributes: ["status"],
+      },
+    ],
+  });
+
+  if (!customer) {
+    return error(res, "Customer not found", 404);
+  }
+
+  if (customer.vendor && customer.vendor.status !== "Active") {
+    return error(
+      res,
+      "Your vendor account is inactive. Please contact your business.",
+      403
+    );
+  }
+
+  const otp = generateOtp(6);
+  const expireAt = Date.now() + otpExpiryMinutes * 60 * 1000;
+
+  otpStore.set(mobile, {
+    otp,
+    expireAt,
+    attempts: 0,
+    type: "customer",
+    customerId: customer.id,
+  });
+
+  success(
+    res,
+    {
+      message: "OTP sent successfully to your mobile",
+      expiresIn: `${otpExpiryMinutes} minutes`,
+      otp: process.env.NODE_ENV === "development" ? otp : undefined,
+    },
+    "OTP Sent"
+  );
+});
+
+exports.verifyCustomerOtp = asyncHandler(async (req, res) => {
+  const { mobile, otp } = req.body;
+
+  if (!mobile || !otp) {
+    return error(res, "Mobile number and OTP are required", 400);
+  }
+
+  const storedData = otpStore.get(mobile);
+
+  if (!storedData) {
+    return error(res, "No OTP request found. Please request OTP again.", 404);
+  }
+
+  if (Date.now() > storedData.expireAt) {
+    otpStore.delete(mobile);
+    return error(res, "OTP has expired. Please request a new one.", 400);
+  }
+
+  if (storedData.attempts >= 3) {
+    otpStore.delete(mobile);
+    return error(
+      res,
+      "Maximum OTP verification attempts exceeded. Please request a new OTP.",
+      429
+    );
+  }
+
+  if (storedData.otp !== otp) {
+    storedData.attempts += 1;
+    console.log(`❌ Invalid OTP attempt ${storedData.attempts}/3`);
+    return error(
+      res,
+      `Invalid OTP. ${3 - storedData.attempts} attempts remaining.`,
+      400
+    );
+  }
+  if (storedData.type !== "customer") {
+    otpStore.delete(mobile);
+    return error(res, "Invalid OTP type", 400);
+  }
+  const customer = await CustomerModel.findByPk(storedData.customerId, {
+    include: [
+      {
+        model: require("../../models").VendorModel,
+        as: "vendor",
+        attributes: ["id", "vendorName", "businessName", "status"],
+      },
+    ],
+  });
+
+  if (!customer) {
+    otpStore.delete(mobile);
+    return error(res, "Customer not found", 404);
+  }
+
+  if (customer.vendor && customer.vendor.status !== "Active") {
+    otpStore.delete(mobile);
+    return error(res, "Your vendor account is inactive", 403);
+  }
+
+  otpStore.delete(mobile);
+
+  const token = jwt.sign(
+    {
+      id: customer.id,
+      role: "customer",
+      customerId: customer.id,
+      vendorId: customer.vendorId || null,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+  );
+
+  success(
+    res,
+    {
+      token,
+      customer: {
+        id: customer.id,
+        customerName: customer.customerName,
+        businessName: customer.businessName,
+        mobile: customer.mobileNumber,
+        email: customer.email,
+        gstNumber: customer.gstNumber,
+        pricePerProduct: customer.pricePerProduct,
+        vendor: {
+          id: customer.vendor?.id,
+          name: customer.vendor?.vendorName,
+          businessName: customer.vendor?.businessName,
+        },
+      },
+    },
+    "Login successful"
+  );
+});
+
+exports.resendCustomerOtp = asyncHandler(async (req, res) => {
+  const { mobile } = req.body;
+
+  if (!mobile) {
+    return error(res, "Mobile number is required", 400);
+  }
+
+  otpStore.delete(mobile);
+
+  return exports.sendCustomerOtp(req, res);
+});
+
+exports.exchangeCustomerFirebaseToken = asyncHandler(async (req, res) => {
+  const { mobile, firebaseUid } = req.body;
+
+  if (!mobile || !firebaseUid) {
+    return error(res, "Mobile number and Firebase UID are required", 400);
+  }
+
+  const customer = await CustomerModel.findOne({
+    where: { mobileNumber: mobile },
+    include: [
+      {
+        model: require("../../models").VendorModel,
+        as: "vendor",
+        attributes: ["id", "vendorName", "businessName", "status"],
+      },
+    ],
+  });
+
+  if (!customer) {
+    return error(res, "Customer not found", 404);
+  }
+
+  if (customer.vendor && customer.vendor.status !== "Active") {
+    return error(
+      res,
+      "Your vendor account is inactive. Please contact your business.",
+      403
+    );
+  }
+
+  const token = jwt.sign(
+    {
+      id: customer.id,
+      role: "customer",
+      customerId: customer.id,
+      vendorId: customer.vendorId || null,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+  );
+
+  success(
+    res,
+    {
+      token,
+      customer: {
+        id: customer.id,
+        customerName: customer.customerName,
+        businessName: customer.businessName,
+        mobile: customer.mobileNumber,
+        email: customer.email,
+        vendor: {
+          id: customer.vendor?.id,
+          name: customer.vendor?.vendorName,
+          businessName: customer.vendor?.businessName,
+        },
+      },
+    },
+    "Token generated successfully"
+  );
+});
+
+exports.getCustomerProfile = asyncHandler(async (req, res) => {
+  const customerId = req.user.id;
+
+  const customer = await CustomerModel.findByPk(customerId, {
+    include: [
+      {
+        model: require("../../models").VendorModel,
+        as: "vendor",
+        attributes: ["id", "vendorName", "businessName", "email", "mobile"],
+      },
+    ],
+  });
+
+  if (!customer) {
+    return error(res, "Customer not found", 404);
+  }
+
+  success(
+    res,
+    {
+      customer: {
+        id: customer.id,
+        customerName: customer.customerName,
+        businessName: customer.businessName,
+        mobile: customer.mobileNumber,
+        email: customer.email,
+        gstNumber: customer.gstNumber,
+        homeAddress: customer.homeAddress,
+        officeAddress: customer.officeAddress,
+        customerImage: customer.customerImage,
+        pricePerProduct: customer.pricePerProduct,
+        vendor: customer.vendor,
+      },
+    },
+    "Profile retrieved successfully"
+  );
+});
+
+exports.updateCustomerProfile = asyncHandler(async (req, res) => {
+  const customerId = req.user.id;
+
+  const customer = await CustomerModel.findByPk(customerId);
+
+  if (!customer) {
+    return error(res, "Customer not found", 404);
+  }
+
+  const allowedFields = [
+    "customerName",
+    "email",
+    "homeAddress",
+    "officeAddress",
+    "customerImage",
+  ];
+
+  allowedFields.forEach((field) => {
+    if (req.body[field] !== undefined) {
+      updateData[field] = req.body[field];
+    }
+  });
+
+  await customer.update(updateData);
+
+  success(res, customer, "Profile updated successfully");
 });

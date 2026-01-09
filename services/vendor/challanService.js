@@ -325,7 +325,7 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
   doc.text(`Date: ${full.challanDate}`);
   doc.moveDown();
 
-  doc.fontSize(10).text("Items:", { underline: true });
+  doc.fontSize(20).text("Items:", { underline: true });
   doc.moveDown(0.3);
 
   full.items.forEach((it, idx) => {

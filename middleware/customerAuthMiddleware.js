@@ -1,6 +1,5 @@
-const jwt = require("jsonwebtoken");
 require("dotenv").config();
-
+const jwt = require("jsonwebtoken");
 const { CustomerModel } = require("../models");
 const { UserModel } = require("../models/vendor/userModel");
 
@@ -18,10 +17,8 @@ module.exports = async (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
-    // ✅ Verify JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // 🟢 CUSTOMER TOKEN
     if (decoded.role === "customer") {
       const customer = await CustomerModel.findByPk(decoded.id);
 
@@ -37,7 +34,6 @@ module.exports = async (req, res, next) => {
       return next();
     }
 
-    // 🟢 ADMIN / VENDOR TOKEN
     if (
       decoded.role === "admin" ||
       decoded.role === "vendor" ||

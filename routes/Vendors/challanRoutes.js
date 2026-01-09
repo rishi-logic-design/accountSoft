@@ -5,7 +5,7 @@ const auth = require("../../middleware/authMiddleware");
 const role = require("../../middleware/roleMiddleware");
 
 router.use(auth);
-router.use(role(["vendor", "admin","superadmin"]));
+router.use(role(["vendor", "admin","superadmin","customer"]));
 
 router.post("/", challanCtrl.createChallan);
 router.get("/", challanCtrl.listChallans);
