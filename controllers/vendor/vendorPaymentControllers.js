@@ -4,15 +4,16 @@ const { VendorPaymentDetailsModel } = require("../../models");
 const { validateIFSCCode } = require("../../utils/paymentUtil");
 
 exports.createOrUpdatePaymentDetails = asyncHandler(async (req, res) => {
+  const user = req.user || {};
+
   const vendorId =
-    req.user?.role === "vendor" ? req.user.id : req.body.vendorId;
+    user.role === "vendor" ? user.vendorId || user.id : req.body.vendorId;
 
   if (!vendorId) {
     return error(res, "Vendor ID is required", 400);
   }
-
-  const { bankName, accountNumber, ifscCode, upiId, qrCodeAttachment } =
-    req.body;
+  const { bankName, accountNumber, ifscCode, upiId } = req.body;
+  const qrCodeAttachment = req.file ? req.file.path : null;
 
   if (ifscCode) {
     const ifscValidation = validateIFSCCode(ifscCode);
