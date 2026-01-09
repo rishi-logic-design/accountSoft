@@ -26,9 +26,14 @@ router.post(
 );
 
 router.post("/customer/check", authCtrl.checkCustomer);
+3;
 router.post("/customer/send-otp", authCtrl.sendCustomerOtp);
 router.post("/customer/verify-otp", authCtrl.verifyCustomerOtp);
 router.post("/customer/resend-otp", authCtrl.resendCustomerOtp);
+router.post(
+  "/customer/exchange-firebase-token",
+  authCtrl.exchangeCustomerFirebaseToken
+);
 router.use(auth);
 
 module.exports = router;
