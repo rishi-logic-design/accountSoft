@@ -262,17 +262,22 @@ exports.getWhatsappDataForChallan = async (challanId, vendorId) => {
 };
 
 exports.generateChallanPdf = async (challanId, vendorId) => {
-  if (!vendorId) {
-    throw new Error("vendorId is required");
+  const challanIdNum = Number(challanId);
+  const vendorIdNum = Number(vendorId);
+
+  if (!challanIdNum || !vendorIdNum) {
+    throw new Error("challanId and vendorId must be valid numbers");
   }
 
-
   const challan = await ChallanModel.findOne({
-    where: { id: challanId, vendorId },
+    where: { id: challanIdNum, vendorId: vendorIdNum },
+    paranoide: false,
   });
 
   if (!challan) {
-    throw new Error("Challan not found");
+    throw new Error(
+      `Challan not found for challanId=${challanIdNum} vendorId=${vendorIdNum}`
+    );
   }
 
   const full = await ChallanModel.findOne({
@@ -282,6 +287,7 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
       { model: CustomerModel, as: "customer" },
       { model: VendorModel, as: "vendor" },
     ],
+    pranoide: false,
   });
 
   if (!full) {
