@@ -302,7 +302,7 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
     doc.on("end", () => resolve(Buffer.concat(buffers)));
   });
 
-  doc.fontSize(18).text(`Challan - ${full.challanNumber}`, {
+  doc.fontSize(24).text(`Challan - ${full.challanNumber}`, {
     align: "center",
   });
 
