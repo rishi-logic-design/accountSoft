@@ -268,7 +268,7 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
 
 
   const challan = await ChallanModel.findOne({
-    where: { id: challanId, vendorId },
+    where: { id: challanNumber, vendorId },
   });
 
   if (!challan) {
