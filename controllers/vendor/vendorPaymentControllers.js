@@ -40,7 +40,7 @@ exports.createOrUpdatePaymentDetails = asyncHandler(async (req, res) => {
       accountNumber,
       ifscCode,
       upiId,
-      qrCodeAttachment,
+      ...(qrCodeAttachment && { qrCodeAttachment }),
     });
   }
 
