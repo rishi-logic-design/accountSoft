@@ -10,7 +10,6 @@ router.use(role(["vendor", "admin", "superadmin"]));
 
 router.post(
   "/",
-  auth,
   upload.single("qrCodeAttachment"),
   paymentCtrl.createOrUpdatePaymentDetails
 );
