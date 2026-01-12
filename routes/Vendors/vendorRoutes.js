@@ -15,3 +15,4 @@ router.put("/:id", vendorCtrl.updateVendor);
 router.delete("/:id", vendorCtrl.deleteVendor);
 
 module.exports = router;
+    
