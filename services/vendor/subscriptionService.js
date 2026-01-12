@@ -2,6 +2,7 @@ const {
   SubscriptionModel,
   VendorModel,
   PlanModel,
+  sequelize,
 } = require("../../models");
 const { Op } = require("sequelize");
 
@@ -29,6 +30,7 @@ exports.createSubscription = async (
     const plan = await PlanModel.findByPk(planId, { transaction: t });
     if (!plan) throw new Error("Plan not found");
 
+    // Check overlapping active subscription
     const overlapping = await SubscriptionModel.findOne({
       where: {
         vendorId,
