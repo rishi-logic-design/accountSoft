@@ -42,6 +42,7 @@ const CustomerOtpModel = CustomerOtp(sequelize, Sequelize);
 const VendorGstNumberModel = VendorGstNumber(sequelize, Sequelize);
 const VendorPaymentDetailsModel = VendorPaymentDetails(sequelize, Sequelize);
 
+
 // Vendor - Customer
 VendorModel.hasMany(CustomerModel, {
   foreignKey: "createdBy",
@@ -240,6 +241,24 @@ VendorPaymentDetailsModel.belongsTo(VendorModel, {
   as: "vendor",
 });
 
+PlanModel.hasMany(SubscriptionModel, {
+  foreignKey: "planId",
+  as: "subscriptions",
+});
+SubscriptionModel.belongsTo(PlanModel, {
+  foreignKey: "planId",
+  as: "plan",
+});
+
+// Vendor - Subscription (ADD THESE)
+VendorModel.hasMany(SubscriptionModel, {
+  foreignKey: "vendorId",
+  as: "subscriptions",
+});
+SubscriptionModel.belongsTo(VendorModel, {
+  foreignKey: "vendorId",
+  as: "vendor",
+});
 module.exports = {
   sequelize,
   Sequelize,
