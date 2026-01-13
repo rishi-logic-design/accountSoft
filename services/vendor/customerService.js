@@ -317,6 +317,22 @@ exports.getTransactionReport = async (
   return rows;
 };
 
+exports.getCustomerCountByVendor = async () => {
+  const result = await CustomerModel.findAll({
+    attributes: [
+      "createdBy",
+      [sequelize.fn("COUNT", sequelize.col("id")), "customerCount"],
+    ],
+    group: ["createdBy"],
+  });
+
+  // Normalize response
+  return result.map((row) => ({
+    vendorId: row.createdBy,
+    customerCount: Number(row.get("customerCount")),
+  }));
+};
+
 exports.createCategory = async (payload) => {
   return await CategoryModel.create(payload);
 };
