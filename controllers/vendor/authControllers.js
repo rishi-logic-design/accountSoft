@@ -46,7 +46,7 @@ exports.register = asyncHandler(async (req, res) => {
       role: user.role,
     },
     "User created successfully",
-    201
+    201,
   );
 });
 
@@ -65,7 +65,7 @@ exports.login = asyncHandler(async (req, res) => {
   const token = jwt.sign(
     { id: user.id, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "7d" },
   );
   success(
     res,
@@ -79,7 +79,7 @@ exports.login = asyncHandler(async (req, res) => {
         role: user.role,
       },
     },
-    "Logged in"
+    "Logged in",
   );
 });
 
@@ -90,38 +90,133 @@ exports.exchangeFirebaseToken = asyncHandler(async (req, res) => {
     return error(res, "Mobile number and Firebase UID are required", 400);
   }
 
+  // Try to find user in Users table
   const user = await UserModel.findOne({ where: { mobile } });
 
-  if (!user) {
-    return error(res, "User not found", 404);
-  }
+  if (user) {
+    // Generate JWT token for any user (removed role restriction)
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
+    );
 
-  if (user.role !== "admin" && user.role !== "superadmin") {
-    return error(res, "Unauthorized access", 403);
-  }
-
-  // Generate JWT token
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-  );
-
-  success(
-    res,
-    {
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        mobile: user.mobile,
-        role: user.role,
+    return success(
+      res,
+      {
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          mobile: user.mobile,
+          role: user.role,
+        },
       },
-    },
-    "Token generated"
-  );
-});
+      "Token generated",
+    );
+  }
 
+  // Try to find in Vendors table
+  const vendor = await VendorModel.findOne({ where: { mobile } });
+
+  if (vendor) {
+    if (vendor.status !== "Active") {
+      return error(res, "Your account is inactive", 403);
+    }
+
+    // Check expiry
+    if (vendor.expiryDate) {
+      const expiryDate = new Date(vendor.expiryDate);
+      const today = new Date();
+
+      if (expiryDate < today) {
+        return error(res, "Your subscription has expired", 403);
+      }
+    }
+
+    const token = jwt.sign(
+      {
+        id: vendor.id,
+        role: "vendor",
+        vendorId: vendor.id,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
+    );
+
+    return success(
+      res,
+      {
+        token,
+        vendor: {
+          id: vendor.id,
+          vendorName: vendor.vendorName,
+          businessName: vendor.businessName,
+          mobile: vendor.mobile,
+          email: vendor.email,
+          status: vendor.status,
+          expiryDate: vendor.expiryDate,
+        },
+      },
+      "Token generated successfully",
+    );
+  }
+
+  // Try to find in Customers table
+  const customer = await CustomerModel.findOne({
+    where: { mobileNumber: mobile },
+    include: [
+      {
+        model: require("../../models").VendorModel,
+        as: "vendor",
+        attributes: ["id", "vendorName", "businessName", "status"],
+      },
+    ],
+  });
+
+  if (customer) {
+    if (customer.vendor && customer.vendor.status !== "Active") {
+      return error(
+        res,
+        "Your vendor account is inactive. Please contact your business.",
+        403,
+      );
+    }
+
+    const token = jwt.sign(
+      {
+        id: customer.id,
+        role: "customer",
+        customerId: customer.id,
+        vendorId: customer.vendorId || null,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
+    );
+
+    return success(
+      res,
+      {
+        token,
+        customer: {
+          id: customer.id,
+          customerName: customer.customerName,
+          businessName: customer.businessName,
+          mobile: customer.mobileNumber,
+          email: customer.email,
+          vendor: {
+            id: customer.vendor?.id,
+            name: customer.vendor?.vendorName,
+            businessName: customer.vendor?.businessName,
+          },
+        },
+      },
+      "Token generated successfully",
+    );
+  }
+
+  return error(res, "User not found", 404);
+});
 const otpStore = new Map();
 
 exports.sendOtp = asyncHandler(async (req, res) => {
@@ -159,7 +254,7 @@ exports.sendOtp = asyncHandler(async (req, res) => {
       message: "OTP sent successfully to your mobile",
       expiresIn: `${otpExpiryMinutes} minutes`,
     },
-    "OTP Sent"
+    "OTP Sent",
   );
 });
 
@@ -202,7 +297,7 @@ exports.verifyOtp = asyncHandler(async (req, res) => {
   const token = jwt.sign(
     { id: user.id, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
   );
 
   success(
@@ -216,7 +311,7 @@ exports.verifyOtp = asyncHandler(async (req, res) => {
         role: user.role,
       },
     },
-    "Login successful"
+    "Login successful",
   );
 });
 
@@ -273,7 +368,7 @@ exports.checkUserRole = asyncHandler(async (req, res) => {
         role: user.role,
       },
     },
-    "User verified"
+    "User verified",
   );
 });
 
@@ -313,7 +408,7 @@ exports.checkVendor = asyncHandler(async (req, res) => {
     return error(
       res,
       "Your account is inactive. Please contact administrator.",
-      403
+      403,
     );
   }
 
@@ -343,7 +438,7 @@ exports.checkVendor = asyncHandler(async (req, res) => {
         expiryDate: vendor.expiryDate,
       },
     },
-    "Vendor verified. You can proceed with OTP login."
+    "Vendor verified. You can proceed with OTP login.",
   );
 });
 
@@ -409,7 +504,7 @@ exports.sendVendorOtp = asyncHandler(async (req, res) => {
       // For development/testing only - remove in production
       otp: process.env.NODE_ENV === "development" ? otp : undefined,
     },
-    "OTP Sent"
+    "OTP Sent",
   );
 });
 
@@ -442,7 +537,7 @@ exports.verifyVendorOtp = asyncHandler(async (req, res) => {
     return error(
       res,
       "Maximum OTP verification attempts exceeded. Please request a new OTP.",
-      429
+      429,
     );
   }
 
@@ -453,7 +548,7 @@ exports.verifyVendorOtp = asyncHandler(async (req, res) => {
     return error(
       res,
       `Invalid OTP. ${3 - storedData.attempts} attempts remaining.`,
-      400
+      400,
     );
   }
 
@@ -487,7 +582,7 @@ exports.verifyVendorOtp = asyncHandler(async (req, res) => {
       vendorId: vendor.id,
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
   );
 
   console.log("✅ Vendor login successful");
@@ -506,7 +601,7 @@ exports.verifyVendorOtp = asyncHandler(async (req, res) => {
         expiryDate: vendor.expiryDate,
       },
     },
-    "Login successful"
+    "Login successful",
   );
 });
 
@@ -567,7 +662,7 @@ exports.exchangeVendorFirebaseToken = asyncHandler(async (req, res) => {
       vendorId: vendor.id,
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
   );
 
   console.log("✅ Firebase token exchange successful");
@@ -586,7 +681,7 @@ exports.exchangeVendorFirebaseToken = asyncHandler(async (req, res) => {
         expiryDate: vendor.expiryDate,
       },
     },
-    "Token generated successfully"
+    "Token generated successfully",
   );
 });
 
@@ -617,7 +712,7 @@ exports.checkCustomer = asyncHandler(async (req, res) => {
     return error(
       res,
       "Customer not found. Please contact your vendor/business.",
-      404
+      404,
     );
   }
 
@@ -637,7 +732,7 @@ exports.checkCustomer = asyncHandler(async (req, res) => {
         },
       },
     },
-    "Customer verified. You can proceed with OTP login."
+    "Customer verified. You can proceed with OTP login.",
   );
 });
 
@@ -672,7 +767,7 @@ exports.sendCustomerOtp = asyncHandler(async (req, res) => {
     return error(
       res,
       "Your vendor account is inactive. Please contact your business.",
-      403
+      403,
     );
   }
 
@@ -694,7 +789,7 @@ exports.sendCustomerOtp = asyncHandler(async (req, res) => {
       expiresIn: `${otpExpiryMinutes} minutes`,
       otp: process.env.NODE_ENV === "development" ? otp : undefined,
     },
-    "OTP Sent"
+    "OTP Sent",
   );
 });
 
@@ -721,7 +816,7 @@ exports.verifyCustomerOtp = asyncHandler(async (req, res) => {
     return error(
       res,
       "Maximum OTP verification attempts exceeded. Please request a new OTP.",
-      429
+      429,
     );
   }
 
@@ -731,7 +826,7 @@ exports.verifyCustomerOtp = asyncHandler(async (req, res) => {
     return error(
       res,
       `Invalid OTP. ${3 - storedData.attempts} attempts remaining.`,
-      400
+      400,
     );
   }
   if (storedData.type !== "customer") {
@@ -768,7 +863,7 @@ exports.verifyCustomerOtp = asyncHandler(async (req, res) => {
       vendorId: customer.vendorId || null,
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
   );
 
   success(
@@ -790,7 +885,7 @@ exports.verifyCustomerOtp = asyncHandler(async (req, res) => {
         },
       },
     },
-    "Login successful"
+    "Login successful",
   );
 });
 
@@ -832,7 +927,7 @@ exports.exchangeCustomerFirebaseToken = asyncHandler(async (req, res) => {
     return error(
       res,
       "Your vendor account is inactive. Please contact your business.",
-      403
+      403,
     );
   }
 
@@ -844,7 +939,7 @@ exports.exchangeCustomerFirebaseToken = asyncHandler(async (req, res) => {
       vendorId: customer.vendorId || null,
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
   );
 
   success(
@@ -864,7 +959,7 @@ exports.exchangeCustomerFirebaseToken = asyncHandler(async (req, res) => {
         },
       },
     },
-    "Token generated successfully"
+    "Token generated successfully",
   );
 });
 
@@ -902,7 +997,7 @@ exports.getCustomerProfile = asyncHandler(async (req, res) => {
         vendor: customer.vendor,
       },
     },
-    "Profile retrieved successfully"
+    "Profile retrieved successfully",
   );
 });
 
