@@ -151,7 +151,6 @@ exports.getChallanById = async (challanId, vendorId) => {
 
   if (!challan) throw new Error("Challan not found");
 
-  // fetch payments (transactions) linked to the challan via challanId if stored, otherwise compute from transactions table for customer
   const payments = await TransactionModel.findAll({
     where: {
       vendorId: challan.vendorId,
@@ -166,7 +165,7 @@ exports.getChallanById = async (challanId, vendorId) => {
   const due = +(toNumber(challan.totalWithGST) - paidAmount).toFixed(2);
   const status = due <= 0 ? "paid" : paidAmount > 0 ? "partial" : "unpaid";
 
-  // update status if mismatch (non-destructive)
+  // update status if mismatch
   if (challan.status !== status) {
     await challan.update({ status });
   }
