@@ -13,7 +13,8 @@ exports.createChallan = asyncHandler(async (req, res) => {
 exports.listChallans = asyncHandler(async (req, res) => {
   const vendorId =
     req.user.role === "vendor" ? req.user.id : req.query.vendorId;
-  const { page, size, search, fromDate, toDate, status } = req.query;
+  const { page, size, search, fromDate, toDate, status, sortBy, sortOrder } =
+    req.query;
   const list = await challanService.listChallans({
     vendorId,
     page,
@@ -42,7 +43,7 @@ exports.markChallanPaid = asyncHandler(async (req, res) => {
   const result = await challanService.markChallanPaid(
     req.params.id,
     vendorId,
-    payload
+    payload,
   );
   success(res, result, "Payment processed");
 });
@@ -75,7 +76,7 @@ exports.downloadChallanPdf = asyncHandler(async (req, res) => {
 
   const buffer = await challanService.generateChallanPdf(
     req.params.id,
-    vendorId
+    vendorId,
   );
   if (!buffer) {
     return error(res, "Failed to generate PDF", 500);
@@ -84,7 +85,7 @@ exports.downloadChallanPdf = asyncHandler(async (req, res) => {
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename=challan_${req.params.id}.pdf`
+    `attachment; filename=challan_${req.params.id}.pdf`,
   );
 
   res.send(buffer);
