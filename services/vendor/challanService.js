@@ -76,7 +76,7 @@ exports.createChallan = async (vendorId, payload) => {
         status: "unpaid",
         note: note || null,
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     // bulk create items with challanId
@@ -102,6 +102,8 @@ exports.listChallans = async ({
   size = 20,
   search,
   fromDate,
+  sortBy = "billDate",
+  sortOrder = "DESC",
   toDate,
   status,
 } = {}) => {
@@ -115,6 +117,20 @@ exports.listChallans = async ({
   if (search) {
     where[Op.or] = [{ challanNumber: { [Op.like]: `%${search}%` } }];
   }
+  const ALLOWED_SORT_FIELDS = [
+    "billDate",
+    "createdAt",
+    "totalWithGST",
+    "status",
+  ];
+
+  if (!ALLOWED_SORT_FIELDS.includes(sortBy)) {
+    sortBy = "billDate";
+  }
+
+  if (!["ASC", "DESC"].includes(sortOrder.toUpperCase())) {
+    sortOrder = "DESC";
+  }
 
   const include = [
     {
@@ -124,7 +140,6 @@ exports.listChallans = async ({
     },
   ];
 
-  // Basic implementation:
   const result = await ChallanModel.findAndCountAll({
     where,
     include,
@@ -202,7 +217,7 @@ exports.markChallanPaid = async (challanId, vendorId, payload) => {
         transactionDate: payload.transactionDate || new Date(),
         challanNumber: challan.challanNumber,
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     const payments = await TransactionModel.findAll({
@@ -275,7 +290,7 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
 
   if (!challan) {
     throw new Error(
-      `Challan not found for challanId=${challanIdNum} vendorId=${vendorIdNum}`
+      `Challan not found for challanId=${challanIdNum} vendorId=${vendorIdNum}`,
     );
   }
 
@@ -316,7 +331,7 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
     doc.text(
       `Customer: ${full.customer.customerName || ""} (${
         full.customer.businessName || ""
-      })`
+      })`,
     );
     doc.text(`Mobile: ${full.customer.mobileNumber || ""}`);
   }
@@ -333,7 +348,7 @@ exports.generateChallanPdf = async (challanId, vendorId) => {
         it.qty
       } | Rate: ₹${it.pricePerUnit} | Amount: ₹${it.amount} | GST%: ${
         it.gstPercent
-      }`
+      }`,
     );
   });
 
