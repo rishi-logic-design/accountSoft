@@ -36,7 +36,7 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: "pending",
       },
       note: { type: DataTypes.TEXT, allowNull: true },
-      challanId: { type: DataTypes.TEXT, allowNull: false },
+      challanIds: { type: DataTypes.TEXT, allowNull: true },
     },
     {
       tableName: "bills",

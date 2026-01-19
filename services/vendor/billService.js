@@ -117,7 +117,7 @@ exports.createBill = async (vendorId, payload) => {
       {
         billNumber,
         vendorId,
-        customerId,
+        customerIds,
         billDate: new Date(),
         subtotal: subtotal,
         gstTotal: gstTotal,
