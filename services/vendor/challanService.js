@@ -2,6 +2,7 @@ const {
   ChallanModel,
   ChallanItemModel,
   CustomerModel,
+  CategoryModel,
   TransactionModel,
   sequelize,
   VendorModel,
@@ -98,6 +99,7 @@ exports.createChallan = async (vendorId, payload) => {
 
 exports.listChallans = async ({
   vendorId,
+  customerId,
   page = 1,
   size = 20,
   search,
@@ -110,6 +112,7 @@ exports.listChallans = async ({
   const where = {};
 
   if (vendorId) where.vendorId = vendorId;
+  if (vendorId) where.customerId = customerId;
   if (status) where.status = status;
 
   if (fromDate || toDate) {
@@ -156,6 +159,13 @@ exports.listChallans = async ({
           "totalWithGst",
           "size",
           "length",
+        ],
+        include: [
+          {
+            model: CategoryModel,
+            as: "category",
+            attributes: ["id", "name"],
+          },
         ],
       },
     ],
