@@ -112,7 +112,7 @@ exports.listChallans = async ({
   const where = {};
 
   if (vendorId) where.vendorId = vendorId;
-  if (vendorId) where.customerId = customerId;
+  if (customerId) where.customerId = Number(customerId);
   if (status) where.status = status;
 
   if (fromDate || toDate) {
