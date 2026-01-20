@@ -13,8 +13,17 @@ exports.createChallan = asyncHandler(async (req, res) => {
 exports.listChallans = asyncHandler(async (req, res) => {
   const vendorId =
     req.user.role === "vendor" ? req.user.id : req.query.vendorId;
-  const { page, size, search, fromDate, toDate, status, sortBy, sortOrder } =
-    req.query;
+  const {
+    page,
+    size,
+    search,
+    fromDate,
+    toDate,
+    status,
+    sortBy,
+    sortOrder,
+    customerId,
+  } = req.query;
   const list = await challanService.listChallans({
     vendorId,
     page,
@@ -25,6 +34,7 @@ exports.listChallans = asyncHandler(async (req, res) => {
     status,
     sortBy,
     sortOrder,
+    customerId,
   });
   success(res, list);
 });
