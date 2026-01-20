@@ -14,7 +14,7 @@ exports.createBill = asyncHandler(async (req, res) => {
 exports.listBills = asyncHandler(async (req, res) => {
   const vendorId =
     req.user.role === "vendor" ? req.user.id : req.query.vendorId;
-  const { page, size, search, fromDate, toDate, status, customerId } =
+  const { page, size, search, fromDate, toDate, pageSize, status, customerId } =
     req.query;
   const list = await billService.listBills({
     vendorId,
