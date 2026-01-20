@@ -96,8 +96,6 @@ exports.createChallan = async (vendorId, payload) => {
   });
 };
 
-const { Op } = require("sequelize");
-
 exports.listChallans = async ({
   vendorId,
   page = 1,
