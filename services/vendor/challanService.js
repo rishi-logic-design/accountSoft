@@ -104,7 +104,7 @@ exports.listChallans = async ({
   fromDate,
   toDate,
   status,
-  sortBy = "billDate",
+  sortBy = "challanDate",
   sortOrder = "DESC",
 } = {}) => {
   const where = {};
@@ -123,34 +123,42 @@ exports.listChallans = async ({
   }
 
   const ALLOWED_SORT_FIELDS = [
-    "billDate",
+    "challanDate",
     "createdAt",
     "totalWithGST",
     "status",
   ];
 
   if (!ALLOWED_SORT_FIELDS.includes(sortBy)) {
-    sortBy = "billDate";
+    sortBy = "challanDate";
   }
 
   sortOrder = sortOrder?.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
-  const include = [
-    {
-      model: CustomerModel,
-      as: "customer",
-      attributes: ["id", "customerName", "businessName", "mobileNumber"],
-    },
-    {
-      model: ChallanItemModel,
-      as: "items",
-      attributes: ["id", "itemName", "quantity", "price", "gst", "total"],
-    },
-  ];
-
   const result = await ChallanModel.findAndCountAll({
     where,
-    include,
+    include: [
+      {
+        model: CustomerModel,
+        as: "customer",
+        attributes: ["id", "customerName", "businessName", "mobileNumber"],
+      },
+      {
+        model: ChallanItemModel,
+        as: "items",
+        attributes: [
+          "id",
+          "productName",
+          "qty",
+          "pricePerUnit",
+          "amount",
+          "gstPercent",
+          "totalWithGst",
+          "size",
+          "length",
+        ],
+      },
+    ],
     limit: Number(size),
     offset: (Number(page) - 1) * Number(size),
     order: [[sortBy, sortOrder]],
