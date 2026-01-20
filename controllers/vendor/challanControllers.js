@@ -16,6 +16,7 @@ exports.listChallans = asyncHandler(async (req, res) => {
   const {
     page,
     size,
+    pageSize,
     search,
     fromDate,
     toDate,
@@ -26,15 +27,15 @@ exports.listChallans = asyncHandler(async (req, res) => {
   } = req.query;
   const list = await challanService.listChallans({
     vendorId,
+    customerId,
     page,
-    size,
+    size: size || pageSize,
     search,
     fromDate,
     toDate,
     status,
     sortBy,
     sortOrder,
-    customerId,
   });
   success(res, list);
 });
