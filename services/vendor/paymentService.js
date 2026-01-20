@@ -69,7 +69,7 @@ exports.createPayment = async (vendorId, payload) => {
       currentOutstanding = await calculateCustomerOutstanding(
         vendorId,
         customerId,
-        t
+        t,
       );
     }
 
@@ -114,7 +114,7 @@ exports.createPayment = async (vendorId, payload) => {
         outstandingAfterPayment: outstandingAfter.toFixed(2),
         adjustedInvoices: adjustedInvoices || null,
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     // Create transaction record
@@ -135,7 +135,7 @@ exports.createPayment = async (vendorId, payload) => {
           challanId: challanId || null,
           paymentId: payment.id,
         },
-        { transaction: t }
+        { transaction: t },
       );
     }
 
@@ -179,7 +179,7 @@ exports.createPayment = async (vendorId, payload) => {
               {
                 status: newStatus,
               },
-              { transaction: t }
+              { transaction: t },
             );
           }
         }
@@ -315,6 +315,9 @@ exports.updatePayment = async (id, vendorId, payload) => {
       chequeDate,
       chequeBankName,
       status,
+      subType,
+      billId,
+      type,
     } = payload;
 
     // Build update object
@@ -322,6 +325,9 @@ exports.updatePayment = async (id, vendorId, payload) => {
     if (amount !== undefined) updateData.amount = toNumber(amount).toFixed(2);
     if (paymentDate) updateData.paymentDate = paymentDate;
     if (method) updateData.method = method;
+    if (type) updateData.type = type;
+    if (subType) updateData.subType = subType;
+    if (billId !== undefined) updateData.billId = billId;
     if (reference !== undefined) updateData.reference = reference;
     if (note !== undefined) updateData.note = note;
     if (attachments !== undefined) updateData.attachments = attachments;
@@ -498,7 +504,7 @@ exports.getCustomerPendingInvoices = async (vendorId, customerId) => {
         pendingAmount: pending.toFixed(2),
         status: bill.status,
       };
-    })
+    }),
   );
 
   // Get all challans with pending/partial status (if applicable)
@@ -545,7 +551,7 @@ exports.getCustomerPendingInvoices = async (vendorId, customerId) => {
           pendingAmount: pending.toFixed(2),
           status: challan.status,
         };
-      })
+      }),
     );
   } catch (err) {
     console.log("Challan fetch error:", err.message);
@@ -553,7 +559,7 @@ exports.getCustomerPendingInvoices = async (vendorId, customerId) => {
 
   const totalPending = [...billsWithPayments, ...challansWithPayments].reduce(
     (sum, item) => sum + toNumber(item.pendingAmount),
-    0
+    0,
   );
 
   return {
@@ -566,7 +572,7 @@ exports.getCustomerPendingInvoices = async (vendorId, customerId) => {
 async function calculateCustomerOutstanding(
   vendorId,
   customerId,
-  transaction = null
+  transaction = null,
 ) {
   const totalBilled = await BillModel.sum("totalWithGST", {
     where: {

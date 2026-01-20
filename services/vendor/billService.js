@@ -80,7 +80,7 @@ exports.createBill = async (vendorId, payload) => {
       const rate = toNumber(mi.rate);
       const amount = +(qty * rate).toFixed(2);
       const gstAmt = +((amount * toNumber(mi.gstPercent || 0)) / 100).toFixed(
-        2
+        2,
       );
       const totalWithGst = +(amount + gstAmt).toFixed(2);
       items.push({
@@ -129,7 +129,7 @@ exports.createBill = async (vendorId, payload) => {
         note: note || null,
         challanIds: challanIds.length ? JSON.stringify(challanIds) : null,
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     // create bill items
@@ -150,13 +150,13 @@ exports.createBill = async (vendorId, payload) => {
 
 exports.listBills = async ({
   vendorId,
+  customerId,
   page = 1,
   size = 20,
   search,
   fromDate,
   toDate,
   status,
-  customerId,
   sortBy = "billDate",
   sortOrder = "DESC",
 } = {}) => {
@@ -164,7 +164,7 @@ exports.listBills = async ({
 
   if (vendorId) where.vendorId = vendorId;
 
-  if (customerId) where.customerId = customerId;
+  if (customerId) where.customerId = Number(customerId);
 
   if (status) {
     if (Array.isArray(status)) {
@@ -181,7 +181,7 @@ exports.listBills = async ({
     }
     if (toDate) {
       const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999); 
+      endDate.setHours(23, 59, 59, 999);
       where.billDate[Op.lte] = endDate;
     }
   }
@@ -307,7 +307,7 @@ exports.markBillPaid = async (billId, vendorId, payload) => {
         transactionDate: payload.transactionDate || new Date(),
         billId: bill.id,
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     // Calculate total paid from all transactions
@@ -340,7 +340,7 @@ exports.markBillPaid = async (billId, vendorId, payload) => {
         paidAmount: totalPaid.toFixed(2),
         pendingAmount: Math.max(0, pending).toFixed(2),
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     return {
@@ -375,7 +375,7 @@ exports.editBill = async (billId, vendorId, payload) => {
         const rate = toNumber(mi.rate);
         const amount = +(qty * rate).toFixed(2);
         const gstAmt = +((amount * toNumber(mi.gstPercent || 0)) / 100).toFixed(
-          2
+          2,
         );
         const totalWithGst = +(amount + gstAmt).toFixed(2);
         subtotal += amount;
@@ -409,7 +409,7 @@ exports.editBill = async (billId, vendorId, payload) => {
           totalAmount: totalWithGST,
           pendingAmount: Math.max(0, newPending).toFixed(2),
         },
-        { transaction: t }
+        { transaction: t },
       );
     }
 
@@ -429,7 +429,7 @@ exports.editBill = async (billId, vendorId, payload) => {
 exports.generateBillPdf = async (billId, vendorId) => {
   const { bill, paidAmount, pendingAmount } = await this.getBillById(
     billId,
-    vendorId
+    vendorId,
   );
   if (!bill) throw new Error("Bill not found");
 
@@ -446,7 +446,7 @@ exports.generateBillPdf = async (billId, vendorId) => {
   const buffers = [];
   doc.on("data", buffers.push.bind(buffers));
   const endPromise = new Promise((resolve) =>
-    doc.on("end", () => resolve(Buffer.concat(buffers)))
+    doc.on("end", () => resolve(Buffer.concat(buffers))),
   );
 
   // Header
@@ -458,7 +458,7 @@ exports.generateBillPdf = async (billId, vendorId) => {
     doc.text(
       `Customer: ${full.customer.customerName || ""} (${
         full.customer.businessName || ""
-      })`
+      })`,
     );
     doc.text(`Mobile: ${full.customer.mobile || ""}`);
   }
@@ -471,7 +471,7 @@ exports.generateBillPdf = async (billId, vendorId) => {
     doc.text(
       `${idx + 1}. ${it.description} | Qty: ${it.qty} | Rate: ₹${
         it.rate
-      } | Amount: ₹${it.amount} | GST%: ${it.gstPercent}`
+      } | Amount: ₹${it.amount} | GST%: ${it.gstPercent}`,
     );
   });
 
@@ -527,7 +527,7 @@ exports.deleteBill = async (billId, vendorId) => {
 
     if (hasPayments > 0) {
       throw new Error(
-        "Cannot delete bill with payments. Mark as cancelled instead."
+        "Cannot delete bill with payments. Mark as cancelled instead.",
       );
     }
 

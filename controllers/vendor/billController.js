@@ -14,11 +14,13 @@ exports.createBill = asyncHandler(async (req, res) => {
 exports.listBills = asyncHandler(async (req, res) => {
   const vendorId =
     req.user.role === "vendor" ? req.user.id : req.query.vendorId;
-  const { page, size, search, fromDate, toDate, status } = req.query;
+  const { page, size, search, fromDate, toDate, status, customerId } =
+    req.query;
   const list = await billService.listBills({
     vendorId,
+    customerId,
     page,
-    size,
+    size: size || pageSize,
     search,
     fromDate,
     toDate,
@@ -41,7 +43,7 @@ exports.markBillPaid = asyncHandler(async (req, res) => {
   const result = await billService.markBillPaid(
     req.params.id,
     vendorId,
-    payload
+    payload,
   );
   success(res, result, "Payment recorded");
 });
@@ -61,7 +63,7 @@ exports.generateBillPdf = asyncHandler(async (req, res) => {
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename=bill_${req.params.id}.pdf`
+    `attachment; filename=bill_${req.params.id}.pdf`,
   );
   res.send(buffer);
 });
@@ -72,7 +74,7 @@ exports.sendBillWhatsapp = asyncHandler(async (req, res) => {
   const { phone, link, message } = await billService.getWhatsappLinkForBill(
     req.params.id,
     vendorId,
-    req.body.message
+    req.body.message,
   );
   success(res, { phone, link, message }, "WhatsApp link ready");
 });
