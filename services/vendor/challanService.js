@@ -96,27 +96,34 @@ exports.createChallan = async (vendorId, payload) => {
   });
 };
 
+const { Op } = require("sequelize");
+
 exports.listChallans = async ({
   vendorId,
   page = 1,
   size = 20,
   search,
   fromDate,
-  sortBy = "billDate",
-  sortOrder = "DESC",
   toDate,
   status,
+  sortBy = "billDate",
+  sortOrder = "DESC",
 } = {}) => {
   const where = {};
+
   if (vendorId) where.vendorId = vendorId;
   if (status) where.status = status;
-  if (fromDate)
-    where.challanDate = { ...(where.challanDate || {}), [Op.gte]: fromDate };
-  if (toDate)
-    where.challanDate = { ...(where.challanDate || {}), [Op.lte]: toDate };
+
+  if (fromDate || toDate) {
+    where.challanDate = {};
+    if (fromDate) where.challanDate[Op.gte] = fromDate;
+    if (toDate) where.challanDate[Op.lte] = toDate;
+  }
+
   if (search) {
     where[Op.or] = [{ challanNumber: { [Op.like]: `%${search}%` } }];
   }
+
   const ALLOWED_SORT_FIELDS = [
     "billDate",
     "createdAt",
@@ -128,15 +135,18 @@ exports.listChallans = async ({
     sortBy = "billDate";
   }
 
-  if (!["ASC", "DESC"].includes(sortOrder.toUpperCase())) {
-    sortOrder = "DESC";
-  }
+  sortOrder = sortOrder?.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
   const include = [
     {
       model: CustomerModel,
       as: "customer",
       attributes: ["id", "customerName", "businessName", "mobileNumber"],
+    },
+    {
+      model: ChallanItemModel,
+      as: "items",
+      attributes: ["id", "itemName", "quantity", "price", "gst", "total"],
     },
   ];
 
@@ -145,11 +155,17 @@ exports.listChallans = async ({
     include,
     limit: Number(size),
     offset: (Number(page) - 1) * Number(size),
-    order: [["challanDate", "DESC"]],
+    order: [[sortBy, sortOrder]],
     distinct: true,
+    subQuery: false,
   });
 
-  return { total: result.count, rows: result.rows };
+  return {
+    total: result.count,
+    page: Number(page),
+    size: Number(size),
+    rows: result.rows,
+  };
 };
 
 exports.getChallanById = async (challanId, vendorId) => {

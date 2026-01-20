@@ -89,11 +89,6 @@ exports.createSubscription = async (
   });
 };
 
-/**
- * Get subscriptions with optional filters (vendorId, status, planId)
- * @param {Object} filters
- * @returns {Promise<Array>}
- */
 exports.getSubscriptions = async (filters = {}) => {
   const where = {};
   if (filters.vendorId) where.vendorId = filters.vendorId;
@@ -112,10 +107,6 @@ exports.getSubscriptions = async (filters = {}) => {
   return subs;
 };
 
-/**
- * Get subscription by ID
- * @param {number} id
- */
 exports.getSubscriptionById = async (id) => {
   const sub = await SubscriptionModel.findByPk(id, {
     include: [
@@ -152,11 +143,7 @@ exports.updateSubscription = async (id, data) => {
   });
 };
 
-/**
- * Cancel subscription (set status to 'cancelled')
- * Also updates vendor expiryDate if required.
- * @param {number} id
- */
+
 exports.cancelSubscription = async (id) => {
   return await sequelize.transaction(async (t) => {
     const sub = await SubscriptionModel.findByPk(id, { transaction: t });
@@ -183,13 +170,6 @@ exports.cancelSubscription = async (id) => {
   });
 };
 
-/**
- * Renew a subscription by extending endDate by given months OR set a new endDate
- * @param {number} id
- * @param {Object} options
- * @param {number} [options.extendMonths] - number of months to extend
- * @param {string|Date} [options.newEndDate] - explicit new end date (YYYY-MM-DD)
- */
 exports.renewSubscription = async (id, { extendMonths, newEndDate } = {}) => {
   if (!extendMonths && !newEndDate)
     throw new Error("extendMonths or newEndDate required");
@@ -222,10 +202,6 @@ exports.renewSubscription = async (id, { extendMonths, newEndDate } = {}) => {
   });
 };
 
-/**
- * Mark due subscriptions as expired. Intended to run as a cron job daily.
- * Returns number of subscriptions updated.
- */
 exports.expireDueSubscriptions = async () => {
   const todayIso = new Date().toISOString().split("T")[0];
   const [updatedCount] = await SubscriptionModel.update(
