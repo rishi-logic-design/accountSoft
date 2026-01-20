@@ -42,7 +42,6 @@ const CustomerOtpModel = CustomerOtp(sequelize, Sequelize);
 const VendorGstNumberModel = VendorGstNumber(sequelize, Sequelize);
 const VendorPaymentDetailsModel = VendorPaymentDetails(sequelize, Sequelize);
 
-
 // Vendor - Customer
 VendorModel.hasMany(CustomerModel, {
   foreignKey: "createdBy",
@@ -145,6 +144,10 @@ ChallanModel.hasMany(ChallanItemModel, {
 ChallanItemModel.belongsTo(ChallanModel, {
   foreignKey: "challanId",
   as: "challan",
+});
+ChallanItemModel.belongsTo(CategoryModel, {
+  foreignKey: "categoryId",
+  as: "category",
 });
 
 // Vendor - Bill
