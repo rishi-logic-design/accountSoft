@@ -10,9 +10,9 @@ router.use(role(["vendor", "admin", "superadmin", "customer"]));
 
 router.post("/", billCtrl.createBill);
 router.get("/", billCtrl.listBills);
-router.get("/:id", billCtrl.getBill);
-router.get("/:id/download", billCtrl.generateBillPdf);
 router.get("/pending-total", billCtrl.getVendorPendingBillTotal);
+router.get("/:id/download", billCtrl.generateBillPdf);
+router.get("/:id", billCtrl.getBill);
 router.put("/:id/mark-paid", billCtrl.markBillPaid);
 router.put("/:id", billCtrl.editBill);
 router.post("/:id/send-whatsapp", billCtrl.sendBillWhatsapp);
