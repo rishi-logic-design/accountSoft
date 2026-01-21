@@ -1,13 +1,11 @@
-const { v4: uuidv4 } = require("uuid"); // npm install uuid
-
 module.exports = (sequelize, DataTypes) => {
   const Challan = sequelize.define(
     "Challan",
     {
       id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
+        type: DataTypes.INTEGER.UNSIGNED,
         primaryKey: true,
+        autoIncrement: true,
       },
       challanNumber: { type: DataTypes.STRING, allowNull: false, unique: true },
       vendorId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
@@ -27,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
       tableName: "challans",
       timestamps: true,
       paranoid: true,
-    },
+    }
   );
 
   return Challan;
