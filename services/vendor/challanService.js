@@ -46,9 +46,10 @@ exports.createChallan = async (vendorId, payload) => {
       subtotal += amount;
       gstTotal += gstAmt;
       return {
-        productId: it.productId || null,
+        productId: it.productId && !isNaN(it.productId) ? it.productId : null,
         productName: it.productName,
-        categoryId: it.categoryId || null,
+        categoryId:
+          it.categoryId && !isNaN(it.categoryId) ? it.categoryId : null,
         size: it.size || null,
         length: it.length || null,
         qty,
