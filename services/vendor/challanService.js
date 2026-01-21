@@ -16,87 +16,162 @@ function toNumber(v) {
 }
 
 exports.createChallan = async (vendorId, payload) => {
-  const { customerId, challanDate, items: rawItems, note } = payload;
-  if (!customerId) throw new Error("customerId required");
-  if (!Array.isArray(rawItems) || rawItems.length === 0)
-    throw new Error("items required");
+  try {
+    // Validate input
+    const { customerId, challanDate, items: rawItems, note } = payload;
 
-  return await sequelize.transaction(async (t) => {
-    // ensure vendor & customer exist
-    const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
-    if (!vendor) throw new Error("Vendor not found");
+    if (!customerId) {
+      throw new Error("customerId is required");
+    }
 
-    const customer = await CustomerModel.findByPk(customerId, {
-      transaction: t,
-    });
-    if (!customer) throw new Error("Customer not found");
+    if (!Array.isArray(rawItems) || rawItems.length === 0) {
+      throw new Error("At least one item is required");
+    }
 
-    // generate challan number
-    const challanNumber = await generateChallanNumber(ChallanModel, t);
-
-    // compute totals
-    let subtotal = 0;
-    let gstTotal = 0;
-    const items = rawItems.map((it) => {
-      const qty = toNumber(it.qty);
-      const price = toNumber(it.pricePerUnit);
-      const amount = +(qty * price).toFixed(2);
-      const gstAmt = +((amount * toNumber(it.gstPercent)) / 100).toFixed(2);
-      const totalWithGst = +(amount + gstAmt).toFixed(2);
-      subtotal += amount;
-      gstTotal += gstAmt;
-      return {
-        productId: it.productId || null,
-        productName: it.productName,
-        categoryId: it.categoryId || null,
-        size: it.size || null,
-        length: it.length || null,
-        qty,
-        pricePerUnit: price,
-        amount,
-        gstPercent: toNumber(it.gstPercent || 0),
-        totalWithGst,
-      };
+    // Validate each item
+    rawItems.forEach((item, index) => {
+      if (!item.productName || item.productName.trim() === "") {
+        throw new Error(`Item ${index + 1}: productName is required`);
+      }
+      if (!item.qty || isNaN(item.qty) || Number(item.qty) <= 0) {
+        throw new Error(
+          `Item ${index + 1}: qty must be a number greater than 0`,
+        );
+      }
+      if (
+        item.pricePerUnit === undefined ||
+        item.pricePerUnit === null ||
+        isNaN(item.pricePerUnit) ||
+        Number(item.pricePerUnit) < 0
+      ) {
+        throw new Error(
+          `Item ${index + 1}: pricePerUnit is required and must be a valid number`,
+        );
+      }
     });
 
-    subtotal = +subtotal.toFixed(2);
-    gstTotal = +gstTotal.toFixed(2);
-    const totalWithoutGST = subtotal;
-    const totalWithGST = +(subtotal + gstTotal).toFixed(2);
+    return await sequelize.transaction(async (t) => {
+      // Ensure vendor exists
+      const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
+      if (!vendor) {
+        throw new Error(`Vendor with ID ${vendorId} not found`);
+      }
 
-    const challan = await ChallanModel.create(
-      {
-        challanNumber,
-        vendorId,
-        customerId,
-        challanDate: challanDate || new Date(),
-        subtotal,
-        gstTotal,
-        totalWithoutGST,
-        totalWithGST,
-        status: "unpaid",
-        note: note || null,
-      },
-      { transaction: t },
-    );
+      // Ensure customer exists
+      const customer = await CustomerModel.findByPk(customerId, {
+        transaction: t,
+      });
+      if (!customer) {
+        throw new Error(`Customer with ID ${customerId} not found`);
+      }
 
-    // bulk create items with challanId
-    const itemsToCreate = items.map((i) => ({ ...i, challanId: challan.id }));
-    await ChallanItemModel.bulkCreate(itemsToCreate, { transaction: t });
+      // Generate unique challan number
+      const challanNumber = await generateChallanNumber(ChallanModel, t);
 
-    // return populated challan
-    const created = await ChallanModel.findByPk(challan.id, {
-      transaction: t,
-      include: [
-        { model: ChallanItemModel, as: "items" },
-        { model: CustomerModel, as: "customer" },
-      ],
+      // Compute totals
+      let subtotal = 0;
+      let gstTotal = 0;
+
+      const items = rawItems.map((it) => {
+        const qty = toNumber(it.qty);
+        const price = toNumber(it.pricePerUnit);
+        const gstPercent = toNumber(it.gstPercent || 0);
+
+        const amount = +(qty * price).toFixed(2);
+        const gstAmt = +((amount * gstPercent) / 100).toFixed(2);
+        const totalWithGst = +(amount + gstAmt).toFixed(2);
+
+        subtotal += amount;
+        gstTotal += gstAmt;
+
+        return {
+          productId: it.productId || null,
+          productName: it.productName.trim(),
+          categoryId: it.categoryId || null,
+          size: it.size || null,
+          length: it.length || null,
+          qty,
+          pricePerUnit: price,
+          amount,
+          gstPercent,
+          totalWithGst,
+        };
+      });
+
+      subtotal = +subtotal.toFixed(2);
+      gstTotal = +gstTotal.toFixed(2);
+      const totalWithoutGST = subtotal;
+      const totalWithGST = +(subtotal + gstTotal).toFixed(2);
+
+      // Create challan
+      const challan = await ChallanModel.create(
+        {
+          challanNumber,
+          vendorId,
+          customerId,
+          challanDate: challanDate || new Date(),
+          subtotal,
+          gstTotal,
+          totalWithoutGST,
+          totalWithGST,
+          status: "unpaid",
+          note: note || null,
+        },
+        { transaction: t },
+      );
+
+      // Bulk create items with challanId
+      const itemsToCreate = items.map((item) => ({
+        ...item,
+        challanId: challan.id,
+      }));
+
+      await ChallanItemModel.bulkCreate(itemsToCreate, {
+        transaction: t,
+        validate: true,
+      });
+
+      // Return populated challan
+      const createdChallan = await ChallanModel.findByPk(challan.id, {
+        transaction: t,
+        include: [
+          {
+            model: ChallanItemModel,
+            as: "items",
+            attributes: [
+              "id",
+              "productName",
+              "categoryId",
+              "size",
+              "length",
+              "qty",
+              "pricePerUnit",
+              "amount",
+              "gstPercent",
+              "totalWithGst",
+            ],
+          },
+          {
+            model: CustomerModel,
+            as: "customer",
+            attributes: [
+              "id",
+              "customerName",
+              "businessName",
+              "mobileNumber",
+              "email",
+            ],
+          },
+        ],
+      });
+
+      return createdChallan;
     });
-
-    return created;
-  });
+  } catch (error) {
+    console.error("Error in createChallan:", error.message);
+    throw error;
+  }
 };
-
 exports.listChallans = async ({
   vendorId,
   customerId,
