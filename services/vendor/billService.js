@@ -21,130 +21,109 @@ exports.createBill = async (vendorId, payload) => {
   const {
     customerId,
     challanIds = [],
-    items: rawItems = [],
-    gstOption = true,
+    discountPercent = 0,
+    gstPercent = 0,
     note,
   } = payload;
+
   if (!customerId) throw new Error("customerId required");
+  if (!Array.isArray(challanIds) || challanIds.length === 0) {
+    throw new Error("At least one challan must be selected");
+  }
 
   return await sequelize.transaction(async (t) => {
-    // validate vendor & customer
+
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) throw new Error("Vendor not found");
+
     const customer = await CustomerModel.findByPk(customerId, {
       transaction: t,
     });
     if (!customer) throw new Error("Customer not found");
 
-    // gather items: from challans (if provided) + manual items
-    const items = [];
+    const challans = await ChallanModel.findAll({
+      where: { id: challanIds, vendorId, customerId },
+      include: [{ model: ChallanItemModel, as: "items" }],
+      transaction: t,
+    });
 
-    if (Array.isArray(challanIds) && challanIds.length) {
-      // fetch challans and their items; ensure they belong to vendor & customer
-      const challans = await ChallanModel.findAll({
-        where: { id: challanIds, vendorId, customerId },
-        include: [{ model: ChallanItemModel, as: "items" }],
-        transaction: t,
-      });
+    if (challans.length !== challanIds.length) {
+      throw new Error("One or more challans are invalid");
+    }
 
-      if (challans.length !== challanIds.length)
-        throw new Error("One or more challans invalid/unavailable");
+    let subtotal = 0;
+    const billItems = [];
 
-      // Flatten challan items as bill items
-      for (const ch of challans) {
-        for (const it of ch.items) {
-          const qty = toNumber(it.qty);
-          const rate = toNumber(it.pricePerUnit || it.rate || 0);
-          const amount = +(qty * rate).toFixed(2);
-          const gstAmt = +(
-            (amount * toNumber(it.gstPercent || 0)) /
-            100
-          ).toFixed(2);
-          const totalWithGst = +(amount + gstAmt).toFixed(2);
-          items.push({
-            challanId: ch.id,
-            description: it.productName || it.description || "Item",
-            qty,
-            rate,
-            amount,
-            gstPercent: toNumber(it.gstPercent || 0),
-            totalWithGst,
-          });
-        }
+    for (const ch of challans) {
+      for (const it of ch.items) {
+        const qty = toNumber(it.qty);
+        const rate = toNumber(it.pricePerUnit);
+        const amount = +(qty * rate).toFixed(2);
+
+        subtotal += amount;
+
+        billItems.push({
+          challanId: ch.id,
+          description: it.productName,
+          qty,
+          rate,
+          amount,
+          gstPercent: toNumber(it.gstPercent || 0),
+          totalWithGst: amount,
+        });
       }
     }
 
-    // manual items
-    for (const mi of rawItems) {
-      const qty = toNumber(mi.qty);
-      const rate = toNumber(mi.rate);
-      const amount = +(qty * rate).toFixed(2);
-      const gstAmt = +((amount * toNumber(mi.gstPercent || 0)) / 100).toFixed(
-        2,
-      );
-      const totalWithGst = +(amount + gstAmt).toFixed(2);
-      items.push({
-        challanId: mi.challanId || null,
-        description: mi.description || "Item",
-        qty,
-        rate,
-        amount,
-        gstPercent: toNumber(mi.gstPercent || 0),
-        totalWithGst,
-      });
-    }
-
-    if (items.length === 0) throw new Error("No items to bill");
-
-    // compute totals
-    let subtotal = 0,
-      gstTotal = 0;
-    for (const it of items) {
-      subtotal += toNumber(it.amount);
-      gstTotal += +((toNumber(it.amount) * toNumber(it.gstPercent)) / 100);
-    }
     subtotal = +subtotal.toFixed(2);
-    gstTotal = +gstTotal.toFixed(2);
-    const totalWithoutGST = gstOption ? subtotal : subtotal;
-    const totalWithGST = gstOption
-      ? +(subtotal + gstTotal).toFixed(2)
-      : subtotal;
 
-    // generate bill number
+    const discountAmount =
+      discountPercent > 0
+        ? +((subtotal * discountPercent) / 100).toFixed(2)
+        : 0;
+
+    const discountedSubtotal = +(subtotal - discountAmount).toFixed(2);
+
+    const gstAmount =
+      gstPercent > 0
+        ? +((discountedSubtotal * gstPercent) / 100).toFixed(2)
+        : 0;
+
+    const totalWithGST = +(discountedSubtotal + gstAmount).toFixed(2);
+
     const billNumber = await generateBillNumber(BillModel, t);
 
     const bill = await BillModel.create(
       {
         billNumber,
         vendorId,
-        customerIds,
+        customerId, 
         billDate: new Date(),
-        subtotal: subtotal,
-        gstTotal: gstTotal,
-        totalWithoutGST,
+        subtotal,
+        gstTotal: gstAmount,
+        totalWithoutGST: discountedSubtotal,
         totalWithGST,
-        paidAmount: 0.0, // Initially unpaid
-        pendingAmount: totalWithGST, // Initially full amount pending
+        totalAmount: totalWithGST,
+        paidAmount: 0,
+        pendingAmount: totalWithGST,
         status: "pending",
         note: note || null,
-        challanIds: challanIds.length ? JSON.stringify(challanIds) : null,
+        challanIds: JSON.stringify(challanIds),
       },
       { transaction: t },
     );
 
-    // create bill items
-    const itemsToCreate = items.map((i) => ({ ...i, billId: bill.id }));
-    await BillItemModel.bulkCreate(itemsToCreate, { transaction: t });
+    await BillItemModel.bulkCreate(
+      billItems.map((i) => ({ ...i, billId: bill.id })),
+      { transaction: t },
+    );
 
-    const created = await BillModel.findByPk(bill.id, {
+    return await BillModel.findByPk(bill.id, {
       include: [
         { model: BillItemModel, as: "items" },
         { model: CustomerModel, as: "customer" },
       ],
       transaction: t,
     });
-
-    return created;
   });
 };
 
