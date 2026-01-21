@@ -26,10 +26,14 @@ exports.createChallan = async (vendorId, payload) => {
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) throw new Error("Vendor not found");
 
-    const customer = await CustomerModel.findByPk(customerId, {
+    const customer = await CustomerModel.findOne({
+      where: { id: customerId, vendorId: vendorId },
       transaction: t,
     });
-    if (!customer) throw new Error("Customer not found");
+    if (!customer)
+      throw new Error(
+        `Customer with ID ${customerId} not found for this vendor`,
+      );
 
     // generate challan number
     const challanNumber = await generateChallanNumber(ChallanModel, t);
