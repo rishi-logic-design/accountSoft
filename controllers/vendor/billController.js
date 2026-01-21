@@ -85,3 +85,17 @@ exports.deleteBill = asyncHandler(async (req, res) => {
   await billService.deleteBill(req.params.id, vendorId); // optional - implement in service if you want
   success(res, null, "Bill deleted");
 });
+
+exports.getVendorPendingBillTotal = asyncHandler(async (req, res) => {
+  const vendorId =
+    req.user.role === "vendor"
+      ? req.user.id
+      : req.query.vendorId || req.body.vendorId;
+
+  if (!vendorId) {
+    return error(res, "vendorId is required", 400);
+  }
+
+  const result = await billService.getVendorPendingBillTotal(vendorId);
+  success(res, result, "Vendor pending bill total fetched");
+});

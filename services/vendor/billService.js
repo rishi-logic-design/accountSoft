@@ -8,7 +8,7 @@ const {
   VendorModel,
   sequelize,
 } = require("../../models");
-const { Op } = require("sequelize");
+const { Op, where } = require("sequelize");
 const { generateBillNumber } = require("../../utils/billUtil");
 const PDFDocument = require("pdfkit");
 const { whatsappLink } = require("../../utils/whatsappHelper");
@@ -32,7 +32,6 @@ exports.createBill = async (vendorId, payload) => {
   }
 
   return await sequelize.transaction(async (t) => {
-
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) throw new Error("Vendor not found");
 
@@ -96,7 +95,7 @@ exports.createBill = async (vendorId, payload) => {
       {
         billNumber,
         vendorId,
-        customerId, 
+        customerId,
         billDate: new Date(),
         subtotal,
         gstTotal: gstAmount,
@@ -521,4 +520,22 @@ exports.deleteBill = async (billId, vendorId) => {
 
     return true;
   });
+};
+
+exports.getVendorPendingBillTotal = async (vendorId) => {
+  if (!vendorId) throw new Error("vendorId is required");
+
+  const total = await BillModel.sum("pendingAmount", {
+    where: {
+      vendorId: Number(vendorId),
+      status: {
+        [Op.in]: ["pending", "partial"],
+      },
+    },
+  });
+
+  return {
+    vendorId: Number(vendorId),
+    totalPendingAmount: Number(total || 0).toFixed(2),
+  };
 };
