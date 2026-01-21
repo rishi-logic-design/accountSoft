@@ -7,64 +7,67 @@ const pad = (num, size) => {
 };
 
 exports.generateChallanNumber = async (ChallanModel, transaction = null) => {
-  const today = new Date();
-  const y = today.getFullYear();
+  const maxRetries = 5;
 
-  const totalCount = await ChallanModel.count({
-    transaction,
-    paranoid: false, 
-  });
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = pad(today.getMonth() + 1, 2);
+      const d = pad(today.getDate(), 2);
+      const prefix = `CH-${y}${m}${d}`;
 
-  const sequence = totalCount + 1;
-  const seq = pad(sequence, 5); 
+      const lastChallan = await ChallanModel.findOne({
+        where: {
+          challanNumber: {
+            [Op.like]: `${prefix}%`,
+          },
+        },
+        order: [["challanNumber", "DESC"]],
+        transaction,
+        lock: transaction ? transaction.LOCK.UPDATE : undefined,
+        paranoid: false,
+      });
 
-  return `CH-${y}-${seq}`;
-};
+      let sequence = 1;
 
-exports.generateVendorChallanNumber = async (
-  ChallanModel,
-  vendorId,
-  transaction = null,
-) => {
-  const today = new Date();
-  const y = today.getFullYear();
+      if (lastChallan && lastChallan.challanNumber) {
+        const parts = lastChallan.challanNumber.split("-");
+        const lastSequence = parts[parts.length - 1];
+        sequence = parseInt(lastSequence, 10) + 1;
+      }
 
-  const vendorCount = await ChallanModel.count({
-    where: { vendorId },
-    transaction,
-    paranoid: false,
-  });
+      sequence = sequence + attempt;
 
-  const sequence = vendorCount + 1;
-  const seq = pad(sequence, 4);
+      const seq = pad(sequence, 4);
+      const challanNumber = `${prefix}-${seq}`;
 
-  return `CH-V${vendorId}-${y}-${seq}`;
-};
+      const exists = await ChallanModel.findOne({
+        where: { challanNumber },
+        transaction,
+        paranoid: false,
+      });
 
-exports.generateDateBasedChallanNumber = async (
-  ChallanModel,
-  transaction = null,
-) => {
-  const today = new Date();
-  const y = today.getFullYear();
-  const m = pad(today.getMonth() + 1, 2);
-  const d = pad(today.getDate(), 2);
-  const prefix = `CH-${y}${m}${d}`;
+      if (!exists) {
+        return challanNumber;
+      }
 
-  const [results] = await ChallanModel.sequelize.query(
-    `SELECT COALESCE(MAX(CAST(SUBSTRING(challanNumber, -4) AS UNSIGNED)), 0) as maxSeq 
-     FROM challans 
-     WHERE challanNumber LIKE :prefix 
-     AND deletedAt IS NULL`,
-    {
-      replacements: { prefix: `${prefix}%` },
-      type: ChallanModel.sequelize.QueryTypes.SELECT,
-      transaction,
-    },
-  );
+      console.log(
+        `Challan number ${challanNumber} already exists, retrying...`,
+      );
+    } catch (error) {
+      console.error(
+        `Error generating challan number (attempt ${attempt + 1}):`,
+        error.message,
+      );
 
-  const sequence = (results.maxSeq || 0) + 1;
-  const seq = pad(sequence, 4);
+      if (attempt === maxRetries - 1) {
+        throw new Error(
+          "Failed to generate unique challan number after multiple attempts",
+        );
+      }
+    }
+  }
 
-  return `${prefix}-${seq}`;
+  throw new Error("Failed to generate unique challan number");
 };
