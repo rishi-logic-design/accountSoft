@@ -2,7 +2,6 @@ const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
 const firmService = require("../../services/vendor/firmService.js");
 
-
 exports.getFirm = asyncHandler(async (req, res) => {
   const vendorId = req.user?.id;
 
@@ -59,7 +58,7 @@ exports.upsertFirm = asyncHandler(async (req, res) => {
   }
 
   const payload = {
-    firmName,
+    firmName: firmName || null,
     addressLine1: addressLine1 || null,
     addressLine2: addressLine2 || null,
     city,
@@ -75,7 +74,6 @@ exports.upsertFirm = asyncHandler(async (req, res) => {
 
   success(res, { firm: saved }, "Firm details saved successfully");
 });
-
 
 exports.updateFirm = asyncHandler(async (req, res) => {
   const vendorId = req.user?.id;
@@ -110,7 +108,6 @@ exports.updateFirm = asyncHandler(async (req, res) => {
 
   success(res, { firm: updated }, "Firm details updated successfully");
 });
-
 
 exports.deleteFirm = asyncHandler(async (req, res) => {
   const vendorId = req.user?.id;
