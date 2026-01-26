@@ -24,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       mobile: {
         type: DataTypes.STRING(15),
-        allowNull: false, // ✅ Required now
+        allowNull: false, 
         unique: true,
       },
       isActive: {

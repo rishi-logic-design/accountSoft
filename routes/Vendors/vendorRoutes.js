@@ -4,9 +4,7 @@ const vendorCtrl = require("../../controllers/vendor/vendorControllers");
 const auth = require("../../middleware/authMiddleware");
 const role = require("../../middleware/roleMiddleware");
 
-router.use(auth, role(["admin","superadmin"]));
-
-
+router.use(auth, role(["admin","superadmin","vendor"]));
 
 router.post("/", vendorCtrl.createVendor);
 router.get("/", vendorCtrl.getVendors);
