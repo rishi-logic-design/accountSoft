@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         unique: true,
       }, 
-      firmName: { type: DataTypes.STRING, allowNull: true },
+      firmName: { type: DataTypes.STRING, allowNull: false },
       addressLine1: { type: DataTypes.STRING, allowNull: true },
       addressLine2: { type: DataTypes.STRING, allowNull: true },
       city: { type: DataTypes.STRING, allowNull: true },
