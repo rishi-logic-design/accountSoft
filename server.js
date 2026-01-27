@@ -28,7 +28,7 @@ const productRoutes = require("./routes/Vendors/productRoutes");
 const LengerRoutes = require("./routes/Vendors/ledgerRoutes");
 const vendorPaymentRoutes = require("./routes/Vendors/vendorPaymentRoutes");
 const vendorGstNumberRoutes = require("./routes/Vendors/vendorGstNumberRoutes");
-
+const vendorProfileImageRoutes = require("./routes/Vendors/vendorProfileImageRoutes")
 const app = express();
 
 app.use(
@@ -78,9 +78,7 @@ app.use("/api/ledger", LengerRoutes);
 app.use("/api/vendor-gst-numbers", vendorGstNumberRoutes);
 app.use("/api/vendor-payments", vendorPaymentRoutes);
 app.use("/uploads", express.static("uploads"));
-app.use("/uploads", express.static("uploads"));
-app.use("/api", require("./routes/Vendors/vendorProfileImageRoutes"));
-
+app.use("/api/", vendorProfileImageRoutes);
 app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 5000;
