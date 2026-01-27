@@ -65,7 +65,7 @@ exports.updateVendor = asyncHandler(async (req, res) => {
     return error(res, "Vendor not found", 404);
   }
 
-  // If mobile is being updated, check for duplicates
+  // If mobile is being updated, check for duplicates 
   if (req.body.mobile && req.body.mobile !== vendor.mobile) {
     const existingVendor = await VendorModel.findOne({
       where: {

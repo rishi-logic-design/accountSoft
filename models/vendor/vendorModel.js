@@ -38,6 +38,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM("Active", "Inactive"),
         defaultValue: "Active",
       },
+      
+      profileImage: {
+        type: DataTypes.STRING,
+      },
 
       createdBy: {
         type: DataTypes.INTEGER.UNSIGNED,
@@ -46,7 +50,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       tableName: "vendors",
       timestamps: true,
-    }
+    },
   );
 
   Vendor.associate = (models) => {

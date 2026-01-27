@@ -37,7 +37,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 app.use(bodyParser.json({ limit: "50mb" }));
@@ -77,6 +77,9 @@ app.use("/api/products", productRoutes);
 app.use("/api/ledger", LengerRoutes);
 app.use("/api/vendor-gst-numbers", vendorGstNumberRoutes);
 app.use("/api/vendor-payments", vendorPaymentRoutes);
+app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static("uploads"));
+app.use("/api", require("./routes/vendorProfileImageRoutes"));
 
 app.use(errorMiddleware);
 

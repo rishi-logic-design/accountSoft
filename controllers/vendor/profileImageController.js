@@ -1,0 +1,55 @@
+const asyncHandler = require("../../utils/asyncHandler");
+const { VendorModel } = require("../../models");
+
+exports.uploadProfileImage = asyncHandler(async (req, res) => {
+  const vendorId = req.user.vendorId;
+
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      message: "Profile image is required",
+    });
+  }
+
+  const vendor = await VendorModel.findByPk(vendorId);
+  if (!vendor) {
+    return res.status(404).json({
+      success: false,
+      message: "Vendor not found",
+    });
+  }
+
+  const imagePath = `/uploads/vendor/${req.file.filename}`;
+
+  await vendor.update({
+    profileImage: imagePath,
+  });
+
+  return res.json({
+    success: true,
+    data: {
+      profileImage: imagePath,
+    },
+    message: "Profile image updated successfully",
+  });
+});
+
+exports.getProfileImage = asyncHandler(async (req, res) => {
+  const vendorId = req.user.vendorId;
+
+  const vendor = await VendorModel.findByPk(vendorId);
+
+  if (!vendor) {
+    return res.status(404).json({
+      success: false,
+      message: "Vendor not found",
+    });
+  }
+
+  return res.json({
+    success: true,
+    data: {
+      profileImage: vendor.profileImage || null,
+    },
+  });
+});
