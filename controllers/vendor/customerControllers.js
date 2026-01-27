@@ -1,7 +1,7 @@
 const customerService = require("../../services/vendor/customerService");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
-const { Customer,  Challan } = require("../../models");
+const { CustomerModel, ChallanModel, TransactionModel } = require("../../models");
 const challanService = require("../../services/vendor/challanService");
 
 exports.createCustomer = asyncHandler(async (req, res) => {
@@ -102,59 +102,55 @@ exports.searchCustomers = asyncHandler(async (req, res) => {
 });
 
 exports.getCustomerDetail = asyncHandler(async (req, res) => {
-  try {
-    const vendorId = req.user.vendorId;
-    const { id: customerId } = req.params;
+  const vendorId = req.user.vendorId; 
+  const { id: customerId } = req.params;
 
-    const customer = await Customer.findOne({
-      where: { id: customerId, vendorId },
+  const customer = await CustomerModel.findOne({
+    where: { id: customerId, vendorId },
+  });
+
+  if (!customer) {
+    return res.status(404).json({
+      success: false,
+      message: "Customer not found",
     });
-
-    if (!customer) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Customer not found" });
-    }
-
-    const challans = await Challan.findAll({
-      where: { customerId, vendorId },
-      order: [["challanDate", "DESC"]],
-    });
-
-    const challansWithDue = await Promise.all(
-      challans.map(async (c) => {
-        const detail = await challanService.getChallanById(c.id, vendorId);
-
-        return {
-          id: c.id,
-          challanNumber: c.challanNumber,
-          challanDate: c.challanDate,
-          totalAmount: c.totalWithGST,
-          due: detail.due,
-          status:
-            detail.due === 0
-              ? "paid"
-              : detail.due < c.totalWithGST
-                ? "partial"
-                : "pending",
-        };
-      }),
-    );
-
-    const totalDue = challansWithDue.reduce((sum, c) => sum + Number(c.due), 0);
-
-    return res.json({
-      success: true,
-      data: {
-        customer,
-        challans: challansWithDue,
-        due: totalDue,
-      },
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Server error" });
   }
+
+  const challans = await ChallanModel.findAll({
+    where: { customerId, vendorId },
+    order: [["challanDate", "DESC"]],
+  });
+
+  const challansWithDue = await Promise.all(
+    challans.map(async (c) => {
+      const detail = await challanService.getChallanById(c.id, vendorId);
+
+      return {
+        id: c.id,
+        challanNumber: c.challanNumber,
+        challanDate: c.challanDate,
+        totalAmount: c.totalWithGST,
+        due: detail.due,
+        status:
+          detail.due === 0
+            ? "paid"
+            : detail.due < c.totalWithGST
+              ? "partial"
+              : "pending",
+      };
+    }),
+  );
+
+  const totalDue = challansWithDue.reduce((sum, c) => sum + Number(c.due), 0);
+
+  return res.json({
+    success: true,
+    data: {
+      customer,
+      challans: challansWithDue,
+      due: totalDue,
+    },
+  });
 });
 
 exports.addTransaction = asyncHandler(async (req, res) => {
