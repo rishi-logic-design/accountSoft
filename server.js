@@ -79,7 +79,7 @@ app.use("/api/vendor-gst-numbers", vendorGstNumberRoutes);
 app.use("/api/vendor-payments", vendorPaymentRoutes);
 app.use("/uploads", express.static("uploads"));
 app.use("/uploads", express.static("uploads"));
-app.use("/api", require("./routes/vendorProfileImageRoutes"));
+app.use("/api", require("./routes/Vendors/vendorProfileImageRoutes"));
 
 app.use(errorMiddleware);
 
