@@ -9,7 +9,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const { sequelize } = require("./models");
 const errorMiddleware = require("./middleware/errorMiddleware");
-
+const path = require("path");
 // Routes
 const authRoutes = require("./routes/Vendors/authRoutes");
 const vendorRoutes = require("./routes/Vendors/vendorRoutes");
