@@ -19,7 +19,6 @@ exports.uploadProfileImage = asyncHandler(async (req, res) => {
   const vendor = await VendorModel.findByPk(vendorId);
 
   if (!vendor) {
-    // Delete uploaded file
     if (req.file.path) {
       fs.unlinkSync(req.file.path);
     }
@@ -29,18 +28,19 @@ exports.uploadProfileImage = asyncHandler(async (req, res) => {
     });
   }
 
-  // Delete old image
   if (vendor.profileImage) {
-    const oldImagePath = path.join(__dirname, "../..", vendor.profileImage);
+    const oldImagePath = path.join(
+      process.cwd(),
+      vendor.profileImage.replace("/uploads/", "uploads/"),
+    );
+
     if (fs.existsSync(oldImagePath)) {
       fs.unlinkSync(oldImagePath);
     }
   }
 
-  // Save image path
   const imagePath = `/uploads/vendor/${req.file.filename}`;
 
-  // Update vendor
   await vendor.update({ profileImage: imagePath });
 
   console.log("Image saved successfully:", imagePath);
