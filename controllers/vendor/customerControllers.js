@@ -1,7 +1,11 @@
 const customerService = require("../../services/vendor/customerService");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
-const { CustomerModel, ChallanModel, TransactionModel } = require("../../models");
+const {
+  CustomerModel,
+  ChallanModel,
+  TransactionModel,
+} = require("../../models");
 const challanService = require("../../services/vendor/challanService");
 
 exports.createCustomer = asyncHandler(async (req, res) => {
@@ -102,11 +106,14 @@ exports.searchCustomers = asyncHandler(async (req, res) => {
 });
 
 exports.getCustomerDetail = asyncHandler(async (req, res) => {
-  const vendorId = req.user.vendorId; 
+  const vendorId = req.user.vendorId;
   const { id: customerId } = req.params;
 
   const customer = await CustomerModel.findOne({
-    where: { id: customerId, vendorId },
+    where: {
+      id: customerId,
+      createdBy: vendorId, 
+    },
   });
 
   if (!customer) {
