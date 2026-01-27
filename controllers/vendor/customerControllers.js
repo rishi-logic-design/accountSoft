@@ -1,7 +1,8 @@
 const customerService = require("../../services/vendor/customerService");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
-
+const { Customer, Transaction, Challan } = require("../models");
+const challanService = require("../services/challanService");
 exports.createCustomer = asyncHandler(async (req, res) => {
   console.log("🔥 Incoming Create Customer Request:", req.body);
   console.log("👤 Created By User ID:", req.user?.id);
@@ -31,7 +32,7 @@ exports.updateCustomer = asyncHandler(async (req, res) => {
   const updated = await customerService.updateCustomer(
     vendorId,
     req.params.id,
-    customerData
+    customerData,
   );
 
   console.log("✅ Customer Updated Successfully:", updated?.id);
@@ -95,33 +96,71 @@ exports.searchCustomers = asyncHandler(async (req, res) => {
       total: customers.length,
       rows: customers,
     },
-    "Customers found successfully"
+    "Customers found successfully",
   );
 });
 
 exports.getCustomerDetail = asyncHandler(async (req, res) => {
-  console.log("🔥 Incoming Get Customer Detail Request:", req.params.id);
+  try {
+    const vendorId = req.user.vendorId;
+    const { id: customerId } = req.params;
 
-  const { vendorId } = req.query;
+    const customer = await Customer.findOne({
+      where: { id: customerId, vendorId },
+    });
 
-  if (!vendorId) {
-    return error(res, "Vendor ID is required", 400);
+    if (!customer) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer not found" });
+    }
+
+    const challans = await Challan.findAll({
+      where: { customerId, vendorId },
+      order: [["challanDate", "DESC"]],
+    });
+
+    const challansWithDue = await Promise.all(
+      challans.map(async (c) => {
+        const detail = await challanService.getChallanById(c.id, vendorId);
+
+        return {
+          id: c.id,
+          challanNumber: c.challanNumber,
+          challanDate: c.challanDate,
+          totalAmount: c.totalWithGST,
+          due: detail.due,
+          status:
+            detail.due === 0
+              ? "paid"
+              : detail.due < c.totalWithGST
+                ? "partial"
+                : "pending",
+        };
+      }),
+    );
+
+    const totalDue = challansWithDue.reduce((sum, c) => sum + Number(c.due), 0);
+
+    return res.json({
+      success: true,
+      data: {
+        customer,
+        challans: challansWithDue,
+        due: totalDue,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
-
-  const detail = await customerService.getCustomerDetail(
-    vendorId,
-    req.params.id
-  );
-
-  console.log("✅ Customer Detail Retrieved Successfully");
-  success(res, detail);
 });
 
 exports.addTransaction = asyncHandler(async (req, res) => {
   console.log(
     "🔥 Incoming Add Transaction Request:",
     req.params.customerId,
-    req.body
+    req.body,
   );
 
   const { vendorId } = req.body;
@@ -134,7 +173,7 @@ exports.addTransaction = asyncHandler(async (req, res) => {
   const result = await customerService.addTransaction(
     vendorId,
     customerId,
-    req.body
+    req.body,
   );
 
   console.log("✅ Transaction Added Successfully");
