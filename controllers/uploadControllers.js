@@ -1,41 +1,55 @@
 const asyncHandler = require("../utils/asyncHandler");
 const { success, error } = require("../utils/apiResponse");
 const path = require("path");
-const fs = require("fs");
 
-exports.uploadCustomerImage = asyncHandler(async (req, res) => {
-  console.log("🔥 Incoming Upload Customer Image Request");
-
+exports.uploadAttachment = asyncHandler(async (req, res) => {
+  // Check if file was uploaded
   if (!req.file) {
-    console.log("❌ No file uploaded");
-    return error(res, "Please upload an image file", 400);
+    return error(res, "No file uploaded", 400);
   }
 
-  console.log("✅ File uploaded:", req.file.filename);
+  const vendorId =
+    req.user?.role === "vendor"
+      ? req.user.id
+      : req.body.vendorId || req.user.id;
 
-  const imageUrl = `/uploads/customers/${req.file.filename}`;
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
 
-  success(res, { imageUrl }, "Image uploaded successfully", 201);
+  // File information
+  const file = req.file;
+  const fileUrl = `/uploads/vendor/${file.filename}`;
+
+  // Return file information
+  const fileData = {
+    filename: file.filename,
+    originalName: file.originalname,
+    mimetype: file.mimetype,
+    size: file.size,
+    url: fileUrl,
+    fileUrl: fileUrl, // Duplicate for compatibility
+    path: file.path,
+    uploadedAt: new Date(),
+  };
+
+  success(res, fileData, "File uploaded successfully", 201);
 });
 
-exports.deleteCustomerImage = asyncHandler(async (req, res) => {
-  console.log("🔥 Incoming Delete Customer Image Request");
+exports.deleteAttachment = asyncHandler(async (req, res) => {
+  const { filename } = req.params;
+  const fs = require("fs");
+  const uploadPath = path.join(process.cwd(), "uploads", "vendor", filename);
 
-  const { imageUrl } = req.body;
-
-  if (!imageUrl) {
-    return error(res, "Image URL is required", 400);
+  if (!fs.existsSync(uploadPath)) {
+    return error(res, "File not found", 404);
   }
 
-  const filename = path.basename(imageUrl);
-  const filePath = path.join(__dirname, "../uploads/customers", filename);
-
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-    console.log("✅ Image deleted:", filename);
-    success(res, null, "Image deleted successfully");
-  } else {
-    console.log("❌ Image not found:", filename);
-    return error(res, "Image not found", 404);
+  try {
+    fs.unlinkSync(uploadPath);
+    success(res, null, "File deleted successfully");
+  } catch (err) {
+    console.error("Error deleting file:", err);
+    return error(res, "Failed to delete file", 500);
   }
 });

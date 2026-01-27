@@ -1,32 +1,31 @@
 const express = require("express");
 const router = express.Router();
-const paymentCtrl = require("../../controllers/vendor/paymentControllers");
-const auth = require("../../middleware/authMiddleware");
-const role = require("../../middleware/roleMiddleware");
+const paymentController = require("../../controllers/vendor/paymentControllers");
+const uploadController = require("../../controllers/uploadControllers");
+const upload = require("../../middleware/upload");
+const { authenticate } = require("../../middleware/authMiddleware");
+router.use(authenticate);
+router.post(
+  "/upload",
+  upload.single("file"),
+  uploadController.uploadAttachment,
+);
 
-router.use(auth);
-router.use(role(["vendor", "admin", "superadmin","customer"]));
+router.delete("/upload/:filename", uploadController.deleteAttachment);
 
-router.post("/", paymentCtrl.createPayment);
-
-router.get("/", paymentCtrl.listPayments);
-
-router.get("/stats", paymentCtrl.getPaymentStats);
-
+router.post("/", paymentController.createPayment);
+router.get("/", paymentController.listPayments);
+router.get("/stats", paymentController.getPaymentStats);
 router.get(
   "/customer/:customerId/outstanding",
-  paymentCtrl.getCustomerOutstanding
+  paymentController.getCustomerOutstanding,
 );
-
 router.get(
   "/customer/:customerId/invoices",
-  paymentCtrl.getCustomerPendingInvoices
+  paymentController.getCustomerPendingInvoices,
 );
-
-router.get("/:id", paymentCtrl.getPaymentById);
-
-router.put("/:id", paymentCtrl.updatePayment);
-
-router.delete("/:id", paymentCtrl.deletePayment);
+router.get("/:id", paymentController.getPaymentById);
+router.put("/:id", paymentController.updatePayment);
+router.delete("/:id", paymentController.deletePayment);
 
 module.exports = router;
