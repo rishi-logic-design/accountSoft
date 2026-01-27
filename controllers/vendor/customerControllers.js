@@ -1,8 +1,9 @@
 const customerService = require("../../services/vendor/customerService");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
-const { Customer, Transaction, Challan } = require("../models");
-const challanService = require("../services/challanService");
+const { Customer,  Challan } = require("../../models");
+const challanService = require("../../services/vendor/challanService");
+
 exports.createCustomer = asyncHandler(async (req, res) => {
   console.log("🔥 Incoming Create Customer Request:", req.body);
   console.log("👤 Created By User ID:", req.user?.id);
