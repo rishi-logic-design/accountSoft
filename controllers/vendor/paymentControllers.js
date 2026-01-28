@@ -12,7 +12,11 @@ exports.createPayment = asyncHandler(async (req, res) => {
   if (!vendorId) {
     return error(res, "Vendor ID is required", 400);
   }
+  let uploadedAttachments = [];
 
+  if (req.files && req.files.length > 0) {
+    uploadedAttachments = req.files.map((f) => `/uploads/${f.filename}`);
+  }
   const {
     customerId,
     type,
@@ -71,7 +75,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
   if (
     !method ||
     !["cash", "bank", "cheque", "online", "upi", "card", "other"].includes(
-      method
+      method,
     )
   ) {
     return error(res, "Valid payment method is required", 400);
@@ -83,7 +87,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
       return error(
         res,
         "Bank name, account number, and IFSC code are required for bank transfers",
-        400
+        400,
       );
     }
 
@@ -111,7 +115,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
       return error(
         res,
         "Cheque number, date, and bank name are required for cheque payments",
-        400
+        400,
       );
     }
   }
@@ -124,13 +128,13 @@ exports.createPayment = asyncHandler(async (req, res) => {
   if (adjustedInvoices && adjustedInvoices.length > 0) {
     const totalAdjusted = adjustedInvoices.reduce(
       (sum, inv) => sum + parseFloat(inv.payAmount || 0),
-      0
+      0,
     );
     if (Math.abs(totalAdjusted - parseFloat(amount)) > 0.01) {
       return error(
         res,
         "Sum of adjusted invoice amounts must equal payment amount",
-        400
+        400,
       );
     }
   }
@@ -146,7 +150,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
     note,
     billId,
     challanId,
-    attachments,
+    attachments: uploadedAttachments,
     bankName,
     accountNumber,
     ifscCode,
@@ -262,7 +266,7 @@ exports.updatePayment = asyncHandler(async (req, res) => {
       return error(
         res,
         "Bank name, account number, and IFSC code are all required for bank transfers",
-        400
+        400,
       );
     }
 
@@ -284,7 +288,7 @@ exports.updatePayment = asyncHandler(async (req, res) => {
       return error(
         res,
         "Cheque number, date, and bank name are all required for cheque payments",
-        400
+        400,
       );
     }
   }
@@ -347,7 +351,7 @@ exports.getCustomerOutstanding = asyncHandler(async (req, res) => {
 
   const outstanding = await paymentService.getCustomerOutstanding(
     vendorId,
-    customerId
+    customerId,
   );
 
   success(res, outstanding, "Customer outstanding retrieved successfully");
@@ -369,7 +373,7 @@ exports.getCustomerPendingInvoices = asyncHandler(async (req, res) => {
 
   const invoices = await paymentService.getCustomerPendingInvoices(
     vendorId,
-    customerId
+    customerId,
   );
 
   success(res, invoices, "Pending invoices retrieved successfully");

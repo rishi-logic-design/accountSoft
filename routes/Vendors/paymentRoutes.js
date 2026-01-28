@@ -9,7 +9,11 @@ router.use(authenticate);
 
 // router.delete("/upload/:filename", uploadController.deleteAttachment);
 
-router.post("/", paymentController.createPayment);
+router.post(
+  "/",
+  upload.array("attachments", 5),
+  paymentController.createPayment,
+);
 router.get("/", paymentController.listPayments);
 router.get("/stats", paymentController.getPaymentStats);
 router.get(
