@@ -5,6 +5,6 @@ const auth = require("../../middleware/authMiddleware");
 
 router.post("/image", auth, controller.uploadProfileImage);
 
-router.get("/vendor/profile-image", auth, controller.getProfileImage);
+router.get("/image", auth, controller.getProfileImage);
 
 module.exports = router;
