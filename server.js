@@ -72,7 +72,7 @@ app.use("/api/firm", firmRoutes);
 app.use("/api/gst-slabs", gstSlabRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/summary", summaryRoutes);
-app.use("/api/upload", uploadRoutes);
+// app.use("/api/upload", uploadRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/ledger", LengerRoutes);
 app.use("/api/vendor-gst-numbers", vendorGstNumberRoutes);
