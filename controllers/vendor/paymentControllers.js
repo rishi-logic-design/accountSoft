@@ -120,7 +120,6 @@ exports.createPayment = asyncHandler(async (req, res) => {
     }
   }
 
-  // Validate adjusted invoices if provided
   if (adjustedInvoices && !Array.isArray(adjustedInvoices)) {
     return error(res, "Adjusted invoices must be an array", 400);
   }
@@ -129,7 +128,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
     const totalAdjusted = adjustedInvoices.reduce(
       (sum, inv) => sum + parseFloat(inv.payAmount || 0),
       0,
-    );
+    );s
     if (Math.abs(totalAdjusted - parseFloat(amount)) > 0.01) {
       return error(
         res,

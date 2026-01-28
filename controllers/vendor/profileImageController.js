@@ -1,61 +1,45 @@
 const asyncHandler = require("../../utils/asyncHandler");
 const { VendorModel } = require("../../models");
-const fs = require("fs");
-const path = require("path");
 
 exports.uploadProfileImage = asyncHandler(async (req, res) => {
-  const vendorId = req.user.vendorId;
+  const vendorId = req.user.vendorId || req.user.id;
+  const { profileImage } = req.body;
 
-  console.log("Upload Request - Vendor ID:", vendorId);
-  console.log("File received:", req.file);
+  console.log("Update Profile Image - Vendor ID:", vendorId);
+  console.log("Firebase URL:", profileImage);
 
-  if (!req.file) {
+  if (!profileImage) {
     return res.status(400).json({
       success: false,
-      message: "Profile image is required",
+      message: "Profile image URL is required",
     });
   }
 
   const vendor = await VendorModel.findByPk(vendorId);
 
   if (!vendor) {
-    if (req.file.path) {
-      fs.unlinkSync(req.file.path);
-    }
     return res.status(404).json({
       success: false,
       message: "Vendor not found",
     });
   }
 
-  if (vendor.profileImage) {
-    const oldImagePath = path.join(
-      process.cwd(),
-      vendor.profileImage.replace("/uploads/", "uploads/"),
-    );
+  await vendor.update({ profileImage });
 
-    if (fs.existsSync(oldImagePath)) {
-      fs.unlinkSync(oldImagePath);
-    }
-  }
-
-  const imagePath = `/uploads/vendor/${req.file.filename}`;
-
-  await vendor.update({ profileImage: imagePath });
-
-  console.log("Image saved successfully:", imagePath);
+  console.log("Profile image URL saved successfully:", profileImage);
 
   return res.json({
     success: true,
     data: {
-      profileImage: imagePath,
+      profileImage,
     },
     message: "Profile image updated successfully",
   });
 });
 
 exports.getProfileImage = asyncHandler(async (req, res) => {
-  const vendorId = req.user.vendorId;
+  const vendorId = req.user.vendorId || req.user.id;
+
   const vendor = await VendorModel.findByPk(vendorId);
 
   if (!vendor) {
@@ -70,5 +54,26 @@ exports.getProfileImage = asyncHandler(async (req, res) => {
     data: {
       profileImage: vendor.profileImage || null,
     },
+  });
+});
+
+exports.deleteProfileImage = asyncHandler(async (req, res) => {
+  const vendorId = req.user.vendorId || req.user.id;
+
+  const vendor = await VendorModel.findByPk(vendorId);
+
+  if (!vendor) {
+    return res.status(404).json({
+      success: false,
+      message: "Vendor not found",
+    });
+  }
+
+  // Remove profile image URL
+  await vendor.update({ profileImage: null });
+
+  return res.json({
+    success: true,
+    message: "Profile image deleted successfully",
   });
 });

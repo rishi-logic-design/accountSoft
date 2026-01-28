@@ -3,6 +3,7 @@ const { success, error } = require("../../utils/apiResponse");
 const { VendorPaymentDetailsModel } = require("../../models");
 const { validateIFSCCode } = require("../../utils/paymentUtil");
 
+
 exports.createOrUpdatePaymentDetails = asyncHandler(async (req, res) => {
   const user = req.user || {};
 
@@ -12,8 +13,9 @@ exports.createOrUpdatePaymentDetails = asyncHandler(async (req, res) => {
   if (!vendorId) {
     return error(res, "Vendor ID is required", 400);
   }
-  const { bankName, accountNumber, ifscCode, upiId } = req.body;
-  const qrCodeAttachment = req.file ? req.file.path : null;
+
+  const { bankName, accountNumber, ifscCode, upiId, qrCodeAttachment } =
+    req.body;
 
   if (ifscCode) {
     const ifscValidation = validateIFSCCode(ifscCode);
@@ -31,7 +33,13 @@ exports.createOrUpdatePaymentDetails = asyncHandler(async (req, res) => {
 
   const [record, created] = await VendorPaymentDetailsModel.findOrCreate({
     where: { vendorId },
-    defaults: { bankName, accountNumber, ifscCode, upiId, qrCodeAttachment },
+    defaults: {
+      bankName,
+      accountNumber,
+      ifscCode,
+      upiId,
+      qrCodeAttachment, 
+    },
   });
 
   if (!created) {
@@ -40,7 +48,7 @@ exports.createOrUpdatePaymentDetails = asyncHandler(async (req, res) => {
       accountNumber,
       ifscCode,
       upiId,
-      ...(qrCodeAttachment && { qrCodeAttachment }),
+      ...(qrCodeAttachment && { qrCodeAttachment }), 
     });
   }
 
@@ -50,7 +58,7 @@ exports.createOrUpdatePaymentDetails = asyncHandler(async (req, res) => {
     created
       ? "Payment details created successfully"
       : "Payment details updated successfully",
-    created ? 201 : 200
+    created ? 201 : 200,
   );
 });
 
@@ -71,4 +79,25 @@ exports.getPaymentDetails = asyncHandler(async (req, res) => {
   }
 
   success(res, record, "Payment details retrieved successfully");
+});
+
+exports.deleteQRCode = asyncHandler(async (req, res) => {
+  const vendorId =
+    req.user?.role === "vendor" ? req.user.id : req.body.vendorId;
+
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
+
+  const record = await VendorPaymentDetailsModel.findOne({
+    where: { vendorId },
+  });
+
+  if (!record) {
+    return error(res, "Payment details not found", 404);
+  }
+
+  await record.update({ qrCodeAttachment: null });
+
+  success(res, null, "QR code deleted successfully");
 });

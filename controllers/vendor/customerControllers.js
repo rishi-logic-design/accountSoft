@@ -1,21 +1,15 @@
 const customerService = require("../../services/vendor/customerService");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
-const {
-  CustomerModel,
-  ChallanModel,
-  TransactionModel,
-} = require("../../models");
+const { CustomerModel, ChallanModel } = require("../../models");
 const challanService = require("../../services/vendor/challanService");
 
 exports.createCustomer = asyncHandler(async (req, res) => {
-  console.log("🔥 Incoming Create Customer Request:", req.body);
+  console.log("📥 Incoming Create Customer Request:", req.body);
   console.log("👤 Created By User ID:", req.user?.id);
 
   const { vendorId, ...customerData } = req.body;
-  if (req.file) {
-    customerData.customerImage = `/uploads/${req.file.filename}`;
-  }
+
   if (!vendorId) {
     return error(res, "Vendor ID is required", 400);
   }
@@ -27,14 +21,10 @@ exports.createCustomer = asyncHandler(async (req, res) => {
 });
 
 exports.updateCustomer = asyncHandler(async (req, res) => {
-  console.log("🔥 Incoming Update Customer Request:", req.params.id, req.body);
+  console.log("📥 Incoming Update Customer Request:", req.params.id, req.body);
 
   const { vendorId, ...customerData } = req.body;
-  
-  if (req.file) {
-    customerData.customerImage = `/uploads/${req.file.filename}`;
-  }
-  
+
   if (!vendorId) {
     return error(res, "Vendor ID is required", 400);
   }
@@ -50,7 +40,7 @@ exports.updateCustomer = asyncHandler(async (req, res) => {
 });
 
 exports.deleteCustomer = asyncHandler(async (req, res) => {
-  console.log("🔥 Incoming Delete Customer Request:", req.params.id);
+  console.log("📥 Incoming Delete Customer Request:", req.params.id);
 
   const { vendorId } = req.query;
 
@@ -65,7 +55,7 @@ exports.deleteCustomer = asyncHandler(async (req, res) => {
 });
 
 exports.listCustomers = asyncHandler(async (req, res) => {
-  console.log("🔥 Incoming Get Customers Request:", req.query);
+  console.log("📥 Incoming Get Customers Request:", req.query);
 
   const { vendorId, page, size, search } = req.query;
 
@@ -84,7 +74,7 @@ exports.listCustomers = asyncHandler(async (req, res) => {
 });
 
 exports.searchCustomers = asyncHandler(async (req, res) => {
-  console.log("🔥 Incoming Search Customers Request:", req.query);
+  console.log("📥 Incoming Search Customers Request:", req.query);
 
   const { vendorId, q } = req.query;
 
@@ -167,7 +157,7 @@ exports.getCustomerDetail = asyncHandler(async (req, res) => {
 
 exports.addTransaction = asyncHandler(async (req, res) => {
   console.log(
-    "🔥 Incoming Add Transaction Request:",
+    "📥 Incoming Add Transaction Request:",
     req.params.customerId,
     req.body,
   );
@@ -190,7 +180,7 @@ exports.addTransaction = asyncHandler(async (req, res) => {
 });
 
 exports.transactionReport = asyncHandler(async (req, res) => {
-  console.log("🔥 Incoming Transaction Report Request:", req.query);
+  console.log("📥 Incoming Transaction Report Request:", req.query);
 
   const { vendorId } = req.query;
 
@@ -209,7 +199,7 @@ exports.transactionReport = asyncHandler(async (req, res) => {
 });
 
 exports.getCustomerCountByVendor = asyncHandler(async (req, res) => {
-  console.log("🔥 Incoming Get Customer Count Request");
+  console.log("📥 Incoming Get Customer Count Request");
 
   const counts = await customerService.getCustomerCountByVendor();
 

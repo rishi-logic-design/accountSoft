@@ -9,16 +9,13 @@ const {
   sequelize,
 } = require("../../models");
 const { Op } = require("sequelize");
-const path = require("path");
-const fs = require("fs");
-const vendorModel = require("../../models/vendor/vendorModel");
 
 exports.createCustomer = async (vendorId, payload) => {
   if (!payload.customerName || !payload.mobileNumber) {
     throw new Error("customerName and mobileNumber are required");
   }
 
- const vendor = await VendorModel.findByPk(vendorId);
+  const vendor = await VendorModel.findByPk(vendorId);
   if (!vendor) {
     throw new Error("Invalid vendor. Vendor does not exist.");
   }
@@ -43,13 +40,11 @@ exports.createCustomer = async (vendorId, payload) => {
 };
 
 exports.updateCustomer = async (vendorId, customerId, data) => {
-  // Verify vendor exists
   const vendor = await VendorModel.findByPk(vendorId);
   if (!vendor) {
     throw new Error("Invalid vendor. Vendor does not exist.");
   }
 
-  // Find customer
   const customer = await CustomerModel.findOne({
     where: { id: customerId, createdBy: vendorId },
   });
@@ -58,7 +53,6 @@ exports.updateCustomer = async (vendorId, customerId, data) => {
     throw new Error("Customer not found");
   }
 
-  // Check for duplicate mobile number if being updated
   if (data.mobileNumber && data.mobileNumber !== customer.mobileNumber) {
     const existingCustomer = await CustomerModel.findOne({
       where: {
@@ -73,40 +67,16 @@ exports.updateCustomer = async (vendorId, customerId, data) => {
     }
   }
 
-  // Delete old image if new image is uploaded
-  if (
-    data.customerImage &&
-    customer.customerImage &&
-    data.customerImage !== customer.customerImage
-  ) {
-    try {
-      const oldImagePath = path.join(
-        __dirname,
-        "../../",
-        customer.customerImage
-      );
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
-        console.log("🗑️ Old customer image deleted:", customer.customerImage);
-      }
-    } catch (err) {
-      console.error("Error deleting old customer image:", err);
-    }
-  }
-
-  // Update customer
   await customer.update(data);
   return customer;
 };
 
 exports.deleteCustomer = async (vendorId, customerId) => {
-  // Verify vendor exists
   const vendor = await VendorModel.findByPk(vendorId);
   if (!vendor) {
     throw new Error("Invalid vendor. Vendor does not exist.");
   }
 
-  // Find customer
   const customer = await CustomerModel.findOne({
     where: { id: customerId, createdBy: vendorId },
   });
@@ -115,31 +85,16 @@ exports.deleteCustomer = async (vendorId, customerId) => {
     throw new Error("Customer not found");
   }
 
-  // Delete customer image if exists
-  if (customer.customerImage) {
-    try {
-      const imagePath = path.join(__dirname, "../../", customer.customerImage);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-        console.log("🗑️ Customer image deleted:", customer.customerImage);
-      }
-    } catch (err) {
-      console.error("Error deleting customer image:", err);
-    }
-  }
-
-  // Delete customer
   await customer.destroy();
   return true;
 };
 
 exports.getCustomerList = async (
   vendorId,
-  { page = 1, size = 20, search } = {}
+  { page = 1, size = 20, search } = {},
 ) => {
   const where = { createdBy: vendorId };
 
-  // Search filter
   if (search) {
     where[Op.or] = [
       { customerName: { [Op.like]: `%${search}%` } },
@@ -148,7 +103,6 @@ exports.getCustomerList = async (
     ];
   }
 
-  // Fetch customers with pagination
   const result = await CustomerModel.findAndCountAll({
     where,
     limit: parseInt(size, 10),
@@ -165,7 +119,6 @@ exports.getCustomerList = async (
 };
 
 exports.getCustomerDetail = async (vendorId, customerId) => {
-  // Find customer with transactions
   const customer = await CustomerModel.findOne({
     where: { id: customerId, createdBy: vendorId },
     include: [
@@ -181,7 +134,6 @@ exports.getCustomerDetail = async (vendorId, customerId) => {
     throw new Error("Customer not found");
   }
 
-  // Compute payment due
   const transactions = await TransactionModel.findAll({
     where: { customerId, vendorId },
   });
@@ -203,12 +155,12 @@ exports.searchCustomers = async (vendorId, searchQuery) => {
     throw new Error("Search query is required");
   }
 
-  const vendor = await vendorModel.findByPk(vendorId);
+  const vendor = await VendorModel.findByPk(vendorId);
   if (!vendor) {
     throw new Error("Invalid vendor. Vendor does not exist.");
   }
 
-  const whrere = {
+  const where = {
     createdBy: vendorId,
     [Op.or]: [
       { customerName: { [Op.like]: `%${searchQuery}%` } },
@@ -218,7 +170,7 @@ exports.searchCustomers = async (vendorId, searchQuery) => {
   };
 
   const customers = await CustomerModel.findAll({
-    where: whrere,
+    where,
     limit: 50,
     order: [["createdAt", "DESC"]],
   });
@@ -228,13 +180,11 @@ exports.searchCustomers = async (vendorId, searchQuery) => {
 
 exports.addTransaction = async (vendorId, customerId, payload) => {
   return await sequelize.transaction(async (t) => {
-    // Verify vendor exists
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) {
       throw new Error("Invalid vendor. Vendor does not exist.");
     }
 
-    // Find customer
     const customer = await CustomerModel.findOne({
       where: { id: customerId, createdBy: vendorId },
       transaction: t,
@@ -244,7 +194,6 @@ exports.addTransaction = async (vendorId, customerId, payload) => {
       throw new Error("Customer not found");
     }
 
-    // Create transaction
     const trx = await TransactionModel.create(
       {
         customerId,
@@ -255,10 +204,9 @@ exports.addTransaction = async (vendorId, customerId, payload) => {
         transactionDate: payload.transactionDate || new Date(),
         challanNumber: payload.challanNumber || null,
       },
-      { transaction: t }
+      { transaction: t },
     );
 
-    // Calculate due amount
     const transactions = await TransactionModel.findAll({
       where: { customerId, vendorId },
       transaction: t,
@@ -279,11 +227,10 @@ exports.addTransaction = async (vendorId, customerId, payload) => {
 
 exports.getTransactionReport = async (
   vendorId,
-  { fromDate, toDate, customerId } = {}
+  { fromDate, toDate, customerId } = {},
 ) => {
   const where = { vendorId };
 
-  // Date filters
   if (fromDate) {
     where.transactionDate = { [Op.gte]: fromDate };
   }
@@ -295,12 +242,10 @@ exports.getTransactionReport = async (
     };
   }
 
-  // Customer filter
   if (customerId) {
     where.customerId = customerId;
   }
 
-  // Fetch transactions
   const rows = await TransactionModel.findAll({
     where,
     include: [
@@ -325,7 +270,6 @@ exports.getCustomerCountByVendor = async () => {
     group: ["createdBy"],
   });
 
-  // Normalize response
   return result.map((row) => ({
     vendorId: row.createdBy,
     customerCount: Number(row.get("customerCount")),
@@ -352,13 +296,11 @@ exports.createProduct = async (vendorId, payload) => {
   const { name, sku, description, price, stock, categoryId, sizes } = payload;
 
   return await sequelize.transaction(async (t) => {
-    // Verify vendor exists
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) {
       throw new Error("Invalid vendor. Vendor does not exist.");
     }
 
-    // Create product
     const product = await ProductModel.create(
       {
         name,
@@ -369,10 +311,9 @@ exports.createProduct = async (vendorId, payload) => {
         categoryId,
         createdBy: vendorId,
       },
-      { transaction: t }
+      { transaction: t },
     );
 
-    // Add product sizes if provided
     if (Array.isArray(sizes) && sizes.length) {
       const rows = sizes.map((s) => ({
         productId: product.id,
@@ -393,13 +334,11 @@ exports.createProduct = async (vendorId, payload) => {
 
 exports.updateProduct = async (vendorId, productId, data) => {
   return await sequelize.transaction(async (t) => {
-    // Verify vendor exists
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) {
       throw new Error("Invalid vendor. Vendor does not exist.");
     }
 
-    // Find product
     const product = await ProductModel.findOne({
       where: { id: productId, createdBy: vendorId },
       transaction: t,
@@ -409,10 +348,8 @@ exports.updateProduct = async (vendorId, productId, data) => {
       throw new Error("Product not found");
     }
 
-    // Update product
     await product.update(data, { transaction: t });
 
-    // Update product sizes if provided
     if (data.sizes) {
       for (const s of data.sizes) {
         await ProductSizeModel.upsert(
@@ -422,7 +359,7 @@ exports.updateProduct = async (vendorId, productId, data) => {
             stock: s.stock || 0,
             price: s.price || null,
           },
-          { transaction: t }
+          { transaction: t },
         );
       }
     }
@@ -432,13 +369,11 @@ exports.updateProduct = async (vendorId, productId, data) => {
 };
 
 exports.deleteProduct = async (vendorId, productId) => {
-  // Verify vendor exists
   const vendor = await VendorModel.findByPk(vendorId);
   if (!vendor) {
     throw new Error("Invalid vendor. Vendor does not exist.");
   }
 
-  // Find product
   const product = await ProductModel.findOne({
     where: { id: productId, createdBy: vendorId },
   });
@@ -447,7 +382,6 @@ exports.deleteProduct = async (vendorId, productId) => {
     throw new Error("Product not found");
   }
 
-  // Delete product
   await product.destroy();
   return true;
 };
@@ -462,12 +396,10 @@ exports.listProducts = async ({
 }) => {
   const where = { createdBy: vendorId };
 
-  // Category filter
   if (categoryId) {
     where.categoryId = categoryId;
   }
 
-  // Search filter
   if (search) {
     where[Op.or] = [
       { name: { [Op.like]: `%${search}%` } },
@@ -487,7 +419,6 @@ exports.listProducts = async ({
     },
   ];
 
-  // Size filter
   if (sizeId) {
     include.push({
       model: ProductSizeModel,
@@ -498,7 +429,6 @@ exports.listProducts = async ({
     });
   }
 
-  // Fetch products
   const result = await ProductModel.findAndCountAll({
     where,
     include,
@@ -512,7 +442,6 @@ exports.listProducts = async ({
 };
 
 exports.getProductDetail = async (vendorId, productId) => {
-  // Find product
   const product = await ProductModel.findOne({
     where: { id: productId, createdBy: vendorId },
     include: [
@@ -534,16 +463,14 @@ exports.getProductDetail = async (vendorId, productId) => {
 
 exports.changeStock = async (
   vendorId,
-  { productId, sizeId = null, delta = 0 }
+  { productId, sizeId = null, delta = 0 },
 ) => {
   return await sequelize.transaction(async (t) => {
-    // Verify vendor exists
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) {
       throw new Error("Invalid vendor. Vendor does not exist.");
     }
 
-    // Find product
     const product = await ProductModel.findOne({
       where: { id: productId, createdBy: vendorId },
       transaction: t,
@@ -554,7 +481,6 @@ exports.changeStock = async (
     }
 
     if (sizeId) {
-      // Update stock for specific size
       const ps = await ProductSizeModel.findOne({
         where: { productId, sizeId },
         transaction: t,
@@ -567,7 +493,6 @@ exports.changeStock = async (
       ps.stock = Math.max(0, (ps.stock || 0) + Number(delta));
       await ps.save({ transaction: t });
     } else {
-      // Update general product stock
       product.stock = Math.max(0, (product.stock || 0) + Number(delta));
       await product.save({ transaction: t });
     }
