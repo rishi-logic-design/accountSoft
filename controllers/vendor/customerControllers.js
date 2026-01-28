@@ -13,8 +13,9 @@ exports.createCustomer = asyncHandler(async (req, res) => {
   console.log("👤 Created By User ID:", req.user?.id);
 
   const { vendorId, ...customerData } = req.body;
-
-  // Validate vendorId
+  if (req.file) {
+    customerData.customerImage = `/uploads/${req.file.filename}`;
+  }
   if (!vendorId) {
     return error(res, "Vendor ID is required", 400);
   }
@@ -29,7 +30,11 @@ exports.updateCustomer = asyncHandler(async (req, res) => {
   console.log("🔥 Incoming Update Customer Request:", req.params.id, req.body);
 
   const { vendorId, ...customerData } = req.body;
-
+  
+  if (req.file) {
+    customerData.customerImage = `/uploads/${req.file.filename}`;
+  }
+  
   if (!vendorId) {
     return error(res, "Vendor ID is required", 400);
   }
@@ -112,7 +117,7 @@ exports.getCustomerDetail = asyncHandler(async (req, res) => {
   const customer = await CustomerModel.findOne({
     where: {
       id: customerId,
-      createdBy: vendorId, 
+      createdBy: vendorId,
     },
   });
 

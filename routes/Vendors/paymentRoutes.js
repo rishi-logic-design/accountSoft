@@ -1,17 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const paymentController = require("../../controllers/vendor/paymentControllers");
-const uploadController = require("../../controllers/uploadControllers");
+// const uploadController = require("../../controllers/uploadControllers");
 const upload = require("../../middleware/upload");
-const { authenticate } = require("../../middleware/authMiddleware");
+const authenticate = require("../../middleware/authMiddleware");
 router.use(authenticate);
-router.post(
-  "/upload",
-  upload.single("file"),
-  uploadController.uploadAttachment,
-);
+// router.post("/upload", uploadAttachment);
 
-router.delete("/upload/:filename", uploadController.deleteAttachment);
+// router.delete("/upload/:filename", uploadController.deleteAttachment);
 
 router.post("/", paymentController.createPayment);
 router.get("/", paymentController.listPayments);

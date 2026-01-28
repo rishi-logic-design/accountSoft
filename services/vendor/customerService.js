@@ -18,8 +18,7 @@ exports.createCustomer = async (vendorId, payload) => {
     throw new Error("customerName and mobileNumber are required");
   }
 
-  // Verify vendor exists
-  const vendor = await VendorModel.findByPk(vendorId);
+\  const vendor = await VendorModel.findByPk(vendorId);
   if (!vendor) {
     throw new Error("Invalid vendor. Vendor does not exist.");
   }
