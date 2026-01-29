@@ -39,11 +39,11 @@ exports.createPayment = async (vendorId, payload) => {
   } = payload;
 
   return await sequelize.transaction(async (t) => {
-    //  Vendor check
+    // Vendor check
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) throw new Error("Vendor not found");
 
-    //  Customer check
+    // Customer check
     if (customerId && subType === "customer") {
       const customer = await CustomerModel.findByPk(customerId, {
         transaction: t,
@@ -51,10 +51,28 @@ exports.createPayment = async (vendorId, payload) => {
       if (!customer) throw new Error("Customer not found");
     }
 
-    //  Generate payment number
+    // Generate payment number
     const paymentNumber = await generatePaymentNumber(PaymentModel, t);
 
-    //  Create payment
+    // Calculate outstanding before and after payment
+    let totalOutstanding = 0;
+    let outstandingAfterPayment = 0;
+
+    if (customerId) {
+      totalOutstanding = parseFloat(
+        await calculateCustomerOutstanding(vendorId, customerId, t),
+      );
+
+      if (type === "credit") {
+        outstandingAfterPayment = totalOutstanding - toNumber(amount);
+      } else if (type === "debit") {
+        outstandingAfterPayment = totalOutstanding + toNumber(amount);
+      } else {
+        outstandingAfterPayment = totalOutstanding;
+      }
+    }
+
+    // Create payment
     const payment = await PaymentModel.create(
       {
         paymentNumber,
@@ -78,12 +96,14 @@ exports.createPayment = async (vendorId, payload) => {
         chequeDate: chequeDate || null,
         chequeBankName: chequeBankName || null,
         status: status || "completed",
+        totalOutstanding: totalOutstanding.toFixed(2),
+        outstandingAfterPayment: outstandingAfterPayment.toFixed(2),
         adjustedInvoices: adjustedInvoices || [],
       },
       { transaction: t },
     );
 
-    //  Create transaction entry
+    // Create transaction entry
     if (TransactionModel) {
       await TransactionModel.create(
         {
@@ -105,15 +125,34 @@ exports.createPayment = async (vendorId, payload) => {
       );
     }
 
-    //  BILL UPDATE LOGIC
-    if (Array.isArray(adjustedInvoices) && adjustedInvoices.length > 0) {
+    // BILL UPDATE LOGIC - Only if credit payment
+    if (
+      type === "credit" &&
+      Array.isArray(adjustedInvoices) &&
+      adjustedInvoices.length > 0
+    ) {
+      console.log("Processing adjusted invoices:", adjustedInvoices);
+
       for (const inv of adjustedInvoices) {
-        if (!inv.billId) continue;
+        if (!inv.billId) {
+          console.warn("Skipping invoice without billId:", inv);
+          continue;
+        }
 
         const bill = await BillModel.findByPk(inv.billId, {
           transaction: t,
         });
-        if (!bill) continue;
+
+        if (!bill) {
+          console.warn(`Bill not found for billId: ${inv.billId}`);
+          continue;
+        }
+
+        console.log(`Updating bill ${bill.billNumber}:`, {
+          currentPaidAmount: bill.paidAmount,
+          payAmount: inv.payAmount,
+          totalWithGST: bill.totalWithGST,
+        });
 
         const previousPaid = toNumber(bill.paidAmount);
         const payAmount = toNumber(inv.payAmount);
@@ -123,11 +162,17 @@ exports.createPayment = async (vendorId, payload) => {
         const pendingAmount = totalBill - newPaidAmount;
 
         let newStatus = "pending";
-        if (pendingAmount <= 0) {
+        if (pendingAmount <= 0.01) {
+          // Allow small rounding differences
           newStatus = "paid";
         } else if (newPaidAmount > 0) {
           newStatus = "partial";
         }
+
+        console.log(`New bill status: ${newStatus}`, {
+          newPaidAmount,
+          pendingAmount,
+        });
 
         await bill.update(
           {
@@ -138,10 +183,30 @@ exports.createPayment = async (vendorId, payload) => {
           },
           { transaction: t },
         );
+
+        console.log(`Bill ${bill.billNumber} updated successfully`);
       }
     }
 
-    return payment;
+    // Fetch the complete payment with relations before returning
+    const completePayment = await PaymentModel.findByPk(payment.id, {
+      include: [
+        {
+          model: CustomerModel,
+          as: "customer",
+          attributes: [
+            "id",
+            "customerName",
+            "businessName",
+            "mobileNumber",
+            "email",
+          ],
+        },
+      ],
+      transaction: t,
+    });
+
+    return completePayment;
   });
 };
 
@@ -187,7 +252,13 @@ exports.listPayments = async (options = {}) => {
       {
         model: CustomerModel,
         as: "customer",
-        attributes: ["id", "customerName", "businessName", "mobile", "email"],
+        attributes: [
+          "id",
+          "customerName",
+          "businessName",
+          "mobileNumber",
+          "email",
+        ],
       },
     ],
     limit: Number(size),
@@ -233,7 +304,15 @@ exports.getPaymentById = async (id, vendorId) => {
 
   if (payment.billId) {
     const bill = await BillModel.findByPk(payment.billId, {
-      attributes: ["id", "billNumber", "billDate", "totalWithGST", "status"],
+      attributes: [
+        "id",
+        "billNumber",
+        "billDate",
+        "totalWithGST",
+        "status",
+        "paidAmount",
+        "pendingAmount",
+      ],
     });
     payment.dataValues.bill = bill;
   }
@@ -343,6 +422,46 @@ exports.deletePayment = async (id, vendorId) => {
 
     if (!payment) throw new Error("Payment not found");
 
+    // If payment was adjusted with bills, reverse the bill updates
+    if (
+      payment.type === "credit" &&
+      payment.adjustedInvoices &&
+      payment.adjustedInvoices.length > 0
+    ) {
+      console.log("Reversing bill adjustments for deleted payment");
+
+      for (const inv of payment.adjustedInvoices) {
+        if (!inv.billId) continue;
+
+        const bill = await BillModel.findByPk(inv.billId, { transaction: t });
+        if (!bill) continue;
+
+        const previousPaid = toNumber(bill.paidAmount);
+        const payAmount = toNumber(inv.payAmount);
+        const totalBill = toNumber(bill.totalWithGST);
+
+        const newPaidAmount = previousPaid - payAmount;
+        const pendingAmount = totalBill - newPaidAmount;
+
+        let newStatus = "pending";
+        if (pendingAmount <= 0.01) {
+          newStatus = "paid";
+        } else if (newPaidAmount > 0) {
+          newStatus = "partial";
+        }
+
+        await bill.update(
+          {
+            paidAmount: newPaidAmount > 0 ? newPaidAmount.toFixed(2) : "0.00",
+            pendingAmount:
+              pendingAmount > 0 ? pendingAmount.toFixed(2) : "0.00",
+            status: newStatus,
+          },
+          { transaction: t },
+        );
+      }
+    }
+
     // Delete transaction record if exists
     if (TransactionModel) {
       await TransactionModel.destroy({
@@ -430,37 +549,35 @@ exports.getCustomerPendingInvoices = async (vendorId, customerId) => {
         [Op.in]: ["pending", "partial"],
       },
     },
-    attributes: ["id", "billNumber", "billDate", "totalWithGST", "status"],
+    attributes: [
+      "id",
+      "billNumber",
+      "billDate",
+      "totalWithGST",
+      "paidAmount",
+      "pendingAmount",
+      "status",
+    ],
     order: [["billDate", "ASC"]],
   });
 
-  // Calculate paid amount for each bill from transactions
-  const billsWithPayments = await Promise.all(
-    bills.map(async (bill) => {
-      const paidAmount = await TransactionModel.sum("amount", {
-        where: {
-          billId: bill.id,
-          type: "payment",
-          vendorId,
-        },
-      });
+  // Map bills with proper amounts
+  const billsWithPayments = bills.map((bill) => {
+    const totalAmount = toNumber(bill.totalWithGST);
+    const paid = toNumber(bill.paidAmount);
+    const pending = toNumber(bill.pendingAmount || totalAmount - paid);
 
-      const totalAmount = toNumber(bill.totalWithGST);
-      const paid = toNumber(paidAmount);
-      const pending = totalAmount - paid;
-
-      return {
-        id: bill.id,
-        billNumber: bill.billNumber,
-        billDate: bill.billDate,
-        invoiceDate: bill.billDate,
-        totalAmount: totalAmount.toFixed(2),
-        paidAmount: paid.toFixed(2),
-        pendingAmount: pending.toFixed(2),
-        status: bill.status,
-      };
-    }),
-  );
+    return {
+      id: bill.id,
+      billNumber: bill.billNumber,
+      billDate: bill.billDate,
+      invoiceDate: bill.billDate,
+      totalAmount: totalAmount.toFixed(2),
+      paidAmount: paid.toFixed(2),
+      pendingAmount: pending.toFixed(2),
+      status: bill.status,
+    };
+  });
 
   // Get all challans with pending/partial status (if applicable)
   let challansWithPayments = [];
@@ -478,36 +595,28 @@ exports.getCustomerPendingInvoices = async (vendorId, customerId) => {
         "challanNumber",
         "challanDate",
         "totalWithGST",
+        "paidAmount",
+        "pendingAmount",
         "status",
       ],
       order: [["challanDate", "ASC"]],
     });
 
-    challansWithPayments = await Promise.all(
-      challans.map(async (challan) => {
-        const paidAmount = await TransactionModel.sum("amount", {
-          where: {
-            challanId: challan.id,
-            type: "payment",
-            vendorId,
-          },
-        });
+    challansWithPayments = challans.map((challan) => {
+      const totalAmount = toNumber(challan.totalWithGST);
+      const paid = toNumber(challan.paidAmount);
+      const pending = toNumber(challan.pendingAmount || totalAmount - paid);
 
-        const totalAmount = toNumber(challan.totalWithGST);
-        const paid = toNumber(paidAmount);
-        const pending = totalAmount - paid;
-
-        return {
-          id: challan.id,
-          challanNumber: challan.challanNumber,
-          challanDate: challan.challanDate,
-          totalAmount: totalAmount.toFixed(2),
-          paidAmount: paid.toFixed(2),
-          pendingAmount: pending.toFixed(2),
-          status: challan.status,
-        };
-      }),
-    );
+      return {
+        id: challan.id,
+        challanNumber: challan.challanNumber,
+        challanDate: challan.challanDate,
+        totalAmount: totalAmount.toFixed(2),
+        paidAmount: paid.toFixed(2),
+        pendingAmount: pending.toFixed(2),
+        status: challan.status,
+      };
+    });
   } catch (err) {
     console.log("Challan fetch error:", err.message);
   }
@@ -520,6 +629,7 @@ exports.getCustomerPendingInvoices = async (vendorId, customerId) => {
   return {
     bills: billsWithPayments,
     challans: challansWithPayments,
+    invoices: [...billsWithPayments, ...challansWithPayments], // Combined for easier frontend handling
     totalPending: totalPending.toFixed(2),
   };
 };

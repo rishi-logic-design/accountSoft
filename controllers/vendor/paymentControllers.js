@@ -35,7 +35,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
     status,
     adjustedInvoices,
   } = req.body;
-  
+
   const uploadedAttachments = Array.isArray(attachments) ? attachments : [];
 
   // Required field validation
@@ -127,7 +127,6 @@ exports.createPayment = asyncHandler(async (req, res) => {
       (sum, inv) => sum + parseFloat(inv.payAmount || 0),
       0,
     );
-    s;
     if (Math.abs(totalAdjusted - parseFloat(amount)) > 0.01) {
       return error(
         res,
@@ -149,7 +148,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
     billId,
     challanId,
     attachments: uploadedAttachments,
-    bankName,
+    bankName, 
     accountNumber,
     ifscCode,
     upiId,
