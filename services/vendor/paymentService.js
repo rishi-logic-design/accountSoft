@@ -39,54 +39,22 @@ exports.createPayment = async (vendorId, payload) => {
   } = payload;
 
   return await sequelize.transaction(async (t) => {
+    //  Vendor check
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) throw new Error("Vendor not found");
 
-    // Verify customer exists
-    if (customerId && ["customer", "vendor"].includes(subType)) {
+    //  Customer check
+    if (customerId && subType === "customer") {
       const customer = await CustomerModel.findByPk(customerId, {
         transaction: t,
       });
       if (!customer) throw new Error("Customer not found");
     }
-    // Verify bill if provided
-    if (billId) {
-      const bill = await BillModel.findByPk(billId, { transaction: t });
-      if (!bill) throw new Error("Bill not found");
-    }
 
-    // Verify challan if provided
-    if (challanId) {
-      const challan = await ChallanModel.findByPk(challanId, {
-        transaction: t,
-      });
-      if (!challan) throw new Error("Challan not found");
-    }
-
-    // Calculate current outstanding
-    let currentOutstanding = 0;
-    if (customerId && subType === "customer") {
-      currentOutstanding = await calculateCustomerOutstanding(
-        vendorId,
-        customerId,
-        t,
-      );
-    }
-
-    // Calculate outstanding after payment
-    let outstandingAfter = toNumber(currentOutstanding);
-    if (customerId && subType === "customer") {
-      if (type === "credit") {
-        outstandingAfter -= toNumber(amount);
-      } else if (type === "debit") {
-        outstandingAfter += toNumber(amount);
-      }
-    }
-
-    // Generate unique payment number
+    //  Generate payment number
     const paymentNumber = await generatePaymentNumber(PaymentModel, t);
 
-    // Create payment record
+    //  Create payment
     const payment = await PaymentModel.create(
       {
         paymentNumber,
@@ -99,8 +67,8 @@ exports.createPayment = async (vendorId, payload) => {
         method,
         reference: reference || null,
         note: note || null,
-        attachments: attachments || null,
-        billId: billId,
+        attachments: Array.isArray(attachments) ? attachments : [],
+        billId: billId || null,
         challanId: challanId || null,
         bankName: bankName || null,
         accountNumber: accountNumber || null,
@@ -110,14 +78,12 @@ exports.createPayment = async (vendorId, payload) => {
         chequeDate: chequeDate || null,
         chequeBankName: chequeBankName || null,
         status: status || "completed",
-        totalOutstanding: toNumber(currentOutstanding).toFixed(2),
-        outstandingAfterPayment: outstandingAfter.toFixed(2),
-        adjustedInvoices: adjustedInvoices || null,
+        adjustedInvoices: adjustedInvoices || [],
       },
       { transaction: t },
     );
 
-    // Create transaction record
+    //  Create transaction entry
     if (TransactionModel) {
       await TransactionModel.create(
         {
@@ -128,7 +94,7 @@ exports.createPayment = async (vendorId, payload) => {
           description:
             note ||
             `Payment ${paymentNumber} (${
-              type === "credit" ? "Received" : "Made"
+              type === "credit" ? "Received" : "Paid"
             })`,
           transactionDate: paymentDate,
           billId: billId || null,
@@ -139,50 +105,39 @@ exports.createPayment = async (vendorId, payload) => {
       );
     }
 
-    // Update adjusted invoices if provided
-    if (
-      adjustedInvoices &&
-      Array.isArray(adjustedInvoices) &&
-      adjustedInvoices.length > 0
-    ) {
-      for (const invoice of adjustedInvoices) {
-        if (invoice.billId) {
-          const bill = await BillModel.findByPk(invoice.billId, {
-            transaction: t,
-          });
+    //  BILL UPDATE LOGIC
+    if (Array.isArray(adjustedInvoices) && adjustedInvoices.length > 0) {
+      for (const inv of adjustedInvoices) {
+        if (!inv.billId) continue;
 
-          if (bill) {
-            // Get existing payments for this bill
-            const existingPayments = await TransactionModel.sum("amount", {
-              where: {
-                billId: invoice.billId,
-                type: "payment",
-                vendorId,
-              },
-              transaction: t,
-            });
+        const bill = await BillModel.findByPk(inv.billId, {
+          transaction: t,
+        });
+        if (!bill) continue;
 
-            const totalPaid =
-              toNumber(existingPayments) + toNumber(invoice.payAmount);
-            const totalBill = toNumber(bill.totalWithGST);
-            const pending = totalBill - totalPaid;
+        const previousPaid = toNumber(bill.paidAmount);
+        const payAmount = toNumber(inv.payAmount);
+        const totalBill = toNumber(bill.totalWithGST);
 
-            // Determine status
-            let newStatus = "pending";
-            if (pending <= 0) {
-              newStatus = "paid";
-            } else if (totalPaid > 0) {
-              newStatus = "partial";
-            }
+        const newPaidAmount = previousPaid + payAmount;
+        const pendingAmount = totalBill - newPaidAmount;
 
-            await bill.update(
-              {
-                status: newStatus,
-              },
-              { transaction: t },
-            );
-          }
+        let newStatus = "pending";
+        if (pendingAmount <= 0) {
+          newStatus = "paid";
+        } else if (newPaidAmount > 0) {
+          newStatus = "partial";
         }
+
+        await bill.update(
+          {
+            paidAmount: newPaidAmount.toFixed(2),
+            pendingAmount:
+              pendingAmount > 0 ? pendingAmount.toFixed(2) : "0.00",
+            status: newStatus,
+          },
+          { transaction: t },
+        );
       }
     }
 
