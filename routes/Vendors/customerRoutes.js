@@ -5,9 +5,8 @@ const auth = require("../../middleware/authMiddleware");
 const role = require("../../middleware/roleMiddleware");
 
 router.use(auth);
-const upload = require("../../middleware/upload");
 
-router.use(role(["vendor", "admin", "superadmin"]));
+router.use(role(["vendor", "admin", "superadmin", "customer"]));
 
 router.get("/search", customerCtrl.searchCustomers);
 router.get("/count-by-vendor", customerCtrl.getCustomerCountByVendor);
