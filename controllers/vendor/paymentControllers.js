@@ -12,14 +12,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
   if (!vendorId) {
     return error(res, "Vendor ID is required", 400);
   }
-  let uploadedAttachments = [];
 
-  if (req.files && req.files.length > 0) {
-    uploadedAttachments = req.files.map((f) => `/uploads/${f.filename}`);
-  }
-  if (Array.isArray(req.body.attachments) && req.body.attachments.length > 0) {
-    uploadedAttachments = req.body.attachments;
-  }
   const {
     customerId,
     type,
@@ -42,6 +35,8 @@ exports.createPayment = asyncHandler(async (req, res) => {
     status,
     adjustedInvoices,
   } = req.body;
+  
+  const uploadedAttachments = Array.isArray(attachments) ? attachments : [];
 
   // Required field validation
   if (!customerId) {
