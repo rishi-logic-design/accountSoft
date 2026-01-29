@@ -17,6 +17,9 @@ exports.createPayment = asyncHandler(async (req, res) => {
   if (req.files && req.files.length > 0) {
     uploadedAttachments = req.files.map((f) => `/uploads/${f.filename}`);
   }
+  if (Array.isArray(req.body.attachments) && req.body.attachments.length > 0) {
+    uploadedAttachments = req.body.attachments;
+  }
   const {
     customerId,
     type,
@@ -128,7 +131,8 @@ exports.createPayment = asyncHandler(async (req, res) => {
     const totalAdjusted = adjustedInvoices.reduce(
       (sum, inv) => sum + parseFloat(inv.payAmount || 0),
       0,
-    );s
+    );
+    s;
     if (Math.abs(totalAdjusted - parseFloat(amount)) > 0.01) {
       return error(
         res,

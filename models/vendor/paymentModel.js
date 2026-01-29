@@ -18,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       customerId: {
         type: DataTypes.INTEGER.UNSIGNED,
-        allowNull: false, 
+        allowNull: true, 
       },
       type: {
         type: DataTypes.ENUM("credit", "debit"),
