@@ -34,6 +34,7 @@ exports.createCustomer = async (vendorId, payload) => {
   const customer = await CustomerModel.create({
     ...payload,
     createdBy: vendorId,
+    inActive: true,
   });
 
   return customer;
