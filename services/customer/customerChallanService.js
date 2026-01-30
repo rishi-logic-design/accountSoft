@@ -1,18 +1,52 @@
-const { ChallanModel, ChallanItemModel } = require("../../models");
+const { Op } = require("sequelize");
+const { ChallanModel, VendorModel } = require("../../models");
 
-exports.list = async (customerId) => {
-  return ChallanModel.findAll({
-    where: { customerId },
-    include: [{ model: ChallanItemModel, as: "items" }],
-    order: [["challanDate", "DESC"]],
+exports.list = async (customerId, filters) => {
+  const where = { customerId };
+
+  if (filters.status) where.status = filters.status;
+
+  if (filters.search) {
+    where[Op.or] = [{ challanNumber: { [Op.like]: `%${filters.search}%` } }];
+  }
+
+  if (filters.fromDate && filters.toDate) {
+    where.challanDate = {
+      [Op.between]: [filters.fromDate, filters.toDate],
+    };
+  }
+
+  return ChallanModel.findAndCountAll({
+    where,
+    include: [
+      {
+        model: VendorModel,
+        as: "vendor",
+        attributes: ["id", "vendorName", "businessName"],
+      },
+    ],
+    limit: +filters.size,
+    offset: (filters.page - 1) * filters.size,
+    order: [["createdAt", "DESC"]],
   });
 };
 
 exports.getById = async (id, customerId) => {
-  const challan = await ChallanModel.findOne({
+  return ChallanModel.findOne({
     where: { id, customerId },
-    include: [{ model: ChallanItemModel, as: "items" }],
+    include: [
+      {
+        model: VendorModel,
+        as: "vendor",
+        attributes: [
+          "id",
+          "vendorName",
+          "businessName",
+          "gst",
+          "mobile",
+          "address",
+        ],
+      },
+    ],
   });
-  if (!challan) throw new Error("Challan not found");
-  return challan;
 };

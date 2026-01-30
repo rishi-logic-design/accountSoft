@@ -4,7 +4,18 @@ const service = require("../../services/customer/customerChallanService");
 
 exports.getMyChallans = asyncHandler(async (req, res) => {
   const customerId = req.user.id;
-  const data = await service.list(customerId);
+
+  const { page = 1, size = 20, search, status, fromDate, toDate } = req.query;
+
+  const data = await service.list(customerId, {
+    page,
+    size,
+    search,
+    status,
+    fromDate,
+    toDate,
+  });
+
   success(res, data);
 });
 
