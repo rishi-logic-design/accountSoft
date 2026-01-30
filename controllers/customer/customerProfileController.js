@@ -7,7 +7,7 @@ exports.getMyProfile = asyncHandler(async (req, res) => {
     return error(res, "Unauthorized", 403);
   }
 
-  const customerId = req.user.id;
+  const customerId = req.user.id; 
 
   const customer = await CustomerModel.findByPk(customerId);
 
@@ -23,7 +23,7 @@ exports.updateMyProfile = asyncHandler(async (req, res) => {
     return error(res, "Unauthorized", 403);
   }
 
-  const customerId = req.user.id;
+  const customerId = req.user.id; 
 
   const customer = await CustomerModel.findByPk(customerId);
 
@@ -36,7 +36,7 @@ exports.updateMyProfile = asyncHandler(async (req, res) => {
     "businessName",
     "email",
     "gstNumber",
-    "image",
+    "customerImage",
   ];
 
   const updateData = {};

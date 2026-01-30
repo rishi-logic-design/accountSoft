@@ -30,6 +30,16 @@ module.exports = async (req, res, next) => {
       }
 
       req.customer = customer;
+      req.user = {
+        id: customer.id,
+        role: "customer",
+        name: customer.customerName,
+        businessName: customer.businessName,
+        email: customer.email,
+        mobile: customer.mobileNumber,
+        customerId: customer.id,
+        vendorId: customer.createdBy, 
+      };
       req.authRole = "customer";
       return next();
     }
@@ -53,7 +63,6 @@ module.exports = async (req, res, next) => {
       return next();
     }
 
-    // ❌ Invalid role
     return res.status(403).json({
       success: false,
       message: "Invalid token role",
