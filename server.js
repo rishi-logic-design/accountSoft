@@ -32,6 +32,8 @@ const customerBillRoutes = require("./routes/Customer/customerBillRoutes");
 const customerChallanRoutes = require("./routes/Customer/customerChallanRoutes");
 const customerPaymentRoutes = require("./routes/Customer/customerPaymentRoutes");
 const customerDashboardRoutes = require("./routes/Customer/customerDashboardRoutes");
+const customerVendorPaymentRoutes = require("./routes/Customer/customerVendorPaymentRoutes");
+const customerGstNumberRoutes = require("./routes/Customer/customerGstNumberRoutes");
 
 app.use(
   cors({
@@ -84,7 +86,8 @@ app.use("/api/customer/bills", customerBillRoutes);
 app.use("/api/customer/challans", customerChallanRoutes);
 app.use("/api/customer/payments", customerPaymentRoutes);
 app.use("/api/customer/dashboard", customerDashboardRoutes);
-
+app.use("/api/customer/vendor-payment-details", customerVendorPaymentRoutes);
+app.use("/api/customer/vendor-gst-number", customerGstNumberRoutes);
 const PORT = process.env.PORT || 5000;
 
 (async () => {
