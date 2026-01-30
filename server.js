@@ -10,6 +10,7 @@ const cors = require("cors");
 const { sequelize } = require("./models");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const path = require("path");
+const app = express();
 // Routes
 const authRoutes = require("./routes/Vendors/authRoutes");
 const vendorRoutes = require("./routes/Vendors/vendorRoutes");
@@ -21,7 +22,6 @@ const billRoutes = require("./routes/Vendors/billRoutes");
 const paymentRoutes = require("./routes/Vendors/paymentRoutes");
 const firmRoutes = require("./routes/Vendors/firmRoutes");
 const gstSlabRoutes = require("./routes/Vendors/gstSlabRoutes");
-const uploadRoutes = require("./routes/Vendors/uploadRoutes");
 const transactionRoutes = require("./routes/Customer/transactionRoutes");
 const summaryRoutes = require("./routes/Customer/summaryRoutes");
 const productRoutes = require("./routes/Vendors/productRoutes");
@@ -29,7 +29,11 @@ const LengerRoutes = require("./routes/Vendors/ledgerRoutes");
 const vendorPaymentRoutes = require("./routes/Vendors/vendorPaymentRoutes");
 const vendorGstNumberRoutes = require("./routes/Vendors/vendorGstNumberRoutes");
 const vendorProfileImageRoutes = require("./routes/Vendors/vendorProfileImageRoutes");
-const app = express();
+const customerProfileRoutes = require("./routes/Customer/customerProfileRoutes");
+const customerBillRoutes = require("./routes/Customer/customerBillRoutes");
+const customerChallanRoutes = require("./routes/Customer/customerChallanRoutes");
+const customerPaymentRoutes = require("./routes/Customer/customerPaymentRoutes");
+const customerDashboardRoutes = require("./routes/Customer/customerDashboardRoutes");
 
 app.use(
   cors({
@@ -80,6 +84,11 @@ app.use("/api/vendor-payments", vendorPaymentRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/", vendorProfileImageRoutes);
 app.use(errorMiddleware);
+app.use("/api/customer/profile", customerProfileRoutes);
+app.use("/api/customer/bills", customerBillRoutes);
+app.use("/api/customer/challans", customerChallanRoutes);
+app.use("/api/customer/payments", customerPaymentRoutes);
+app.use("/api/customer/dashboard", customerDashboardRoutes);
 
 const PORT = process.env.PORT || 5000;
 
