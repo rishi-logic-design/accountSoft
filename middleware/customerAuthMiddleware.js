@@ -29,6 +29,15 @@ module.exports = async (req, res, next) => {
         });
       }
 
+      /*
+      if (!customer.isActive) {
+        return res.status(403).json({
+          success: false,
+          message: "Your customer account is inactive",
+        });
+      }
+      */
+
       req.customer = customer;
       req.user = {
         id: customer.id,
