@@ -24,6 +24,10 @@ exports.list = async (customerId, filters) => {
         as: "vendor",
         attributes: ["id", "vendorName", "businessName"],
       },
+      {
+        model: ChallanItemModel,
+        as: "items",
+      },
     ],
     limit: +filters.size,
     offset: (filters.page - 1) * filters.size,
