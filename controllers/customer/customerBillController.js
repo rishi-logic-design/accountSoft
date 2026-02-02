@@ -21,6 +21,16 @@ exports.getMyBills = asyncHandler(async (req, res) => {
 
 exports.getMyBill = asyncHandler(async (req, res) => {
   const customerId = req.user.id;
-  const data = await service.getById(req.params.id, customerId);
-  success(res, data);
+
+  const bill = await service.getById(req.params.id, customerId);
+
+  if (!bill) {
+    return error(res, "Bill not found", 404);
+  }
+  const response = {
+    ...bill.toJSON(),
+    items: bill.items || [],
+  };
+
+  success(res, response);
 });

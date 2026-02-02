@@ -11,6 +11,7 @@ exports.getCustomerGstNumber = asyncHandler(async (req, res) => {
 
   const record = await CustomerModel.findOne({
     where: { id: customerId },
+    attributes: ["gstNumber"]
   });
 
   if (!record) {

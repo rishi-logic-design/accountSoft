@@ -21,6 +21,17 @@ exports.getMyChallans = asyncHandler(async (req, res) => {
 
 exports.getMyChallan = asyncHandler(async (req, res) => {
   const customerId = req.user.id;
-  const data = await service.getById(req.params.id, customerId);
-  success(res, data);
+
+  const challan = await service.getById(req.params.id, customerId);
+
+  if (!challan) {
+    return error(res, "Challan not found", 404);
+  }
+
+  const response = {
+    ...challan.toJSON(),
+    items: challan.items || [],
+  };
+
+  success(res, response);
 });
