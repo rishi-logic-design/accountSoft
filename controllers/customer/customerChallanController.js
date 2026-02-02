@@ -1,6 +1,5 @@
 const asyncHandler = require("../../utils/asyncHandler");
 const { success } = require("../../utils/apiResponse");
-const challanService = require("../../services/vendor/challanService");
 const service = require("../../services/customer/customerChallanService");
 
 exports.getMyChallans = asyncHandler(async (req, res) => {
@@ -36,21 +35,17 @@ exports.getMyChallan = asyncHandler(async (req, res) => {
 
   success(res, response);
 });
-
-exports.downloadChallanByPdf = asyncHandler(async (req, res) => {
-  const { challanId } = req.params;
+exports.downloadMyChallanPdf = asyncHandler(async (req, res) => {
   const customerId = req.user.id;
+  const challanId = req.params.challanId;
 
-  const pdfBuffer = await challanService.generateChallanPdfForCustomer(
-    challanId,
-    customerId,
-  );
+  const buffer = await service.generateMyChallanPdf(challanId, customerId);
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename=challan-${challanId}.pdf`,
+    `attachment; filename=challan_${challanId}.pdf`,
   );
 
-  res.send(pdfBuffer);
+  res.send(buffer);
 });

@@ -1,5 +1,11 @@
+const PDFDocument = require("pdfkit");
 const { Op } = require("sequelize");
-const { ChallanModel, ChallanItemModel, VendorModel } = require("../../models");
+const {
+  ChallanModel,
+  ChallanItemModel,
+  CustomerModel,
+  VendorModel,
+} = require("../../models");
 
 exports.list = async (customerId, filters = {}) => {
   const { page = 1, size = 20, search, status, fromDate, toDate } = filters;
@@ -70,15 +76,68 @@ exports.getById = async (id, customerId) => {
     ],
   });
 };
-exports.generateChallanPdfForCustomer = async (challanId, customerId) => {
+exports.generateMyChallanPdf = async (challanId, customerId) => {
   const challan = await ChallanModel.findOne({
-    where: { id: challanId, customerId },
-    include: [CustomerModel, ChallanItemModel],
+    where: {
+      id: challanId,
+      customerId,
+    },
+    include: [
+      { model: ChallanItemModel, as: "items" },
+      { model: VendorModel, as: "vendor" },
+      { model: CustomerModel, as: "customer" },
+    ],
   });
 
   if (!challan) {
     throw new Error("Challan not found for this customer");
   }
 
-  return generateChallanPdf(challan);
+  const doc = new PDFDocument({ size: "A4", margin: 40 });
+  const buffers = [];
+
+  doc.on("data", buffers.push.bind(buffers));
+  const endPromise = new Promise((resolve) =>
+    doc.on("end", () => resolve(Buffer.concat(buffers))),
+  );
+
+  // ===== PDF CONTENT =====
+  doc.fontSize(18).text(`Bill`, { align: "center" });
+  doc.moveDown();
+
+  doc.fontSize(10);
+  doc.text(`Bill No: ${bill.billNumber}`);
+  doc.text(`Date: ${bill.billDate}`);
+
+  doc.moveDown();
+  doc.text(`Vendor: ${bill.vendor.vendorName}`);
+  doc.text(`Vendor Mobile: ${bill.vendor.mobile || "-"}`);
+
+  doc.moveDown();
+  doc.text(`Customer: ${bill.customer.customerName}`);
+  doc.text(`Customer Mobile: ${bill.customer.mobile || "-"}`);
+
+  doc.moveDown();
+  doc.text("Items", { underline: true });
+  doc.moveDown(0.3);
+
+  bill.items.forEach((item, index) => {
+    doc.text(
+      `${index + 1}. ${item.description} | Qty: ${item.qty} | Rate: ₹${item.rate} | Amt: ₹${item.amount}`,
+    );
+  });
+
+  doc.moveDown();
+  doc.text(`Subtotal: ₹${bill.subtotal}`);
+  doc.text(`GST: ₹${bill.gstTotal}`);
+  doc.text(`Total: ₹${bill.totalWithGST}`);
+  doc.text(`Status: ${bill.status.toUpperCase()}`);
+
+  if (bill.note) {
+    doc.moveDown();
+    doc.text(`Note: ${bill.note}`);
+  }
+
+  doc.end();
+  return await endPromise;
 };

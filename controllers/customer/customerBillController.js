@@ -1,7 +1,6 @@
 const asyncHandler = require("../../utils/asyncHandler");
 const { success } = require("../../utils/apiResponse");
 const service = require("../../services/customer/createBillservice");
-const billService = require("../../services/vendor/billService");
 
 exports.getMyBills = asyncHandler(async (req, res) => {
   const customerId = req.user.id;
@@ -35,21 +34,17 @@ exports.getMyBill = asyncHandler(async (req, res) => {
 
   success(res, response);
 });
+exports.downloadMyBillPdf = asyncHandler(async (req, res) => {
+  const customerId = req.user.id;
+  const billId = req.params.billId;
 
-exports.downloadBillByPdf = asyncHandler(async (req, res) => {
-  const { billId } = req.params;
-  const customerId = req.user.id; // from auth middleware
-
-  const pdfBuffer = await billService.generateBillPdfForCustomer(
-    billId,
-    customerId,
-  );
+  const buffer = await service.generateMyBillPdf(billId, customerId);
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename=bill-${billId}.pdf`,
+    `attachment; filename=bill_${billId}.pdf`,
   );
 
-  res.send(pdfBuffer);
+  res.send(buffer);
 });
