@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { BillModel, VendorModel } = require("../../models");
+const { BillModel, BillItemModel, VendorModel } = require("../../models");
 
 exports.list = async (customerId, filters) => {
   const where = { customerId };
@@ -46,6 +46,10 @@ exports.getById = async (billId, customerId) => {
           "mobile",
           "address",
         ],
+      },
+      {
+        model: BillItemModel,
+        as: "items",
       },
     ],
   });
