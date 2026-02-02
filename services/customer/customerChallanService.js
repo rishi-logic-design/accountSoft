@@ -22,6 +22,7 @@ exports.list = async (customerId, filters = {}) => {
 
   const result = await ChallanModel.findAndCountAll({
     where,
+    distinct: true,
     include: [
       {
         model: VendorModel,

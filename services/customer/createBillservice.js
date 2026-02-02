@@ -24,6 +24,7 @@ exports.list = async (customerId, filters = {}) => {
 
   const result = await BillModel.findAndCountAll({
     where,
+    distinct: true,
     include: [
       {
         model: VendorModel,
