@@ -102,40 +102,40 @@ exports.generateMyChallanPdf = async (challanId, customerId) => {
   );
 
   // ===== PDF CONTENT =====
-  doc.fontSize(18).text(`Bill`, { align: "center" });
+  doc.fontSize(18).text("CHALLAN", { align: "center" });
   doc.moveDown();
 
   doc.fontSize(10);
-  doc.text(`Bill No: ${bill.billNumber}`);
-  doc.text(`Date: ${bill.billDate}`);
+  doc.text(`Challan No: ${challan.challanNumber}`);
+  doc.text(`Date: ${challan.challanDate}`);
 
   doc.moveDown();
-  doc.text(`Vendor: ${bill.vendor.vendorName}`);
-  doc.text(`Vendor Mobile: ${bill.vendor.mobile || "-"}`);
+  doc.text(`Vendor: ${challan.vendor.vendorName}`);
+  doc.text(`Vendor Mobile: ${challan.vendor.mobile || "-"}`);
 
   doc.moveDown();
-  doc.text(`Customer: ${bill.customer.customerName}`);
-  doc.text(`Customer Mobile: ${bill.customer.mobile || "-"}`);
+  doc.text(`Customer: ${challan.customer.customerName}`);
+  doc.text(`Customer Mobile: ${challan.customer.mobile || "-"}`);
 
   doc.moveDown();
   doc.text("Items", { underline: true });
   doc.moveDown(0.3);
 
-  bill.items.forEach((item, index) => {
+  challan.items.forEach((item, index) => {
     doc.text(
-      `${index + 1}. ${item.description} | Qty: ${item.qty} | Rate: ₹${item.rate} | Amt: ₹${item.amount}`,
+      `${index + 1}. ${item.productName} | Qty: ${item.qty} | Rate: ₹${item.pricePerUnit} | Amount: ₹${item.amount}`,
     );
   });
 
   doc.moveDown();
-  doc.text(`Subtotal: ₹${bill.subtotal}`);
-  doc.text(`GST: ₹${bill.gstTotal}`);
-  doc.text(`Total: ₹${bill.totalWithGST}`);
-  doc.text(`Status: ${bill.status.toUpperCase()}`);
+  doc.text(`Subtotal: ₹${challan.subtotal}`);
+  doc.text(`GST: ₹${challan.gstTotal}`);
+  doc.text(`Total: ₹${challan.totalWithGST}`);
+  doc.text(`Status: ${challan.status.toUpperCase()}`);
 
-  if (bill.note) {
+  if (challan.note) {
     doc.moveDown();
-    doc.text(`Note: ${bill.note}`);
+    doc.text(`Note: ${challan.note}`);
   }
 
   doc.end();
