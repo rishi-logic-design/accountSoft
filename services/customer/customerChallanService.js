@@ -39,7 +39,6 @@ exports.list = async (customerId, filters = {}) => {
     order: [["createdAt", "DESC"]],
   });
 
-  // ✅ PAYMENT JAISE RESPONSE
   return {
     total: result.count,
     rows: result.rows,

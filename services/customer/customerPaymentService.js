@@ -1,4 +1,4 @@
-const { PaymentModel } = require("../../models");
+const { PaymentModel, VendorModel } = require("../../models");
 const { Op } = require("sequelize");
 
 exports.list = async (customerId, filters = {}) => {
@@ -28,6 +28,14 @@ exports.list = async (customerId, filters = {}) => {
 
   const result = await PaymentModel.findAndCountAll({
     where,
+    distinct: true,
+    include: [
+      {
+        model: VendorModel,
+        as: "vendor",
+        attributes: ["id", "vendorName", "businessName"],
+      },
+    ],
     limit: Number(size),
     offset: (Number(page) - 1) * Number(size),
     order: [["paymentDate", "DESC"]],
