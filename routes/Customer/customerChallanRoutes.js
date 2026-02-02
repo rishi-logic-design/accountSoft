@@ -5,5 +5,5 @@ const controller = require("../../controllers/customer/customerChallanController
 
 router.get("/", auth, controller.getMyChallans);
 router.get("/:id", auth, controller.getMyChallan);
-
+router.get("/download/pdf/:challanId", auth, controller.downloadChallanByPdf);
 module.exports = router;

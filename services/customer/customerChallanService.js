@@ -70,3 +70,15 @@ exports.getById = async (id, customerId) => {
     ],
   });
 };
+exports.generateChallanPdfForCustomer = async (challanId, customerId) => {
+  const challan = await ChallanModel.findOne({
+    where: { id: challanId, customerId },
+    include: [CustomerModel, ChallanItemModel],
+  });
+
+  if (!challan) {
+    throw new Error("Challan not found for this customer");
+  }
+
+  return generateChallanPdf(challan);
+};

@@ -71,3 +71,15 @@ exports.getById = async (billId, customerId) => {
     ],
   });
 };
+exports.generateBillPdfForCustomer = async (billId, customerId) => {
+  const bill = await BillModel.findOne({
+    where: { id: billId, customerId },
+    include: [CustomerModel, BillItemModel],
+  });
+
+  if (!bill) {
+    throw new Error("Bill not found for this customer");
+  }
+
+  return generateBillPdf(bill);
+};
