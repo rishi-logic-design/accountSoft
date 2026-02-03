@@ -34,6 +34,7 @@ const customerPaymentRoutes = require("./routes/Customer/customerPaymentRoutes")
 const customerDashboardRoutes = require("./routes/Customer/customerDashboardRoutes");
 const customerVendorPaymentRoutes = require("./routes/Customer/customerVendorPaymentRoutes");
 const customerGstNumberRoutes = require("./routes/Customer/customerGstNumberRoutes");
+const importRoutes = require("./routes/Vendors/importRoutes");
 
 app.use(
   cors({
@@ -88,6 +89,7 @@ app.use("/api/customer/payments", customerPaymentRoutes);
 app.use("/api/customer/dashboard", customerDashboardRoutes);
 app.use("/api/customer/vendor-payment-details", customerVendorPaymentRoutes);
 app.use("/api/customer/vendor-gst-number", customerGstNumberRoutes);
+app.use("/api/import", importRoutes);
 const PORT = process.env.PORT || 5000;
 
 (async () => {

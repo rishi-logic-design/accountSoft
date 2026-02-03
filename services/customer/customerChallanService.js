@@ -101,7 +101,6 @@ exports.generateMyChallanPdf = async (challanId, customerId) => {
     doc.on("end", () => resolve(Buffer.concat(buffers))),
   );
 
-  // ===== PDF CONTENT =====
   doc.fontSize(18).text("CHALLAN", { align: "center" });
   doc.moveDown();
 
