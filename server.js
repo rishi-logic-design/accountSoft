@@ -89,7 +89,7 @@ app.use("/api/customer/payments", customerPaymentRoutes);
 app.use("/api/customer/dashboard", customerDashboardRoutes);
 app.use("/api/customer/vendor-payment-details", customerVendorPaymentRoutes);
 app.use("/api/customer/vendor-gst-number", customerGstNumberRoutes);
-app.use("/api/import", importRoutes);
+app.use("/api/export", importRoutes);
 const PORT = process.env.PORT || 5000;
 
 (async () => {
