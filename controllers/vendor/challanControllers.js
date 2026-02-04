@@ -2,11 +2,33 @@ const challanService = require("../../services/vendor/challanService");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
 const { whatsappLink } = require("../../utils/whatsappHelper");
+const notificationService = require("../../services/vendor/notificationService");
+
+
 
 exports.createChallan = asyncHandler(async (req, res) => {
   const vendorId =
     req.user.role === "vendor" ? req.user.id : req.body.vendorId || req.user.id;
   const challan = await challanService.createChallan(vendorId, req.body);
+
+  // 🔔 CREATE NOTIFICATION
+  try {
+    const totalQty =
+      req.body.items?.reduce((sum, item) => sum + (item.qty || 0), 0) || 0;
+    await notificationService.createNotification({
+      userId: vendorId,
+      userRole: "VENDOR",
+      title: "New Challan Created",
+      message: `Challan #${challan.challanNumber} created - ${totalQty} items`,
+      type: "TRANSACTION",
+      level: "SUCCESS",
+      entityType: "CHALLAN",
+      entityId: challan.id,
+    });
+  } catch (notifError) {
+    console.error("Failed to create notification:", notifError);
+  }
+
   success(res, challan, "Challan created", 201);
 });
 
@@ -56,6 +78,23 @@ exports.markChallanPaid = asyncHandler(async (req, res) => {
     vendorId,
     payload,
   );
+
+  // 🔔 PAYMENT NOTIFICATION
+  try {
+    await notificationService.createNotification({
+      userId: vendorId,
+      userRole: "VENDOR",
+      title: "Challan Payment Received",
+      message: `Challan #${result.challan.challanNumber} payment recorded - ₹${payload.paymentAmount}`,
+      type: "TRANSACTION",
+      level: "SUCCESS",
+      entityType: "PAYMENT",
+      entityId: result.payment.id,
+    });
+  } catch (notifError) {
+    console.error("Failed to create notification:", notifError);
+  }
+
   success(res, result, "Payment processed");
 });
 
@@ -74,6 +113,23 @@ exports.deleteChallan = asyncHandler(async (req, res) => {
   const vendorId =
     req.user.role === "vendor" ? req.user.id : req.query.vendorId;
   await challanService.deleteChallan(req.params.id, vendorId);
+
+  // 🔔 DELETE NOTIFICATION
+  try {
+    await notificationService.createNotification({
+      userId: vendorId,
+      userRole: "VENDOR",
+      title: "Challan Deleted",
+      message: `Challan #${req.params.id} has been deleted`,
+      type: "TRANSACTION",
+      level: "WARNING",
+      entityType: "CHALLAN",
+      entityId: null,
+    });
+  } catch (notifError) {
+    console.error("Failed to create notification:", notifError);
+  }
+
   success(res, null, "Challan deleted");
 });
 

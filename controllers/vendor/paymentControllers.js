@@ -2,6 +2,7 @@ const paymentService = require("../../services/vendor/paymentService");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
 const { validateIFSCCode } = require("../../utils/paymentUtil");
+const notificationService = require("../../services/vendor/notificationService");
 
 exports.createPayment = asyncHandler(async (req, res) => {
   const vendorId =
@@ -148,7 +149,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
     billId,
     challanId,
     attachments: uploadedAttachments,
-    bankName, 
+    bankName,
     accountNumber,
     ifscCode,
     upiId,
@@ -160,6 +161,22 @@ exports.createPayment = asyncHandler(async (req, res) => {
   };
 
   const payment = await paymentService.createPayment(vendorId, payload);
+
+  // 🔔 CREATE NOTIFICATION
+  try {
+    await notificationService.createNotification({
+      userId: vendorId,
+      userRole: "VENDOR",
+      title: "Payment Recorded",
+      message: `Payment of ₹${amount} received via ${method}`,
+      type: "TRANSACTION",
+      level: "SUCCESS",
+      entityType: "PAYMENT",
+      entityId: payment.id,
+    });
+  } catch (notifError) {
+    console.error("Failed to create notification:", notifError);
+  }
 
   success(res, payment, "Payment created successfully", 201);
 });

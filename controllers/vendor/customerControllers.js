@@ -3,9 +3,10 @@ const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
 const { CustomerModel, ChallanModel } = require("../../models");
 const challanService = require("../../services/vendor/challanService");
+const notificationService = require("../../services/vendor/notificationService");
 
 exports.createCustomer = asyncHandler(async (req, res) => {
-  console.log("📥 Incoming Create Customer Request:", req.body);
+  console.log("🔥 Incoming Create Customer Request:", req.body);
   console.log("👤 Created By User ID:", req.user?.id);
 
   const { vendorId, ...customerData } = req.body;
@@ -16,12 +17,28 @@ exports.createCustomer = asyncHandler(async (req, res) => {
 
   const customer = await customerService.createCustomer(vendorId, customerData);
 
+  // 🔔 CREATE NOTIFICATION
+  try {
+    await notificationService.createNotification({
+      userId: vendorId,
+      userRole: "VENDOR",
+      title: "New Customer Added",
+      message: `${customerData.customerName} has been added to your customer list`,
+      type: "SYSTEM",
+      level: "SUCCESS",
+      entityType: "CUSTOMER",
+      entityId: customer.id,
+    });
+  } catch (notifError) {
+    console.error("Failed to create notification:", notifError);
+  }
+
   console.log("✅ Customer Created Successfully:", customer?.id);
   success(res, customer, "Customer created successfully", 201);
 });
 
 exports.updateCustomer = asyncHandler(async (req, res) => {
-  console.log("📥 Incoming Update Customer Request:", req.params.id, req.body);
+  console.log("🔥 Incoming Update Customer Request:", req.params.id, req.body);
 
   const { vendorId, ...customerData } = req.body;
 
@@ -40,7 +57,7 @@ exports.updateCustomer = asyncHandler(async (req, res) => {
 });
 
 exports.deleteCustomer = asyncHandler(async (req, res) => {
-  console.log("📥 Incoming Delete Customer Request:", req.params.id);
+  console.log("🔥 Incoming Delete Customer Request:", req.params.id);
 
   const { vendorId } = req.query;
 
@@ -55,7 +72,7 @@ exports.deleteCustomer = asyncHandler(async (req, res) => {
 });
 
 exports.listCustomers = asyncHandler(async (req, res) => {
-  console.log("📥 Incoming Get Customers Request:", req.query);
+  console.log("🔥 Incoming Get Customers Request:", req.query);
 
   const { vendorId, page, size, search } = req.query;
 
@@ -74,7 +91,7 @@ exports.listCustomers = asyncHandler(async (req, res) => {
 });
 
 exports.searchCustomers = asyncHandler(async (req, res) => {
-  console.log("📥 Incoming Search Customers Request:", req.query);
+  console.log("🔥 Incoming Search Customers Request:", req.query);
 
   const { vendorId, q } = req.query;
 
@@ -157,7 +174,7 @@ exports.getCustomerDetail = asyncHandler(async (req, res) => {
 
 exports.addTransaction = asyncHandler(async (req, res) => {
   console.log(
-    "📥 Incoming Add Transaction Request:",
+    "🔥 Incoming Add Transaction Request:",
     req.params.customerId,
     req.body,
   );
@@ -180,7 +197,7 @@ exports.addTransaction = asyncHandler(async (req, res) => {
 });
 
 exports.transactionReport = asyncHandler(async (req, res) => {
-  console.log("📥 Incoming Transaction Report Request:", req.query);
+  console.log("🔥 Incoming Transaction Report Request:", req.query);
 
   const { vendorId } = req.query;
 
@@ -199,7 +216,7 @@ exports.transactionReport = asyncHandler(async (req, res) => {
 });
 
 exports.getCustomerCountByVendor = asyncHandler(async (req, res) => {
-  console.log("📥 Incoming Get Customer Count Request");
+  console.log("🔥 Incoming Get Customer Count Request");
 
   const counts = await customerService.getCustomerCountByVendor();
 
