@@ -20,7 +20,7 @@ const GstSlab = require("./vendor/gstSlabModel");
 const CustomerOtp = require("./customer/customerOtpModel");
 const VendorGstNumber = require("./vendor/vendorGstNumberModel");
 const VendorPaymentDetails = require("./vendor/vendorPaymentDetails");
-const Notification = require("./vendor/notification");
+const NotificationModelFactory = require("./vendor/notificationModel");
 
 const UserModel = User(sequelize, Sequelize);
 const VendorModel = Vendor(sequelize, Sequelize);
@@ -42,10 +42,10 @@ const GstSlabModel = GstSlab(sequelize, Sequelize);
 const CustomerOtpModel = CustomerOtp(sequelize, Sequelize);
 const VendorGstNumberModel = VendorGstNumber(sequelize, Sequelize);
 const VendorPaymentDetailsModel = VendorPaymentDetails(sequelize, Sequelize);
-const Notification = Notification(sequelize, Sequelize);
+const NotificationModel = NotificationModelFactory(sequelize, Sequelize);
 
 // Vendor - Customer
-VendorModel.hasMany(Notification, {
+VendorModel.hasMany(NotificationModel, {
   foreignKey: "userId",
   constraints: false,
   scope: { userRole: "VENDOR" },
@@ -58,7 +58,7 @@ CustomerModel.belongsTo(VendorModel, {
 });
 
 // Customer - Notification
-CustomerModel.hasMany(Notification, {
+CustomerModel.hasMany(NotificationModel, {
   foreignKey: "userId",
   constraints: false,
   scope: { userRole: "CUSTOMER" },
@@ -301,5 +301,5 @@ module.exports = {
   VendorGstNumberModel,
   VendorPaymentDetailsModel,
 
-  Notification,
+  Notification: NotificationModel,
 };
