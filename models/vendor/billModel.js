@@ -25,7 +25,10 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: "template1",
         comment: "Selected PDF template for this bill",
       },
-
+      customInvoicePrefix: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       vendorId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
       customerId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
       billDate: { type: DataTypes.DATEONLY, allowNull: false },

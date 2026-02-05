@@ -55,8 +55,9 @@ exports.createBill = async (vendorId, payload) => {
     discountPercent = 0,
     gstPercent = 0,
     note,
-    customInvoiceNumber = null, // Allow custom number selection
-    invoiceTemplate = null, // Allow template override
+    customInvoiceNumber = null,
+    invoiceTemplate = null,
+    customInvoicePrefix = null,
   } = payload;
 
   if (!customerId) throw new Error("customerId required");
@@ -141,6 +142,7 @@ exports.createBill = async (vendorId, payload) => {
       {
         billNumber: billNumberInfo.billNumber,
         invoicePrefix: billNumberInfo.prefix,
+        customInvoicePrefix: customInvoicePrefix || null,
         invoiceCount: billNumberInfo.count,
         invoiceTemplate: template,
         vendorId,
@@ -1173,7 +1175,7 @@ exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
   }
 
   // Totals Box - Right Side
-  const totalsX = margin + notalsWidth;
+  const totalsX = margin + notesWidth;
   let totalsY = yPos;
   const totalRowHeight = 26;
 

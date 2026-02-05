@@ -14,7 +14,6 @@ exports.getInvoiceSettings = asyncHandler(async (req, res) => {
   success(res, settings, "Invoice settings fetched successfully");
 });
 
-
 exports.updateInvoiceSettings = asyncHandler(async (req, res) => {
   const vendorId = req.user.role === "vendor" ? req.user.id : req.body.vendorId;
 
@@ -29,7 +28,6 @@ exports.updateInvoiceSettings = asyncHandler(async (req, res) => {
 
   success(res, settings, "Invoice settings updated successfully");
 });
-
 
 exports.getNextInvoiceNumber = asyncHandler(async (req, res) => {
   const vendorId =
@@ -50,7 +48,6 @@ exports.getNextInvoiceNumber = asyncHandler(async (req, res) => {
   success(res, invoiceInfo, "Next invoice number fetched successfully");
 });
 
-
 exports.checkInvoiceNumber = asyncHandler(async (req, res) => {
   const vendorId =
     req.user.role === "vendor" ? req.user.id : req.query.vendorId;
@@ -68,7 +65,6 @@ exports.checkInvoiceNumber = asyncHandler(async (req, res) => {
 
   success(res, availability);
 });
-
 
 exports.getTemplatePreview = asyncHandler(async (req, res) => {
   const vendorId =
