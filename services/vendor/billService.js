@@ -8,13 +8,44 @@ const {
   VendorModel,
   sequelize,
 } = require("../../models");
-const { Op, where } = require("sequelize");
-const { generateBillNumber } = require("../../utils/billUtil");
+const { Op } = require("sequelize");
+const invoiceSettingsService = require("./invoiceSettingsService");
 const PDFDocument = require("pdfkit");
 const { whatsappLink } = require("../../utils/whatsappHelper");
 
 function toNumber(v) {
   return parseFloat(v || 0);
+}
+
+//  Generate bill number using invoice settings
+
+async function generateBillNumberWithSettings(
+  vendorId,
+  customNumber = null,
+  transaction,
+) {
+  try {
+    // Get next invoice number from settings
+    const invoiceInfo = await invoiceSettingsService.getNextInvoiceNumber(
+      vendorId,
+      customNumber,
+    );
+
+    // Reserve the number
+    await invoiceSettingsService.reserveInvoiceNumber(
+      vendorId,
+      invoiceInfo.numericPart,
+    );
+
+    return {
+      billNumber: invoiceInfo.fullNumber,
+      prefix: invoiceInfo.prefix,
+      count: invoiceInfo.numericPart,
+      template: invoiceInfo.template,
+    };
+  } catch (error) {
+    throw error;
+  }
 }
 
 exports.createBill = async (vendorId, payload) => {
@@ -24,6 +55,8 @@ exports.createBill = async (vendorId, payload) => {
     discountPercent = 0,
     gstPercent = 0,
     note,
+    customInvoiceNumber = null, // Allow custom number selection
+    invoiceTemplate = null, // Allow template override
   } = payload;
 
   if (!customerId) throw new Error("customerId required");
@@ -89,11 +122,22 @@ exports.createBill = async (vendorId, payload) => {
 
     const totalWithGST = +(discountedSubtotal + gstAmount).toFixed(2);
 
-    const billNumber = await generateBillNumber(BillModel, t);
+    // Generate bill number with invoice settings
+    const billNumberInfo = await generateBillNumberWithSettings(
+      vendorId,
+      customInvoiceNumber,
+      t,
+    );
+
+    // Use provided template or from settings
+    const template = invoiceTemplate || billNumberInfo.template;
 
     const bill = await BillModel.create(
       {
-        billNumber,
+        billNumber: billNumberInfo.billNumber,
+        invoicePrefix: billNumberInfo.prefix,
+        invoiceCount: billNumberInfo.count,
+        invoiceTemplate: template,
         vendorId,
         customerId,
         billDate: new Date(),
@@ -420,6 +464,26 @@ exports.generateBillPdf = async (billId, vendorId) => {
     ],
   });
 
+  // Get template - use bill's template or default
+  const template = full.invoiceTemplate || "template1";
+
+  // Generate PDF based on template
+  return await this.generatePdfByTemplate(
+    full,
+    paidAmount,
+    pendingAmount,
+    template,
+  );
+};
+
+// Generate PDF based on selected template
+
+exports.generatePdfByTemplate = async (
+  bill,
+  paidAmount,
+  pendingAmount,
+  template,
+) => {
   const doc = new PDFDocument({ size: "A4", margin: 40 });
   const buffers = [];
   doc.on("data", buffers.push.bind(buffers));
@@ -427,25 +491,44 @@ exports.generateBillPdf = async (billId, vendorId) => {
     doc.on("end", () => resolve(Buffer.concat(buffers))),
   );
 
+  switch (template) {
+    case "template2":
+      this.generateTemplate2(doc, bill, paidAmount, pendingAmount);
+      break;
+    case "template3":
+      this.generateTemplate3(doc, bill, paidAmount, pendingAmount);
+      break;
+    case "template1":
+    default:
+      this.generateTemplate1(doc, bill, paidAmount, pendingAmount);
+      break;
+  }
+
+  doc.end();
+  return await endPromise;
+};
+
+// * Template 1: Classic Invoice
+exports.generateTemplate1 = (doc, bill, paidAmount, pendingAmount) => {
   // Header
-  doc.fontSize(18).text(`Bill - ${full.billNumber}`, { align: "center" });
+  doc.fontSize(18).text(`Bill - ${bill.billNumber}`, { align: "center" });
   doc.moveDown();
   doc.fontSize(10);
-  if (full.vendor) doc.text(`Vendor: ${full.vendor.vendorName || ""}`);
-  if (full.customer) {
+  if (bill.vendor) doc.text(`Vendor: ${bill.vendor.vendorName || ""}`);
+  if (bill.customer) {
     doc.text(
-      `Customer: ${full.customer.customerName || ""} (${
-        full.customer.businessName || ""
+      `Customer: ${bill.customer.customerName || ""} (${
+        bill.customer.businessName || ""
       })`,
     );
-    doc.text(`Mobile: ${full.customer.mobile || ""}`);
+    doc.text(`Mobile: ${bill.customer.mobile || ""}`);
   }
-  doc.text(`Date: ${full.billDate}`);
+  doc.text(`Date: ${bill.billDate}`);
   doc.moveDown();
   doc.text("Items:", { underline: true });
   doc.moveDown(0.2);
 
-  full.items.forEach((it, idx) => {
+  bill.items.forEach((it, idx) => {
     doc.text(
       `${idx + 1}. ${it.description} | Qty: ${it.qty} | Rate: ₹${
         it.rate
@@ -454,19 +537,157 @@ exports.generateBillPdf = async (billId, vendorId) => {
   });
 
   doc.moveDown();
-  doc.text(`Subtotal: ₹${full.subtotal}`);
-  doc.text(`GST Total: ₹${full.gstTotal}`);
-  doc.text(`Total Amount: ₹${full.totalWithGST}`);
+  doc.text(`Subtotal: ₹${bill.subtotal}`);
+  doc.text(`GST Total: ₹${bill.gstTotal}`);
+  doc.text(`Total Amount: ₹${bill.totalWithGST}`);
   doc.text(`Paid Amount: ₹${paidAmount}`);
   doc.text(`Pending Amount: ₹${pendingAmount}`, { underline: true });
-  doc.text(`Status: ${full.status.toUpperCase()}`);
-  if (full.note) {
+  doc.text(`Status: ${bill.status.toUpperCase()}`);
+  if (bill.note) {
     doc.moveDown();
-    doc.text(`Note: ${full.note}`);
+    doc.text(`Note: ${bill.note}`);
   }
+};
 
-  doc.end();
-  return await endPromise;
+//  Template 2: Modern Invoice
+
+exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
+  // Modern header with color
+  doc.rect(0, 0, 595, 80).fill("#4A90E2");
+  doc.fillColor("#FFFFFF");
+  doc.fontSize(24).text(`INVOICE`, 40, 30);
+  doc.fontSize(12).text(`${bill.billNumber}`, 40, 55);
+
+  // Reset color
+  doc.fillColor("#000000");
+  doc.fontSize(10);
+
+  // Company info box
+  doc.rect(40, 100, 250, 80).stroke();
+  doc.text(bill.vendor?.vendorName || "Vendor", 50, 110);
+  doc.fontSize(9);
+  if (bill.vendor?.mobile) doc.text(`Ph: ${bill.vendor.mobile}`, 50, 125);
+  doc.text(`Date: ${bill.billDate}`, 50, 140);
+
+  // Customer info box
+  doc.rect(305, 100, 250, 80).stroke();
+  doc.fontSize(10);
+  doc.text("BILL TO:", 315, 110);
+  doc.fontSize(9);
+  doc.text(bill.customer?.customerName || "", 315, 125);
+  doc.text(bill.customer?.businessName || "", 315, 140);
+  doc.text(bill.customer?.mobile || "", 315, 155);
+
+  // Items table
+  let yPos = 200;
+  doc.fontSize(10);
+  doc.text("Item", 40, yPos);
+  doc.text("Qty", 300, yPos);
+  doc.text("Rate", 370, yPos);
+  doc.text("Amount", 470, yPos);
+
+  yPos += 15;
+  doc.moveTo(40, yPos).lineTo(555, yPos).stroke();
+
+  yPos += 10;
+  doc.fontSize(9);
+  bill.items.forEach((it, idx) => {
+    doc.text(it.description, 40, yPos, { width: 250 });
+    doc.text(it.qty.toString(), 300, yPos);
+    doc.text(`₹${it.rate}`, 370, yPos);
+    doc.text(`₹${it.amount}`, 470, yPos);
+    yPos += 20;
+  });
+
+  // Totals
+  yPos += 10;
+  doc.moveTo(370, yPos).lineTo(555, yPos).stroke();
+  yPos += 15;
+
+  doc.text("Subtotal:", 370, yPos);
+  doc.text(`₹${bill.subtotal}`, 470, yPos);
+  yPos += 15;
+
+  doc.text("GST:", 370, yPos);
+  doc.text(`₹${bill.gstTotal}`, 470, yPos);
+  yPos += 15;
+
+  doc.fontSize(11).fillColor("#4A90E2");
+  doc.text("Total:", 370, yPos);
+  doc.text(`₹${bill.totalWithGST}`, 470, yPos);
+
+  doc.fillColor("#000000").fontSize(9);
+  yPos += 20;
+  doc.text(`Paid: ₹${paidAmount}`, 370, yPos);
+  yPos += 15;
+  doc.fillColor("#E74C3C");
+  doc.text(`Pending: ₹${pendingAmount}`, 370, yPos);
+};
+
+// Template 3: Minimal Invoice
+
+exports.generateTemplate3 = (doc, bill, paidAmount, pendingAmount) => {
+  // Minimal header
+  doc.fontSize(14).text("INVOICE", 40, 40);
+  doc.fontSize(20).text(bill.billNumber, 40, 60);
+
+  doc.fontSize(9);
+  doc.text(`Date: ${bill.billDate}`, 40, 90);
+
+  // Two column layout
+  doc.fontSize(8);
+  doc.text("FROM:", 40, 120);
+  doc.fontSize(9);
+  doc.text(bill.vendor?.vendorName || "", 40, 135);
+
+  doc.fontSize(8);
+  doc.text("TO:", 320, 120);
+  doc.fontSize(9);
+  doc.text(bill.customer?.customerName || "", 320, 135);
+  doc.text(bill.customer?.businessName || "", 320, 150);
+
+  let yPos = 200;
+  doc.fontSize(9);
+
+  bill.items.forEach((it, idx) => {
+    doc.text(`${idx + 1}. ${it.description}`, 40, yPos);
+    doc.text(`${it.qty} × ₹${it.rate}`, 320, yPos);
+    doc.text(`₹${it.amount}`, 470, yPos);
+    yPos += 20;
+  });
+
+  yPos += 20;
+  doc.moveTo(320, yPos).lineTo(555, yPos).stroke();
+  yPos += 15;
+
+  doc.text("Subtotal", 320, yPos);
+  doc.text(`₹${bill.subtotal}`, 470, yPos);
+  yPos += 15;
+
+  doc.text("GST", 320, yPos);
+  doc.text(`₹${bill.gstTotal}`, 470, yPos);
+  yPos += 15;
+
+  doc.moveTo(320, yPos).lineTo(555, yPos).stroke();
+  yPos += 15;
+
+  doc.fontSize(11);
+  doc.text("Total", 320, yPos);
+  doc.text(`₹${bill.totalWithGST}`, 470, yPos);
+
+  doc.fontSize(9);
+  yPos += 25;
+  doc.text(`Paid: ₹${paidAmount}`, 320, yPos);
+  yPos += 15;
+  doc.text(`Balance: ₹${pendingAmount}`, 320, yPos);
+
+  if (bill.note) {
+    yPos += 30;
+    doc.fontSize(8);
+    doc.text("Note:", 40, yPos);
+    doc.fontSize(9);
+    doc.text(bill.note, 40, yPos + 15, { width: 500 });
+  }
 };
 
 exports.getWhatsappLinkForBill = async (billId, vendorId, messageOverride) => {
@@ -497,7 +718,6 @@ exports.deleteBill = async (billId, vendorId) => {
 
     if (!bill) throw new Error("Bill not found");
 
-    // Check if bill has payments
     const hasPayments = await TransactionModel.count({
       where: { billId: bill.id, type: "payment" },
       transaction: t,
@@ -509,13 +729,11 @@ exports.deleteBill = async (billId, vendorId) => {
       );
     }
 
-    // Delete bill items
     await BillItemModel.destroy({
       where: { billId: bill.id },
       transaction: t,
     });
 
-    // Soft delete bill
     await bill.destroy({ transaction: t });
 
     return true;

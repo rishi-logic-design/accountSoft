@@ -8,6 +8,24 @@ module.exports = (sequelize, DataTypes) => {
         autoIncrement: true,
       },
       billNumber: { type: DataTypes.STRING, allowNull: false, unique: true },
+
+      invoicePrefix: {
+        type: DataTypes.STRING(10),
+        allowNull: true,
+        comment: "Invoice number prefix (e.g., INV, BILL)",
+      },
+      invoiceCount: {
+        type: DataTypes.INTEGER.UNSIGNED,
+        allowNull: true,
+        comment: "Sequential invoice count number",
+      },
+      invoiceTemplate: {
+        type: DataTypes.ENUM("template1", "template2", "template3"),
+        allowNull: false,
+        defaultValue: "template1",
+        comment: "Selected PDF template for this bill",
+      },
+
       vendorId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
       customerId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
       billDate: { type: DataTypes.DATEONLY, allowNull: false },
@@ -42,7 +60,7 @@ module.exports = (sequelize, DataTypes) => {
       tableName: "bills",
       timestamps: true,
       paranoid: true,
-    }
+    },
   );
 
   return Bill;

@@ -35,6 +35,8 @@ const customerDashboardRoutes = require("./routes/Customer/customerDashboardRout
 const customerVendorPaymentRoutes = require("./routes/Customer/customerVendorPaymentRoutes");
 const customerGstNumberRoutes = require("./routes/Customer/customerGstNumberRoutes");
 const notificationRoutes = require("./routes/Vendors/notificationRoutes");
+const invoiceSettingsRoutes = require("./routes/Vendors/invoiceSettingsRoutes"); 
+
 app.use(
   cors({
     origin: "*",
@@ -89,6 +91,7 @@ app.use("/api/customer/dashboard", customerDashboardRoutes);
 app.use("/api/customer/vendor-payment-details", customerVendorPaymentRoutes);
 app.use("/api/customer/vendor-gst-number", customerGstNumberRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/vendor/invoice-settings", invoiceSettingsRoutes); 
 
 const PORT = process.env.PORT || 5000;
 
@@ -100,7 +103,7 @@ const PORT = process.env.PORT || 5000;
     await sequelize.sync();
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📍 Environment: ${process.env.NODE_ENV}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
     });
   } catch (err) {
     console.error("❌ Startup Error:", err.message);
