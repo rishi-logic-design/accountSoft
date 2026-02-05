@@ -19,13 +19,6 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         comment: "Sequential invoice count number",
       },
-      invoiceTemplate: {
-        type: DataTypes.ENUM("template1", "template2", "template3"),
-        allowNull: false,
-        defaultValue: "template1",
-        comment: "Selected PDF template for this bill",
-      },
-
       vendorId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
       customerId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
       billDate: { type: DataTypes.DATEONLY, allowNull: false },
