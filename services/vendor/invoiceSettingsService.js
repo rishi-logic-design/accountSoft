@@ -1,6 +1,8 @@
 const { InvoiceSettingsModel, BillModel, sequelize } = require("../../models");
 const { Op } = require("sequelize");
-
+const img1 = "../../uploads/vendor/invoice_templates/img1.png";
+const img2 = "../../uploads/vendor/invoice_templates/preview2.png";
+const img3 = "../../uploads/vendor/invoice_templates/preview3.png";
 
 exports.getInvoiceSettings = async (vendorId) => {
   if (!vendorId) throw new Error("vendorId is required");
@@ -169,7 +171,7 @@ exports.getInvoiceTemplatePreview = async (vendorId) => {
         id: "template1",
         name: "Classic Template",
         description: "Traditional invoice layout with company header",
-        preview: "/templates/preview1.png",
+        preview: img1,
       },
       {
         id: "template2",

@@ -552,76 +552,95 @@ exports.generateTemplate1 = (doc, bill, paidAmount, pendingAmount) => {
 //  Template 2: Modern Invoice
 
 exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
-  // Modern header with color
-  doc.rect(0, 0, 595, 80).fill("#4A90E2");
-  doc.fillColor("#FFFFFF");
-  doc.fontSize(24).text(`INVOICE`, 40, 30);
-  doc.fontSize(12).text(`${bill.billNumber}`, 40, 55);
+  const startX = 40;
+  let y = 40;
+  const pageWidth = 515;
 
-  // Reset color
-  doc.fillColor("#000000");
-  doc.fontSize(10);
+  // ===== HEADER =====
+  doc.fontSize(10).text("Logo", startX, y);
+  doc.fontSize(20).text("INVOICE", startX + 360, y);
 
-  // Company info box
-  doc.rect(40, 100, 250, 80).stroke();
-  doc.text(bill.vendor?.vendorName || "Vendor", 50, 110);
+  y += 30;
+  doc
+    .moveTo(startX, y)
+    .lineTo(startX + pageWidth, y)
+    .stroke();
+
+  // ===== BILL INFO =====
+  y += 15;
   doc.fontSize(9);
-  if (bill.vendor?.mobile) doc.text(`Ph: ${bill.vendor.mobile}`, 50, 125);
-  doc.text(`Date: ${bill.billDate}`, 50, 140);
+  doc.text(`Invoice No: ${bill.billNumber}`, startX, y);
+  doc.text(`Date: ${bill.billDate}`, startX + 360, y);
 
-  // Customer info box
-  doc.rect(305, 100, 250, 80).stroke();
+  y += 25;
+
+  // ===== TABLE HEADER =====
+  const col = {
+    desc: startX,
+    qty: startX + 260,
+    rate: startX + 340,
+    total: startX + 430,
+  };
+
+  doc.rect(startX, y, pageWidth, 25).stroke();
+
   doc.fontSize(10);
-  doc.text("BILL TO:", 315, 110);
+  doc.text("DESCRIPTION", col.desc + 5, y + 7);
+  doc.text("QTY", col.qty + 5, y + 7);
+  doc.text("UNIT PRICE", col.rate + 5, y + 7);
+  doc.text("TOTAL", col.total + 5, y + 7);
+
+  y += 25;
+
+  // ===== ITEMS ROWS =====
   doc.fontSize(9);
-  doc.text(bill.customer?.customerName || "", 315, 125);
-  doc.text(bill.customer?.businessName || "", 315, 140);
-  doc.text(bill.customer?.mobile || "", 315, 155);
+  bill.items.forEach((item) => {
+    doc.rect(startX, y, pageWidth, 22).stroke();
 
-  // Items table
-  let yPos = 200;
-  doc.fontSize(10);
-  doc.text("Item", 40, yPos);
-  doc.text("Qty", 300, yPos);
-  doc.text("Rate", 370, yPos);
-  doc.text("Amount", 470, yPos);
+    doc.text(item.description, col.desc + 5, y + 6, { width: 240 });
+    doc.text(item.qty.toString(), col.qty + 10, y + 6);
+    doc.text(`₹${item.rate}`, col.rate + 5, y + 6);
+    doc.text(`₹${item.amount}`, col.total + 5, y + 6);
 
-  yPos += 15;
-  doc.moveTo(40, yPos).lineTo(555, yPos).stroke();
-
-  yPos += 10;
-  doc.fontSize(9);
-  bill.items.forEach((it, idx) => {
-    doc.text(it.description, 40, yPos, { width: 250 });
-    doc.text(it.qty.toString(), 300, yPos);
-    doc.text(`₹${it.rate}`, 370, yPos);
-    doc.text(`₹${it.amount}`, 470, yPos);
-    yPos += 20;
+    y += 22;
   });
 
-  // Totals
-  yPos += 10;
-  doc.moveTo(370, yPos).lineTo(555, yPos).stroke();
-  yPos += 15;
+  // Empty rows (classic look)
+  for (let i = 0; i < 3; i++) {
+    doc.rect(startX, y, pageWidth, 22).stroke();
+    y += 22;
+  }
 
-  doc.text("Subtotal:", 370, yPos);
-  doc.text(`₹${bill.subtotal}`, 470, yPos);
-  yPos += 15;
+  // ===== NOTES + TOTALS =====
+  const notesHeight = 80;
+  doc.rect(startX, y, 320, notesHeight).stroke();
+  doc.fontSize(8).text("Additional Information / Comments:", startX + 5, y + 5);
 
-  doc.text("GST:", 370, yPos);
-  doc.text(`₹${bill.gstTotal}`, 470, yPos);
-  yPos += 15;
+  if (bill.note) {
+    doc.text(bill.note, startX + 5, y + 20, { width: 300 });
+  }
 
-  doc.fontSize(11).fillColor("#4A90E2");
-  doc.text("Total:", 370, yPos);
-  doc.text(`₹${bill.totalWithGST}`, 470, yPos);
+  // Totals box
+  const totalX = startX + 320;
+  const rowH = 26;
 
-  doc.fillColor("#000000").fontSize(9);
-  yPos += 20;
-  doc.text(`Paid: ₹${paidAmount}`, 370, yPos);
-  yPos += 15;
-  doc.fillColor("#E74C3C");
-  doc.text(`Pending: ₹${pendingAmount}`, 370, yPos);
+  const drawTotalRow = (label, value, bold = false) => {
+    doc.rect(totalX, y, pageWidth - 320, rowH).stroke();
+    doc.fontSize(bold ? 11 : 9);
+    doc.text(label, totalX + 10, y + 7);
+    doc.text(`₹${value}`, totalX + 120, y + 7);
+    y += rowH;
+  };
+
+  drawTotalRow("SUBTOTAL", bill.subtotal);
+  drawTotalRow("GST", bill.gstTotal);
+  drawTotalRow("TOTAL", bill.totalWithGST, true);
+
+  y += 10;
+  doc.fontSize(9);
+  doc.text(`Paid: ₹${paidAmount}`, startX + 350, y);
+  y += 15;
+  doc.text(`Balance: ₹${pendingAmount}`, startX + 350, y);
 };
 
 // Template 3: Minimal Invoice
