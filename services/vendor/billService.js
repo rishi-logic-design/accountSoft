@@ -74,13 +74,18 @@ exports.createBill = async (vendorId, payload) => {
     if (!customer) throw new Error("Customer not found");
 
     const challans = await ChallanModel.findAll({
-      where: { id: challanIds, vendorId, customerId },
+      where: {
+        id: challanIds,
+        vendorId,
+        customerId,
+        status: "unpaid",
+      },
       include: [{ model: ChallanItemModel, as: "items" }],
       transaction: t,
     });
 
     if (challans.length !== challanIds.length) {
-      throw new Error("One or more challans are invalid");
+      throw new Error("One or more challans are already billed or invalid");
     }
 
     let subtotal = 0;
@@ -159,7 +164,18 @@ exports.createBill = async (vendorId, payload) => {
       billItems.map((i) => ({ ...i, billId: bill.id })),
       { transaction: t },
     );
-
+    await ChallanModel.update(
+      {
+        status: "paid",
+      },
+      {
+        where: {
+          id: challanIds,
+          vendorId,
+        },
+        transaction: t,
+      },
+    );
     return await BillModel.findByPk(bill.id, {
       include: [
         { model: BillItemModel, as: "items" },

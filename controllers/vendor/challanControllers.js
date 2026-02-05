@@ -4,8 +4,6 @@ const { success, error } = require("../../utils/apiResponse");
 const { whatsappLink } = require("../../utils/whatsappHelper");
 const notificationService = require("../../services/vendor/notificationService");
 
-
-
 exports.createChallan = asyncHandler(async (req, res) => {
   const vendorId =
     req.user.role === "vendor" ? req.user.id : req.body.vendorId || req.user.id;
