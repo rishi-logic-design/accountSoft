@@ -16,7 +16,19 @@ const { whatsappLink } = require("../../utils/whatsappHelper");
 function toNumber(v) {
   return parseFloat(v || 0);
 }
-
+const roundedRect = (doc, x, y, width, height, radius = 5) => {
+  doc
+    .moveTo(x + radius, y)
+    .lineTo(x + width - radius, y)
+    .quadraticCurveTo(x + width, y, x + width, y + radius)
+    .lineTo(x + width, y + height - radius)
+    .quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
+    .lineTo(x + radius, y + height)
+    .quadraticCurveTo(x, y + height, x, y + height - radius)
+    .lineTo(x, y + radius)
+    .quadraticCurveTo(x, y, x + radius, y)
+    .closePath();
+};
 //  Generate bill number using invoice settings
 
 async function generateBillNumberWithSettings(
@@ -551,10 +563,8 @@ exports.generateTemplate1 = (doc, bill, paidAmount, pendingAmount) => {
   const invoiceNumWidth = doc.widthOfString(bill.billNumber) + 20;
   const invoiceNumX = pageWidth - margin - invoiceNumWidth;
 
-  doc
-    .roundedRect(invoiceNumX, yPos - 5, invoiceNumWidth, 24, 3)
-    .fillColor(colors.lightGray)
-    .fill();
+  roundedRect(doc, invoiceNumX, yPos - 5, invoiceNumWidth, 24, 3);
+  doc.fillColor(colors.lightGray).fill();
 
   doc
     .fontSize(12)
@@ -576,10 +586,8 @@ exports.generateTemplate1 = (doc, bill, paidAmount, pendingAmount) => {
   const cardWidth = (contentWidth - cardGap) / 2;
 
   // FROM Card
-  doc
-    .roundedRect(margin, yPos, cardWidth, cardHeight, 5)
-    .fillColor(colors.lightGray)
-    .fill();
+  roundedRect(doc, margin, yPos, cardWidth, cardHeight, 5);
+  doc.fillColor(colors.lightGray).fill();
 
   let cardYPos = yPos + 15;
 
@@ -630,10 +638,8 @@ exports.generateTemplate1 = (doc, bill, paidAmount, pendingAmount) => {
   const billToX = margin + cardWidth + cardGap;
   cardYPos = yPos + 15;
 
-  doc
-    .roundedRect(billToX, yPos, cardWidth, cardHeight, 5)
-    .fillColor(colors.mediumGray)
-    .fill();
+  roundedRect(doc, billToX, yPos, cardWidth, cardHeight, 5);
+  doc.fillColor(colors.mediumGray).fill();
 
   doc
     .fontSize(8)
@@ -710,10 +716,8 @@ exports.generateTemplate1 = (doc, bill, paidAmount, pendingAmount) => {
   const statusConfig = statusConfigs[bill.status] || statusConfigs.pending;
   const badgeX = pageWidth - margin - 110;
 
-  doc
-    .roundedRect(badgeX, yPos + 8, 100, 24, 5)
-    .fillColor(statusConfig.color)
-    .fill();
+  roundedRect(doc, badgeX, yPos + 8, 100, 24, 5);
+  doc.fillColor(statusConfig.color).fill();
 
   doc
     .fillColor(colors.white)
@@ -854,10 +858,8 @@ exports.generateTemplate1 = (doc, bill, paidAmount, pendingAmount) => {
   const rowGap = 18;
 
   // Subtle background for totals
-  doc
-    .roundedRect(totalsX - 15, yPos - 10, 295, 135, 5)
-    .fillColor(colors.lightGray)
-    .fill();
+  roundedRect(doc, totalsX - 15, yPos - 10, 295, 135, 5);
+  doc.fillColor(colors.lightGray).fill();
 
   yPos += 5;
 
@@ -932,11 +934,8 @@ exports.generateTemplate1 = (doc, bill, paidAmount, pendingAmount) => {
 
   if (bill.note) {
     // Note section with border
-    doc
-      .roundedRect(margin, yPos, contentWidth - 100, 45, 3)
-      .strokeColor(colors.mediumGray)
-      .lineWidth(1)
-      .stroke();
+    roundedRect(doc, margin, yPos, contentWidth - 100, 45, 3);
+    doc.strokeColor(colors.mediumGray).lineWidth(1).stroke();
 
     doc.fontSize(8).fillColor(colors.darkGray).font("Helvetica-Bold");
     doc.text("NOTE:", margin + 10, yPos + 10);
@@ -1004,10 +1003,8 @@ exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
 
   // Modern Invoice Badge on left
   const badgeWidth = 130;
-  doc
-    .roundedRect(margin, yPos, badgeWidth, 50, 8)
-    .fillColor(colors.primary)
-    .fill();
+  roundedRect(doc, margin, yPos, badgeWidth, 50, 8);
+  doc.fillColor(colors.primary).fill();
 
   doc.fontSize(11).fillColor(colors.accent).font("Helvetica-Bold");
   doc.text("INVOICE", margin + 10, yPos + 12, {
@@ -1051,22 +1048,16 @@ exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
   const fromCardX = margin;
 
   // Shadow layer
-  doc
-    .roundedRect(fromCardX + 2, yPos + 2, cardWidth, cardHeight, 8)
-    .fillColor("#E2E8F0")
-    .fill();
+  roundedRect(doc, fromCardX + 2, yPos + 2, cardWidth, cardHeight, 8);
+  doc.fillColor("#E2E8F0").fill();
 
   // Main card
-  doc
-    .roundedRect(fromCardX, yPos, cardWidth, cardHeight, 8)
-    .fillColor(colors.white)
-    .fill();
+  roundedRect(doc, fromCardX, yPos, cardWidth, cardHeight, 8);
+  doc.fillColor(colors.white).fill();
 
   // Left border accent
-  doc
-    .roundedRect(fromCardX, yPos, 5, cardHeight, 8)
-    .fillColor(colors.accent)
-    .fill();
+  roundedRect(doc, fromCardX, yPos, 5, cardHeight, 8);
+  doc.fillColor(colors.accent).fill();
 
   let cardY = yPos + 15;
 
@@ -1114,22 +1105,16 @@ exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
   cardY = yPos + 15;
 
   // Shadow layer
-  doc
-    .roundedRect(billToX + 2, yPos + 2, cardWidth, cardHeight, 8)
-    .fillColor("#E2E8F0")
-    .fill();
+  roundedRect(doc, billToX + 2, yPos + 2, cardWidth, cardHeight, 8);
+  doc.fillColor("#E2E8F0").fill();
 
   // Main card with gradient-like effect
-  doc
-    .roundedRect(billToX, yPos, cardWidth, cardHeight, 8)
-    .fillColor(colors.cardBg)
-    .fill();
+  roundedRect(doc, billToX, yPos, cardWidth, cardHeight, 8);
+  doc.fillColor(colors.cardBg).fill();
 
   // Right border accent
-  doc
-    .roundedRect(billToX + cardWidth - 5, yPos, 5, cardHeight, 8)
-    .fillColor(colors.purple)
-    .fill();
+  roundedRect(doc, billToX + cardWidth - 5, yPos, 5, cardHeight, 8);
+  doc.fillColor(colors.purple).fill();
 
   doc.fontSize(7).fillColor(colors.textSecondary).font("Helvetica-Bold");
   doc.text("BILL TO", billToX + 15, cardY, {
@@ -1240,16 +1225,12 @@ exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
   const badgeY = yPos + 10;
 
   // Outer glow effect
-  doc
-    .roundedRect(badgeX - 2, badgeY - 2, 124, 29, 7)
-    .fillColor(statusConfig.bgColor)
-    .fill();
+  roundedRect(doc, badgeX - 2, badgeY - 2, 124, 29, 7);
+  doc.fillColor(statusConfig.bgColor).fill();
 
   // Main badge
-  doc
-    .roundedRect(badgeX, badgeY, 120, 25, 6)
-    .fillColor(statusConfig.color)
-    .fill();
+  roundedRect(doc, badgeX, badgeY, 120, 25, 6);
+  doc.fillColor(statusConfig.color).fill();
 
   doc.fontSize(11).fillColor(colors.white).font("Helvetica-Bold");
   doc.text(statusConfig.text, badgeX, badgeY + 6, {
@@ -1398,29 +1379,27 @@ exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
   const totalsBoxHeight = 160;
 
   // Shadow effect
-  doc
-    .roundedRect(totalsBoxX + 3, yPos + 3, totalsBoxWidth, totalsBoxHeight, 10)
-    .fillColor("#E2E8F0")
-    .fill();
+  roundedRect(
+    doc,
+    totalsBoxX + 3,
+    yPos + 3,
+    totalsBoxWidth,
+    totalsBoxHeight,
+    10,
+  );
+  doc.fillColor("#E2E8F0").fill();
 
   // Main totals box
-  doc
-    .roundedRect(totalsBoxX, yPos, totalsBoxWidth, totalsBoxHeight, 10)
-    .fillColor(colors.white)
-    .fill();
+  roundedRect(doc, totalsBoxX, yPos, totalsBoxWidth, totalsBoxHeight, 10);
+  doc.fillColor(colors.white).fill();
 
   // Border
-  doc
-    .roundedRect(totalsBoxX, yPos, totalsBoxWidth, totalsBoxHeight, 10)
-    .strokeColor(colors.border)
-    .lineWidth(1.5)
-    .stroke();
+  roundedRect(doc, totalsBoxX, yPos, totalsBoxWidth, totalsBoxHeight, 10);
+  doc.strokeColor(colors.border).lineWidth(1.5).stroke();
 
   // Top accent strip
-  doc
-    .roundedRect(totalsBoxX, yPos, totalsBoxWidth, 8, 10)
-    .fillColor(colors.accent)
-    .fill();
+  roundedRect(doc, totalsBoxX, yPos, totalsBoxWidth, 8, 10);
+  doc.fillColor(colors.accent).fill();
 
   yPos += 20;
 
@@ -1491,10 +1470,8 @@ exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
   // Amount Due - Eye-catching
   if (parseFloat(pendingAmount) > 0) {
     const dueBoxY = yPos - 5;
-    doc
-      .roundedRect(labelX - 5, dueBoxY, 270, 26, 5)
-      .fillColor("#FEE2E2")
-      .fill();
+    roundedRect(doc, labelX - 5, dueBoxY, 270, 26, 5);
+    doc.fillColor("#FEE2E2").fill();
 
     doc.fontSize(11).fillColor(colors.danger).font("Helvetica-Bold");
     doc.text("⚠ Amount Due:", labelX, yPos, { width: 130, align: "left" });
@@ -1513,16 +1490,11 @@ exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
 
   if (bill.note) {
     // Note card
-    doc
-      .roundedRect(margin, yPos, contentWidth - 120, 55, 6)
-      .fillColor(colors.lightBg)
-      .fill();
+    roundedRect(doc, margin, yPos, contentWidth - 120, 55, 6);
+    doc.fillColor(colors.lightBg).fill();
 
-    doc
-      .roundedRect(margin, yPos, contentWidth - 120, 55, 6)
-      .strokeColor(colors.border)
-      .lineWidth(1)
-      .stroke();
+    roundedRect(doc, margin, yPos, contentWidth - 120, 55, 6);
+    doc.strokeColor(colors.border).lineWidth(1).stroke();
 
     // Note icon and label
     doc.fontSize(8).fillColor(colors.textSecondary).font("Helvetica-Bold");
@@ -1661,11 +1633,8 @@ exports.generateTemplate3 = (doc, bill, paidAmount, pendingAmount) => {
 
   // Logo area (left side) - placeholder for logo
   const logoSize = 60;
-  doc
-    .roundedRect(margin + 5, yPos, logoSize, logoSize, 5)
-    .strokeColor(colors.border)
-    .lineWidth(2)
-    .stroke();
+  roundedRect(doc, margin + 5, yPos, logoSize, logoSize, 5);
+  doc.strokeColor(colors.border).lineWidth(2).stroke();
 
   // Add placeholder text in logo
   doc.fontSize(8).fillColor(colors.border).font("Helvetica-Bold");
