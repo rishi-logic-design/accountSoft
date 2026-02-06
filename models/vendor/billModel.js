@@ -19,12 +19,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         comment: "Sequential invoice count number",
       },
-      invoiceTemplate: {
-        type: DataTypes.ENUM("template1", "template2", "template3"),
-        allowNull: false,
-        defaultValue: "template1",
-        comment: "Selected PDF template for this bill",
-      },
+
       customInvoicePrefix: {
         type: DataTypes.STRING,
         allowNull: true,
