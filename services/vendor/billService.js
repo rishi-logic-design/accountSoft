@@ -534,131 +534,486 @@ exports.generatePdfByTemplate = async (
 };
 
 //  Template 1: Classic Professional Invoice
+
 exports.generateTemplate1 = (doc, bill, paidAmount, pendingAmount) => {
   const pageWidth = 595.28; // A4 width in points
   const pageHeight = 841.89; // A4 height in points
-  const margin = 40;
+  const margin = 50;
   const contentWidth = pageWidth - margin * 2;
 
   // ============================================
-  // HEADER SECTION - Company Logo & Invoice Title
+  // HEADER - INVOICE TITLE & NUMBER
   // ============================================
 
-  // Invoice Title - Top Right
-  doc.fontSize(28).fillColor("#2C3E50").text("INVOICE", margin, margin, {
-    align: "right",
-    width: contentWidth,
-  });
+  let yPos = margin + 20;
 
-  // Invoice Number - Top Right
+  // Invoice Title - Right aligned
   doc
-    .fontSize(12)
-    .fillColor("#34495E")
-    .text(bill.billNumber, margin, margin + 35, {
-      align: "right",
+    .fontSize(32)
+    .fillColor("#2C3E50")
+    .font("Helvetica-Bold")
+    .text("INVOICE", margin, yPos, {
       width: contentWidth,
+      align: "right",
     });
 
-  doc.moveDown(1);
+  yPos += 40;
+
+  // Invoice/Bill Number - Right aligned, smaller
+  doc
+    .fontSize(11)
+    .fillColor("#5D6D7E")
+    .font("Helvetica")
+    .text(bill.billNumber, margin, yPos, {
+      width: contentWidth,
+      align: "right",
+    });
+
+  yPos += 50;
 
   // ============================================
-  // VENDOR INFORMATION - Left Side
+  // FROM & BILL TO SECTION (Two Columns)
   // ============================================
 
-  let yPos = margin + 80;
+  const leftColX = margin;
+  const rightColX = pageWidth / 2 + 20;
 
-  doc.fontSize(10).fillColor("#7F8C8D").text("FROM", margin, yPos);
+  // FROM Section (Left)
+  doc
+    .fontSize(9)
+    .fillColor("#95A5A6")
+    .font("Helvetica")
+    .text("FROM", leftColX, yPos);
+
   yPos += 15;
 
-  doc.fontSize(12).fillColor("#2C3E50").font("Helvetica-Bold");
-  doc.text(bill.vendor?.vendorName || "Vendor Name", margin, yPos);
-  yPos += 18;
+  doc
+    .fontSize(11)
+    .fillColor("#2C3E50")
+    .font("Helvetica-Bold")
+    .text(bill.vendor?.vendorName || "Vendor Name", leftColX, yPos);
 
-  doc.fontSize(10).fillColor("#34495E").font("Helvetica");
+  yPos += 16;
+
+  doc.fontSize(9).fillColor("#34495E").font("Helvetica");
 
   if (bill.vendor?.mobile) {
-    doc.text(`Phone: ${bill.vendor.mobile}`, margin, yPos);
+    doc.text(`Phone: ${bill.vendor.mobile}`, leftColX, yPos);
     yPos += 14;
   }
 
   if (bill.vendor?.email) {
-    doc.text(`Email: ${bill.vendor.email}`, margin, yPos);
+    doc.text(`Email: ${bill.vendor.email}`, leftColX, yPos);
     yPos += 14;
   }
 
   if (bill.vendor?.address) {
-    doc.text(`${bill.vendor.address}`, margin, yPos, { width: 200 });
+    doc.text(bill.vendor.address, leftColX, yPos, { width: 220 });
   }
 
-  // ============================================
-  // CUSTOMER INFORMATION - Right Side
-  // ============================================
+  // BILL TO Section (Right)
+  yPos = margin + 110; // Reset to same starting position
 
-  yPos = margin + 80;
-  const rightCol = pageWidth - margin - 200;
+  doc
+    .fontSize(9)
+    .fillColor("#95A5A6")
+    .font("Helvetica")
+    .text("BILL TO", rightColX, yPos);
 
-  doc.fontSize(10).fillColor("#7F8C8D").text("BILL TO", rightCol, yPos);
   yPos += 15;
 
-  doc.fontSize(12).fillColor("#2C3E50").font("Helvetica-Bold");
-  doc.text(bill.customer?.customerName || "Customer Name", rightCol, yPos);
-  yPos += 18;
+  doc
+    .fontSize(11)
+    .fillColor("#2C3E50")
+    .font("Helvetica-Bold")
+    .text(bill.customer?.customerName || "Customer Name", rightColX, yPos);
 
-  doc.fontSize(10).fillColor("#34495E").font("Helvetica");
+  yPos += 16;
+
+  doc.fontSize(9).fillColor("#34495E").font("Helvetica");
 
   if (bill.customer?.businessName) {
-    doc.text(bill.customer.businessName, rightCol, yPos);
-    yPos += 14;
-  }
-
-  if (bill.customer?.mobile) {
-    doc.text(`Phone: ${bill.customer.mobile}`, rightCol, yPos);
+    doc.text(bill.customer.businessName, rightColX, yPos);
     yPos += 14;
   }
 
   if (bill.customer?.email) {
-    doc.text(`Email: ${bill.customer.email}`, rightCol, yPos);
-    yPos += 14;
+    doc.text(`Email: ${bill.customer.email}`, rightColX, yPos);
   }
 
+  yPos = margin + 220; // Move down for next section
+
   // ============================================
-  // INVOICE DETAILS BAR
+  // INVOICE DATE & STATUS BAR
   // ============================================
 
-  yPos = margin + 200;
+  // Light gray background bar
+  doc.rect(margin, yPos, contentWidth, 35).fillColor("#F5F6F7").fill();
 
-  // Background bar
-  doc.rect(margin, yPos, contentWidth, 30).fillColor("#ECF0F1").fill();
+  // Invoice Date - Left side
+  doc.fontSize(10).fillColor("#2C3E50").font("Helvetica");
 
-  // Invoice Date
-  doc.fillColor("#2C3E50").fontSize(10);
-  doc.text("Invoice Date:", margin + 10, yPos + 10);
+  doc.text("Invoice Date:", margin + 15, yPos + 11);
+
   doc.font("Helvetica-Bold");
   doc.text(
-    new Date(bill.billDate).toLocaleDateString("en-IN", {
+    new Date(bill.billDate).toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     }),
-    margin + 90,
-    yPos + 10,
+    margin + 95,
+    yPos + 11,
   );
 
-  // Due Date (if applicable)
-  if (bill.dueDate) {
-    doc.font("Helvetica");
-    doc.text("Due Date:", margin + 200, yPos + 10);
-    doc.font("Helvetica-Bold");
+  // Status Badge - Right side
+  const statusColors = {
+    paid: "#27AE60",
+    partial: "#F39C12",
+    pending: "#E74C3C",
+    cancelled: "#95A5A6",
+  };
+
+  const statusColor = statusColors[bill.status] || statusColors.pending;
+  const statusText = bill.status.toUpperCase();
+  const badgeX = pageWidth - margin - 100;
+
+  doc
+    .roundedRect(badgeX, yPos + 7, 90, 22, 3)
+    .fillColor(statusColor)
+    .fill();
+
+  doc
+    .fillColor("#FFFFFF")
+    .fontSize(10)
+    .font("Helvetica-Bold")
+    .text(statusText, badgeX, yPos + 11, {
+      width: 90,
+      align: "center",
+    });
+
+  yPos += 60;
+
+  // ============================================
+  // ITEMS TABLE
+  // ============================================
+
+  const tableTop = yPos;
+
+  // Column definitions
+  const cols = {
+    num: { x: margin, width: 35 },
+    desc: { x: margin + 35, width: 220 },
+    qty: { x: margin + 255, width: 70 },
+    rate: { x: margin + 325, width: 70 },
+    gst: { x: margin + 395, width: 60 },
+    amount: { x: margin + 455, width: 90 },
+  };
+
+  // Table Header - Dark background
+  doc.rect(margin, tableTop, contentWidth, 30).fillColor("#34495E").fill();
+
+  // Table Header Text
+  doc.fontSize(10).fillColor("#FFFFFF").font("Helvetica-Bold");
+
+  doc.text("#", cols.num.x + 8, tableTop + 10);
+  doc.text("Description", cols.desc.x + 5, tableTop + 10);
+  doc.text("Qty", cols.qty.x + 5, tableTop + 10, {
+    width: cols.qty.width - 10,
+    align: "center",
+  });
+  doc.text("Rate", cols.rate.x + 5, tableTop + 10, {
+    width: cols.rate.width - 10,
+    align: "right",
+  });
+  doc.text("GST%", cols.gst.x + 5, tableTop + 10, {
+    width: cols.gst.width - 10,
+    align: "center",
+  });
+  doc.text("Amount", cols.amount.x + 5, tableTop + 10, {
+    width: cols.amount.width - 10,
+    align: "right",
+  });
+
+  yPos = tableTop + 30;
+
+  // Table Items
+  doc.fontSize(9).fillColor("#2C3E50").font("Helvetica");
+
+  bill.items.forEach((item, index) => {
+    const rowHeight = 26;
+
+    // Alternate row background
+    if (index % 2 === 1) {
+      doc
+        .rect(margin, yPos, contentWidth, rowHeight)
+        .fillColor("#FAFAFA")
+        .fill();
+    }
+
+    doc.fillColor("#2C3E50");
+
+    // Row number
+    doc.text((index + 1).toString(), cols.num.x + 8, yPos + 8);
+
+    // Description
+    doc.text(item.description || "Item", cols.desc.x + 5, yPos + 8, {
+      width: cols.desc.width - 10,
+    });
+
+    // Quantity
+    doc.text(parseFloat(item.qty).toFixed(2), cols.qty.x + 5, yPos + 8, {
+      width: cols.qty.width - 10,
+      align: "center",
+    });
+
+    // Rate with Rupee symbol
     doc.text(
-      new Date(bill.dueDate).toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
-      margin + 260,
-      yPos + 10,
+      `₹${parseFloat(item.rate).toFixed(2)}`,
+      cols.rate.x + 5,
+      yPos + 8,
+      {
+        width: cols.rate.width - 10,
+        align: "right",
+      },
     );
+
+    // GST percentage
+    doc.text(parseFloat(item.gstPercent).toFixed(2), cols.gst.x + 5, yPos + 8, {
+      width: cols.gst.width - 10,
+      align: "center",
+    });
+
+    // Amount with Rupee symbol
+    doc.text(
+      `₹${parseFloat(item.amount).toFixed(2)}`,
+      cols.amount.x + 5,
+      yPos + 8,
+      {
+        width: cols.amount.width - 10,
+        align: "right",
+      },
+    );
+
+    yPos += rowHeight;
+  });
+
+  // Bottom border of table
+  doc
+    .moveTo(margin, yPos)
+    .lineTo(pageWidth - margin, yPos)
+    .strokeColor("#D5DBDB")
+    .lineWidth(1)
+    .stroke();
+
+  yPos += 40;
+
+  // ============================================
+  // TOTALS SECTION (Right Aligned)
+  // ============================================
+
+  const totalsX = pageWidth - margin - 250;
+  const labelX = totalsX;
+  const valueX = totalsX + 140;
+
+  doc.fontSize(10).fillColor("#2C3E50").font("Helvetica");
+
+  // Subtotal
+  doc.text("Subtotal:", labelX, yPos, { width: 130, align: "right" });
+  doc.text(`₹${parseFloat(bill.subtotal).toFixed(2)}`, valueX, yPos, {
+    width: 100,
+    align: "right",
+  });
+  yPos += 20;
+
+  // GST
+  doc.text("GST:", labelX, yPos, { width: 130, align: "right" });
+  doc.text(`₹${parseFloat(bill.gstTotal).toFixed(2)}`, valueX, yPos, {
+    width: 100,
+    align: "right",
+  });
+  yPos += 25;
+
+  // Horizontal line
+  doc
+    .moveTo(totalsX, yPos - 5)
+    .lineTo(pageWidth - margin, yPos - 5)
+    .strokeColor("#34495E")
+    .lineWidth(1)
+    .stroke();
+
+  // Total Amount
+  doc.fontSize(12).font("Helvetica-Bold");
+  doc.text("Total Amount:", labelX, yPos, { width: 130, align: "right" });
+  doc.text(`₹${parseFloat(bill.totalWithGST).toFixed(2)}`, valueX, yPos, {
+    width: 100,
+    align: "right",
+  });
+  yPos += 25;
+
+  // Paid Amount (if any)
+  if (parseFloat(paidAmount) > 0) {
+    doc.fontSize(10).font("Helvetica").fillColor("#27AE60");
+    doc.text("Paid:", labelX, yPos, { width: 130, align: "right" });
+    doc.text(`₹${parseFloat(paidAmount).toFixed(2)}`, valueX, yPos, {
+      width: 100,
+      align: "right",
+    });
+    yPos += 25;
   }
+
+  // Amount Due (if pending)
+  if (parseFloat(pendingAmount) > 0) {
+    doc.fontSize(11).font("Helvetica-Bold").fillColor("#E67E22");
+    doc.text("Amount Due:", labelX, yPos, { width: 130, align: "right" });
+    doc.text(`₹${parseFloat(pendingAmount).toFixed(2)}`, valueX, yPos, {
+      width: 100,
+      align: "right",
+    });
+  }
+
+  // ============================================
+  // FOOTER
+  // ============================================
+
+  if (bill.note) {
+    yPos += 60;
+    doc.fontSize(9).fillColor("#7F8C8D").font("Helvetica-Oblique");
+    doc.text(`Note: ${bill.note}`, margin, yPos, {
+      width: contentWidth - 100,
+    });
+  }
+};
+
+//  Template 2: Modern Professional Invoice
+
+exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
+  const pageWidth = 595.28; // A4 width
+  const pageHeight = 841.89; // A4 height
+  const margin = 50;
+  const contentWidth = pageWidth - margin * 2;
+
+  let yPos = margin + 20;
+
+  // ============================================
+  // HEADER - INVOICE TITLE & NUMBER
+  // ============================================
+
+  // Invoice Title - Right aligned
+  doc
+    .fontSize(32)
+    .fillColor("#2C3E50")
+    .font("Helvetica-Bold")
+    .text("INVOICE", margin, yPos, {
+      width: contentWidth,
+      align: "right",
+    });
+
+  yPos += 40;
+
+  // Invoice/Bill Number - Right aligned
+  doc
+    .fontSize(11)
+    .fillColor("#5D6D7E")
+    .font("Helvetica")
+    .text(bill.billNumber, margin, yPos, {
+      width: contentWidth,
+      align: "right",
+    });
+
+  yPos += 50;
+
+  // ============================================
+  // FROM & BILL TO SECTION
+  // ============================================
+
+  const leftColX = margin;
+  const rightColX = pageWidth / 2 + 20;
+
+  // FROM Section
+  doc
+    .fontSize(9)
+    .fillColor("#95A5A6")
+    .font("Helvetica")
+    .text("FROM", leftColX, yPos);
+
+  yPos += 15;
+
+  doc
+    .fontSize(11)
+    .fillColor("#2C3E50")
+    .font("Helvetica-Bold")
+    .text(bill.vendor?.vendorName || "Vendor Name", leftColX, yPos);
+
+  yPos += 16;
+
+  doc.fontSize(9).fillColor("#34495E").font("Helvetica");
+
+  if (bill.vendor?.mobile) {
+    doc.text(`Phone: ${bill.vendor.mobile}`, leftColX, yPos);
+    yPos += 14;
+  }
+
+  if (bill.vendor?.email) {
+    doc.text(`Email: ${bill.vendor.email}`, leftColX, yPos);
+    yPos += 14;
+  }
+
+  if (bill.vendor?.address) {
+    doc.text(bill.vendor.address, leftColX, yPos, { width: 220 });
+  }
+
+  // BILL TO Section
+  yPos = margin + 110;
+
+  doc
+    .fontSize(9)
+    .fillColor("#95A5A6")
+    .font("Helvetica")
+    .text("BILL TO", rightColX, yPos);
+
+  yPos += 15;
+
+  doc
+    .fontSize(11)
+    .fillColor("#2C3E50")
+    .font("Helvetica-Bold")
+    .text(bill.customer?.customerName || "Customer Name", rightColX, yPos);
+
+  yPos += 16;
+
+  doc.fontSize(9).fillColor("#34495E").font("Helvetica");
+
+  if (bill.customer?.businessName) {
+    doc.text(bill.customer.businessName, rightColX, yPos);
+    yPos += 14;
+  }
+
+  if (bill.customer?.email) {
+    doc.text(`Email: ${bill.customer.email}`, rightColX, yPos);
+  }
+
+  yPos = margin + 220;
+
+  // ============================================
+  // INVOICE DATE & STATUS BAR
+  // ============================================
+
+  doc.rect(margin, yPos, contentWidth, 35).fillColor("#F5F6F7").fill();
+
+  doc.fontSize(10).fillColor("#2C3E50").font("Helvetica");
+
+  doc.text("Invoice Date:", margin + 15, yPos + 11);
+  doc.font("Helvetica-Bold");
+  doc.text(
+    new Date(bill.billDate).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
+    margin + 95,
+    yPos + 11,
+  );
 
   // Status Badge
   const statusColors = {
@@ -669,147 +1024,142 @@ exports.generateTemplate1 = (doc, bill, paidAmount, pendingAmount) => {
   };
 
   const statusColor = statusColors[bill.status] || statusColors.pending;
-  const statusX = pageWidth - margin - 80;
+  const statusText = bill.status.toUpperCase();
+  const badgeX = pageWidth - margin - 100;
 
   doc
-    .roundedRect(statusX, yPos + 5, 70, 20, 3)
+    .roundedRect(badgeX, yPos + 7, 90, 22, 3)
     .fillColor(statusColor)
     .fill();
 
   doc
     .fillColor("#FFFFFF")
-    .fontSize(9)
+    .fontSize(10)
     .font("Helvetica-Bold")
-    .text(bill.status.toUpperCase(), statusX, yPos + 10, {
-      width: 70,
+    .text(statusText, badgeX, yPos + 11, {
+      width: 90,
       align: "center",
     });
+
+  yPos += 60;
 
   // ============================================
   // ITEMS TABLE
   // ============================================
 
-  yPos += 60;
   const tableTop = yPos;
-  const tableHeaders = [
-    { label: "#", x: margin, width: 30 },
-    { label: "Description", x: margin + 35, width: 230 },
-    { label: "Qty", x: margin + 270, width: 50, align: "right" },
-    { label: "Rate", x: margin + 325, width: 70, align: "right" },
-    { label: "GST%", x: margin + 400, width: 50, align: "right" },
-    { label: "Amount", x: margin + 455, width: 100, align: "right" },
-  ];
 
-  // Table Header Background
-  doc.rect(margin, tableTop, contentWidth, 25).fillColor("#34495E").fill();
+  const cols = {
+    num: { x: margin, width: 35 },
+    desc: { x: margin + 35, width: 220 },
+    qty: { x: margin + 255, width: 70 },
+    rate: { x: margin + 325, width: 70 },
+    gst: { x: margin + 395, width: 60 },
+    amount: { x: margin + 455, width: 90 },
+  };
 
-  // Table Headers
-  doc.fillColor("#FFFFFF").fontSize(10).font("Helvetica-Bold");
-  tableHeaders.forEach((header) => {
-    doc.text(header.label, header.x + 5, tableTop + 7, {
-      width: header.width - 10,
-      align: header.align || "left",
-    });
+  // Table Header
+  doc.rect(margin, tableTop, contentWidth, 30).fillColor("#34495E").fill();
+
+  doc.fontSize(10).fillColor("#FFFFFF").font("Helvetica-Bold");
+
+  doc.text("#", cols.num.x + 8, tableTop + 10);
+  doc.text("Description", cols.desc.x + 5, tableTop + 10);
+  doc.text("Qty", cols.qty.x + 5, tableTop + 10, {
+    width: cols.qty.width - 10,
+    align: "center",
+  });
+  doc.text("Rate", cols.rate.x + 5, tableTop + 10, {
+    width: cols.rate.width - 10,
+    align: "right",
+  });
+  doc.text("GST%", cols.gst.x + 5, tableTop + 10, {
+    width: cols.gst.width - 10,
+    align: "center",
+  });
+  doc.text("Amount", cols.amount.x + 5, tableTop + 10, {
+    width: cols.amount.width - 10,
+    align: "right",
   });
 
-  // Table Items
   yPos = tableTop + 30;
-  doc.fillColor("#2C3E50").font("Helvetica").fontSize(9);
+
+  // Table Rows
+  doc.fontSize(9).fillColor("#2C3E50").font("Helvetica");
 
   bill.items.forEach((item, index) => {
-    // Alternate row background
-    if (index % 2 === 0) {
+    const rowHeight = 26;
+
+    if (index % 2 === 1) {
       doc
-        .rect(margin, yPos - 5, contentWidth, 22)
-        .fillColor("#F8F9FA")
+        .rect(margin, yPos, contentWidth, rowHeight)
+        .fillColor("#FAFAFA")
         .fill();
     }
 
     doc.fillColor("#2C3E50");
 
-    // Item Number
-    doc.text(index + 1, tableHeaders[0].x + 5, yPos, {
-      width: tableHeaders[0].width - 10,
+    doc.text((index + 1).toString(), cols.num.x + 8, yPos + 8);
+    doc.text(item.description || "Item", cols.desc.x + 5, yPos + 8, {
+      width: cols.desc.width - 10,
     });
-
-    // Description
-    doc.text(item.description || "Item", tableHeaders[1].x + 5, yPos, {
-      width: tableHeaders[1].width - 10,
+    doc.text(parseFloat(item.qty).toFixed(2), cols.qty.x + 5, yPos + 8, {
+      width: cols.qty.width - 10,
+      align: "center",
     });
-
-    // Quantity
-    doc.text(item.qty.toString(), tableHeaders[2].x + 5, yPos, {
-      width: tableHeaders[2].width - 10,
-      align: "right",
-    });
-
-    // Rate
     doc.text(
       `₹${parseFloat(item.rate).toFixed(2)}`,
-      tableHeaders[3].x + 5,
-      yPos,
-      {
-        width: tableHeaders[3].width - 10,
-        align: "right",
-      },
+      cols.rate.x + 5,
+      yPos + 8,
+      { width: cols.rate.width - 10, align: "right" },
     );
-
-    // GST%
-    doc.text(item.gstPercent.toString(), tableHeaders[4].x + 5, yPos, {
-      width: tableHeaders[4].width - 10,
-      align: "right",
+    doc.text(parseFloat(item.gstPercent).toFixed(2), cols.gst.x + 5, yPos + 8, {
+      width: cols.gst.width - 10,
+      align: "center",
     });
-
-    // Amount
     doc.text(
       `₹${parseFloat(item.amount).toFixed(2)}`,
-      tableHeaders[5].x + 5,
-      yPos,
-      {
-        width: tableHeaders[5].width - 10,
-        align: "right",
-      },
+      cols.amount.x + 5,
+      yPos + 8,
+      { width: cols.amount.width - 10, align: "right" },
     );
 
-    yPos += 22;
+    yPos += rowHeight;
   });
 
-  // Table Bottom Border
   doc
     .moveTo(margin, yPos)
     .lineTo(pageWidth - margin, yPos)
-    .strokeColor("#BDC3C7")
+    .strokeColor("#D5DBDB")
     .lineWidth(1)
     .stroke();
+
+  yPos += 40;
 
   // ============================================
   // TOTALS SECTION
   // ============================================
 
-  yPos += 30;
   const totalsX = pageWidth - margin - 250;
+  const labelX = totalsX;
+  const valueX = totalsX + 140;
 
-  // Helper function for totals rows
-  const addTotalRow = (label, value, isBold = false, isLarge = false) => {
-    doc
-      .fontSize(isLarge ? 12 : 10)
-      .font(isBold ? "Helvetica-Bold" : "Helvetica")
-      .fillColor("#2C3E50");
+  doc.fontSize(10).fillColor("#2C3E50").font("Helvetica");
 
-    doc.text(label, totalsX, yPos, { width: 150, align: "left" });
-    doc.text(value, totalsX + 155, yPos, { width: 95, align: "right" });
-    yPos += isLarge ? 25 : 18;
-  };
+  doc.text("Subtotal:", labelX, yPos, { width: 130, align: "right" });
+  doc.text(`₹${parseFloat(bill.subtotal).toFixed(2)}`, valueX, yPos, {
+    width: 100,
+    align: "right",
+  });
+  yPos += 20;
 
-  // Subtotal
-  addTotalRow("Subtotal:", `₹${parseFloat(bill.subtotal).toFixed(2)}`);
+  doc.text("GST:", labelX, yPos, { width: 130, align: "right" });
+  doc.text(`₹${parseFloat(bill.gstTotal).toFixed(2)}`, valueX, yPos, {
+    width: 100,
+    align: "right",
+  });
+  yPos += 25;
 
-  // GST
-  if (bill.gstTotal > 0) {
-    addTotalRow("GST:", `₹${parseFloat(bill.gstTotal).toFixed(2)}`);
-  }
-
-  // Separator line
   doc
     .moveTo(totalsX, yPos - 5)
     .lineTo(pageWidth - margin, yPos - 5)
@@ -817,496 +1167,38 @@ exports.generateTemplate1 = (doc, bill, paidAmount, pendingAmount) => {
     .lineWidth(1)
     .stroke();
 
-  yPos += 5;
+  doc.fontSize(12).font("Helvetica-Bold");
+  doc.text("Total Amount:", labelX, yPos, { width: 130, align: "right" });
+  doc.text(`₹${parseFloat(bill.totalWithGST).toFixed(2)}`, valueX, yPos, {
+    width: 100,
+    align: "right",
+  });
+  yPos += 25;
 
-  // Total Amount
-  addTotalRow(
-    "Total Amount:",
-    `₹${parseFloat(bill.totalWithGST).toFixed(2)}`,
-    true,
-    true,
-  );
-
-  // Paid Amount (if any)
   if (parseFloat(paidAmount) > 0) {
-    addTotalRow("Paid:", `₹${parseFloat(paidAmount).toFixed(2)}`, false);
+    doc.fontSize(10).font("Helvetica").fillColor("#27AE60");
+    doc.text("Paid:", labelX, yPos, { width: 130, align: "right" });
+    doc.text(`₹${parseFloat(paidAmount).toFixed(2)}`, valueX, yPos, {
+      width: 100,
+      align: "right",
+    });
+    yPos += 25;
   }
 
-  // Pending Amount
   if (parseFloat(pendingAmount) > 0) {
-    yPos += 5;
-
-    // Highlight pending amount
-    doc
-      .roundedRect(totalsX - 10, yPos - 8, 260, 30, 5)
-      .fillColor("#FEF5E7")
-      .fill();
-
-    doc.fillColor("#E67E22").fontSize(12).font("Helvetica-Bold");
-
-    doc.text("Amount Due:", totalsX, yPos, { width: 150, align: "left" });
-    doc.text(`₹${parseFloat(pendingAmount).toFixed(2)}`, totalsX + 155, yPos, {
-      width: 95,
+    doc.fontSize(11).font("Helvetica-Bold").fillColor("#E67E22");
+    doc.text("Amount Due:", labelX, yPos, { width: 130, align: "right" });
+    doc.text(`₹${parseFloat(pendingAmount).toFixed(2)}`, valueX, yPos, {
+      width: 100,
       align: "right",
     });
   }
-
-  // ============================================
-  // NOTES SECTION
-  // ============================================
 
   if (bill.note) {
     yPos += 60;
-
-    doc.fontSize(10).fillColor("#7F8C8D").font("Helvetica-Bold");
-    doc.text("Notes:", margin, yPos);
-
-    yPos += 15;
-    doc.fontSize(9).fillColor("#34495E").font("Helvetica");
-    doc.text(bill.note, margin, yPos, {
-      width: contentWidth - 100,
-      align: "left",
-    });
+    doc.fontSize(9).fillColor("#7F8C8D").font("Helvetica-Oblique");
+    doc.text(`Note: ${bill.note}`, margin, yPos, { width: contentWidth - 100 });
   }
-
-  // ============================================
-  // FOOTER
-  // ============================================
-
-  const footerY = pageHeight - 60;
-
-  // Separator line
-  doc
-    .moveTo(margin, footerY)
-    .lineTo(pageWidth - margin, footerY)
-    .strokeColor("#BDC3C7")
-    .lineWidth(1)
-    .stroke();
-
-  // Thank you message
-  doc
-    .fontSize(10)
-    .fillColor("#7F8C8D")
-    .font("Helvetica-Oblique")
-    .text("Thank you for your business!", margin, footerY + 15, {
-      width: contentWidth,
-      align: "center",
-    });
-
-  // Company details footer (if available)
-  if (bill.vendor?.website || bill.vendor?.gstNumber) {
-    doc.fontSize(8).fillColor("#95A5A6").font("Helvetica");
-    let footerText = "";
-
-    if (bill.vendor.website) footerText += bill.vendor.website;
-    if (bill.vendor.gstNumber) {
-      if (footerText) footerText += " | ";
-      footerText += `GSTIN: ${bill.vendor.gstNumber}`;
-    }
-
-    doc.text(footerText, margin, footerY + 35, {
-      width: contentWidth,
-      align: "center",
-    });
-  }
-};
-
-//  Template 2: Modern Professional Invoice
-exports.generateTemplate2 = (doc, bill, paidAmount, pendingAmount) => {
-  const pageWidth = 595.28; // A4 width
-  const pageHeight = 841.89; // A4 height
-  const margin = 50;
-  const contentWidth = pageWidth - margin * 2;
-
-  let yPos = margin;
-
-  // ============================================
-  // HEADER SECTION
-  // ============================================
-
-  // Logo placeholder (left side)
-  doc
-    .fontSize(10)
-    .fillColor("#7F8C8D")
-    .font("Helvetica")
-    .text("LOGO", margin, yPos);
-
-  // Invoice Title (right side)
-  doc
-    .fontSize(20)
-    .fillColor("#2C3E50")
-    .font("Helvetica-Bold")
-    .text("INVOICE", pageWidth - margin - 100, yPos, {
-      width: 100,
-      align: "right",
-    });
-
-  yPos += 40;
-
-  // Horizontal line separator
-  doc
-    .moveTo(margin, yPos)
-    .lineTo(pageWidth - margin, yPos)
-    .strokeColor("#34495E")
-    .lineWidth(2)
-    .stroke();
-
-  yPos += 20;
-
-  // ============================================
-  // INVOICE INFO & BILL DETAILS
-  // ============================================
-
-  doc.fontSize(9).fillColor("#2C3E50").font("Helvetica");
-
-  // Invoice Number (left)
-  doc.text(`Invoice No: ${bill.billNumber}`, margin, yPos);
-
-  // Date (right)
-  doc.text(
-    `Date: ${new Date(bill.billDate).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })}`,
-    pageWidth - margin - 150,
-    yPos,
-  );
-
-  yPos += 30;
-
-  // ============================================
-  // VENDOR & CUSTOMER DETAILS (Two Columns)
-  // ============================================
-
-  const leftColX = margin;
-  const rightColX = margin + 260;
-  const detailsStartY = yPos;
-
-  // Vendor Details (Left Column)
-  doc.fontSize(8).fillColor("#7F8C8D").text("FROM:", leftColX, yPos);
-  yPos += 12;
-
-  doc.fontSize(10).fillColor("#2C3E50").font("Helvetica-Bold");
-  doc.text(bill.vendor?.vendorName || "Vendor Name", leftColX, yPos);
-  yPos += 14;
-
-  doc.fontSize(9).font("Helvetica").fillColor("#34495E");
-  if (bill.vendor?.mobile) {
-    doc.text(`Phone: ${bill.vendor.mobile}`, leftColX, yPos);
-    yPos += 12;
-  }
-  if (bill.vendor?.email) {
-    doc.text(`Email: ${bill.vendor.email}`, leftColX, yPos);
-    yPos += 12;
-  }
-  if (bill.vendor?.address) {
-    doc.text(bill.vendor.address, leftColX, yPos, { width: 240 });
-  }
-
-  // Customer Details (Right Column)
-  yPos = detailsStartY;
-  doc.fontSize(8).fillColor("#7F8C8D").text("BILL TO:", rightColX, yPos);
-  yPos += 12;
-
-  doc.fontSize(10).fillColor("#2C3E50").font("Helvetica-Bold");
-  doc.text(bill.customer?.customerName || "Customer Name", rightColX, yPos);
-  yPos += 14;
-
-  doc.fontSize(9).font("Helvetica").fillColor("#34495E");
-  if (bill.customer?.businessName) {
-    doc.text(bill.customer.businessName, rightColX, yPos);
-    yPos += 12;
-  }
-  if (bill.customer?.mobile) {
-    doc.text(`Phone: ${bill.customer.mobile}`, rightColX, yPos);
-    yPos += 12;
-  }
-  if (bill.customer?.email) {
-    doc.text(`Email: ${bill.customer.email}`, rightColX, yPos);
-  }
-
-  yPos = Math.max(yPos, detailsStartY + 80) + 30;
-
-  // ============================================
-  // ITEMS TABLE
-  // ============================================
-
-  const tableStartY = yPos;
-  const tableWidth = contentWidth;
-
-  // Column definitions
-  const columns = {
-    description: { x: margin, width: 260, align: "left" },
-    quantity: { x: margin + 260, width: 80, align: "center" },
-    unitPrice: { x: margin + 340, width: 90, align: "right" },
-    total: { x: margin + 430, width: 85, align: "right" },
-  };
-
-  // Table Header Background
-  doc.rect(margin, yPos, tableWidth, 25).fillColor("#34495E").fill();
-
-  // Table Header Text
-  doc.fontSize(10).fillColor("#FFFFFF").font("Helvetica-Bold");
-
-  doc.text("DESCRIPTION", columns.description.x + 5, yPos + 7, {
-    width: columns.description.width - 10,
-    align: columns.description.align,
-  });
-
-  doc.text("QUANTITY", columns.quantity.x + 5, yPos + 7, {
-    width: columns.quantity.width - 10,
-    align: columns.quantity.align,
-  });
-
-  doc.text("UNIT PRICE", columns.unitPrice.x + 5, yPos + 7, {
-    width: columns.unitPrice.width - 10,
-    align: columns.unitPrice.align,
-  });
-
-  doc.text("TOTAL", columns.total.x + 5, yPos + 7, {
-    width: columns.total.width - 10,
-    align: columns.total.align,
-  });
-
-  yPos += 25;
-
-  // Draw table border
-  doc
-    .rect(margin, tableStartY, tableWidth, 25)
-    .strokeColor("#34495E")
-    .lineWidth(1)
-    .stroke();
-
-  // ============================================
-  // ITEMS ROWS
-  // ============================================
-
-  const rowHeight = 22;
-  doc.fontSize(9).fillColor("#2C3E50").font("Helvetica");
-
-  bill.items.forEach((item, index) => {
-    // Alternate row background
-    if (index % 2 === 0) {
-      doc.rect(margin, yPos, tableWidth, rowHeight).fillColor("#F8F9FA").fill();
-    }
-
-    doc.fillColor("#2C3E50");
-
-    // Draw borders for this row
-    doc
-      .rect(margin, yPos, tableWidth, rowHeight)
-      .strokeColor("#E0E0E0")
-      .lineWidth(0.5)
-      .stroke();
-
-    // Description
-    doc.text(item.description || "Item", columns.description.x + 5, yPos + 6, {
-      width: columns.description.width - 10,
-      align: columns.description.align,
-    });
-
-    // Quantity
-    doc.text(item.qty.toString(), columns.quantity.x + 5, yPos + 6, {
-      width: columns.quantity.width - 10,
-      align: columns.quantity.align,
-    });
-
-    // Unit Price
-    doc.text(
-      `₹${parseFloat(item.rate).toFixed(2)}`,
-      columns.unitPrice.x + 5,
-      yPos + 6,
-      {
-        width: columns.unitPrice.width - 10,
-        align: columns.unitPrice.align,
-      },
-    );
-
-    // Total
-    doc.text(
-      `₹${parseFloat(item.amount).toFixed(2)}`,
-      columns.total.x + 5,
-      yPos + 6,
-      {
-        width: columns.total.width - 10,
-        align: columns.total.align,
-      },
-    );
-
-    yPos += rowHeight;
-  });
-
-  // Add empty rows for clean look (like Excel template)
-  const emptyRows = Math.max(0, 3 - (bill.items.length % 3));
-  for (let i = 0; i < emptyRows; i++) {
-    doc
-      .rect(margin, yPos, tableWidth, rowHeight)
-      .strokeColor("#E0E0E0")
-      .lineWidth(0.5)
-      .stroke();
-    yPos += rowHeight;
-  }
-
-  // ============================================
-  // NOTES & TOTALS SECTION
-  // ============================================
-
-  yPos += 10;
-  const notesHeight = 80;
-  const notesWidth = 320;
-  const totalsWidth = tableWidth - notesWidth;
-
-  // Notes Box
-  doc
-    .rect(margin, yPos, notesWidth, notesHeight)
-    .strokeColor("#34495E")
-    .lineWidth(1)
-    .stroke();
-
-  doc
-    .fontSize(8)
-    .fillColor("#7F8C8D")
-    .font("Helvetica-Bold")
-    .text("Additional Information/Comments:", margin + 5, yPos + 5);
-
-  if (bill.note) {
-    doc
-      .fontSize(9)
-      .fillColor("#2C3E50")
-      .font("Helvetica")
-      .text(bill.note, margin + 5, yPos + 20, {
-        width: notesWidth - 10,
-        align: "left",
-      });
-  }
-
-  // Totals Box - Right Side
-  const totalsX = margin + notesWidth;
-  let totalsY = yPos;
-  const totalRowHeight = 26;
-
-  // Helper function to draw total row
-  const drawTotalRow = (label, value, isBold = false, fontSize = 12) => {
-    // Background for total rows
-    if (isBold) {
-      doc
-        .rect(totalsX, totalsY, totalsWidth, totalRowHeight)
-        .fillColor("#ECF0F1")
-        .fill();
-    }
-
-    // Border
-    doc
-      .rect(totalsX, totalsY, totalsWidth, totalRowHeight)
-      .strokeColor("#34495E")
-      .lineWidth(1)
-      .stroke();
-
-    // Text
-    doc
-      .fontSize(fontSize)
-      .fillColor("#2C3E50")
-      .font(isBold ? "Helvetica-Bold" : "Helvetica");
-
-    doc.text(label, totalsX + 10, totalsY + 7, {
-      width: 100,
-      align: "left",
-    });
-
-    doc.text(`₹${parseFloat(value).toFixed(2)}`, totalsX + 115, totalsY + 7, {
-      width: totalsWidth - 125,
-      align: "right",
-    });
-
-    totalsY += totalRowHeight;
-  };
-
-  // Subtotal
-  drawTotalRow("SUBTOTAL", bill.subtotal, true, 12);
-
-  // GST/Sales Tax
-  drawTotalRow("SALES TAX", bill.gstTotal, true, 12);
-
-  // Grand Total
-  doc.fontSize(16).font("Helvetica-Bold");
-  drawTotalRow("TOTAL", bill.totalWithGST, true, 16);
-
-  // ============================================
-  // PAYMENT STATUS
-  // ============================================
-
-  totalsY += 10;
-
-  if (parseFloat(paidAmount) > 0) {
-    doc
-      .fontSize(9)
-      .fillColor("#27AE60")
-      .font("Helvetica")
-      .text(
-        `Paid: ₹${parseFloat(paidAmount).toFixed(2)}`,
-        totalsX + 10,
-        totalsY,
-      );
-    totalsY += 15;
-  }
-
-  if (parseFloat(pendingAmount) > 0) {
-    doc
-      .fontSize(9)
-      .fillColor("#E74C3C")
-      .font("Helvetica-Bold")
-      .text(
-        `Balance Due: ₹${parseFloat(pendingAmount).toFixed(2)}`,
-        totalsX + 10,
-        totalsY,
-      );
-  }
-
-  // ============================================
-  // FOOTER
-  // ============================================
-
-  const footerY = pageHeight - 80;
-
-  // Separator line
-  doc
-    .moveTo(margin, footerY)
-    .lineTo(pageWidth - margin, footerY)
-    .strokeColor("#BDC3C7")
-    .lineWidth(1)
-    .stroke();
-
-  // Thank you message
-  doc
-    .fontSize(10)
-    .fillColor("#7F8C8D")
-    .font("Helvetica-Oblique")
-    .text("Thank you for your business!", margin, footerY + 15, {
-      width: contentWidth,
-      align: "center",
-    });
-
-  // Terms & Conditions or additional info
-  if (bill.vendor?.gstNumber) {
-    doc
-      .fontSize(8)
-      .fillColor("#95A5A6")
-      .font("Helvetica")
-      .text(`GSTIN: ${bill.vendor.gstNumber}`, margin, footerY + 35, {
-        width: contentWidth,
-        align: "center",
-      });
-  }
-
-  // Page number (optional)
-  doc
-    .fontSize(8)
-    .fillColor("#BDC3C7")
-    .text("Page 1", margin, pageHeight - 30, {
-      width: contentWidth,
-      align: "center",
-    });
 };
 
 // Template 3: Minimal Invoice
