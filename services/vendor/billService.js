@@ -135,13 +135,20 @@ exports.createBill = async (vendorId, payload) => {
       t,
     );
 
-    // Use provided template or from settings
+    const systemPrefix = billNumberInfo.prefix;
+
+    const finalPrefix = customInvoicePrefix
+      ? customInvoicePrefix.toUpperCase().trim()
+      : systemPrefix;
+
+    const finalBillNumber = `${finalPrefix}${billNumberInfo.count}`;
+
     const template = invoiceTemplate || billNumberInfo.template;
 
     const bill = await BillModel.create(
       {
-        billNumber: billNumberInfo.billNumber,
-        invoicePrefix: billNumberInfo.prefix,
+        billNumber: finalBillNumber,
+        invoicePrefix: systemPrefix,
         customInvoicePrefix: customInvoicePrefix || null,
         invoiceCount: billNumberInfo.count,
         invoiceTemplate: template,
