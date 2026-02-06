@@ -1,8 +1,6 @@
 const { InvoiceSettingsModel, BillModel, sequelize } = require("../../models");
 const { Op } = require("sequelize");
-const img1 = "../../uploads/vendor/invoice_templates/img1.png";
-const img2 = "../../uploads/vendor/invoice_templates/preview2.png";
-const img3 = "../../uploads/vendor/invoice_templates/preview3.png";
+const path = require("path");
 
 exports.getInvoiceSettings = async (vendorId) => {
   if (!vendorId) throw new Error("vendorId is required");
@@ -24,7 +22,6 @@ exports.getInvoiceSettings = async (vendorId) => {
 
   return settings;
 };
-
 
 exports.updateInvoiceSettings = async (vendorId, payload) => {
   if (!vendorId) throw new Error("vendorId is required");
@@ -60,7 +57,6 @@ exports.updateInvoiceSettings = async (vendorId, payload) => {
 
   return settings;
 };
-
 
 exports.getNextInvoiceNumber = async (vendorId, requestedNumber = null) => {
   const settings = await this.getInvoiceSettings(vendorId);
@@ -105,13 +101,16 @@ exports.getNextInvoiceNumber = async (vendorId, requestedNumber = null) => {
   };
 };
 
-
-exports.reserveInvoiceNumber = async (vendorId, numericPart) => {
-  return await sequelize.transaction(async (t) => {
+exports.reserveInvoiceNumber = async (
+  vendorId,
+  numericPart,
+  transaction = null,
+) => {
+  const executeQuery = async (t) => {
     const settings = await InvoiceSettingsModel.findOne({
       where: { vendorId },
       transaction: t,
-      lock: t.LOCK.UPDATE,
+      lock: t ? t.LOCK.UPDATE : undefined,
     });
 
     if (!settings) throw new Error("Invoice settings not found");
@@ -135,9 +134,16 @@ exports.reserveInvoiceNumber = async (vendorId, numericPart) => {
     );
 
     return settings;
-  });
-};
+  };
 
+  if (transaction) {
+    return await executeQuery(transaction);
+  } else {
+    return await sequelize.transaction(async (t) => {
+      return await executeQuery(t);
+    });
+  }
+};
 
 exports.checkInvoiceNumberAvailability = async (vendorId, numericPart) => {
   const settings = await this.getInvoiceSettings(vendorId);
@@ -160,7 +166,6 @@ exports.checkInvoiceNumberAvailability = async (vendorId, numericPart) => {
   };
 };
 
-
 exports.getInvoiceTemplatePreview = async (vendorId) => {
   const settings = await this.getInvoiceSettings(vendorId);
 
@@ -171,19 +176,19 @@ exports.getInvoiceTemplatePreview = async (vendorId) => {
         id: "template1",
         name: "Classic Template",
         description: "Traditional invoice layout with company header",
-        preview: img1,
+        preview: "/api/vendor/invoice-settings/template-images/template1.png",
       },
       {
         id: "template2",
         name: "Modern Template",
         description: "Clean and modern design with color accents",
-        preview: "/templates/preview2.png",
+        preview: "/api/vendor/invoice-settings/template-images/template2.png",
       },
       {
         id: "template3",
         name: "Minimal Template",
         description: "Simple and minimalist invoice format",
-        preview: "/templates/preview3.png",
+        preview: "/api/vendor/invoice-settings/template-images/template3.png",
       },
     ],
   };

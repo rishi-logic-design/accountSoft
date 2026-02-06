@@ -474,63 +474,31 @@ exports.editBill = async (billId, vendorId, payload) => {
 };
 
 exports.generateBillPdf = async (billId, vendorId) => {
-  const { bill, paidAmount, pendingAmount } = await this.getBillById(
-    billId,
-    vendorId,
-  );
-  if (!bill) throw new Error("Bill not found");
-
-  const full = await BillModel.findOne({
-    where: { id: bill.id },
+  const bill = await BillModel.findOne({
+    where: { id: billId, vendorId },
     include: [
-      { model: BillItemModel, as: "items" },
-      { model: VendorModel, as: "vendor" },
-      { model: CustomerModel, as: "customer" },
+      {
+        model: CustomerModel,
+        as: "customer",
+      },
     ],
   });
 
-  // Get template - use bill's template or default
-  const template = full.invoiceTemplate || "template1";
+  if (!bill) throw new Error("Bill not found");
 
-  // Generate PDF based on template
-  return await this.generatePdfByTemplate(
-    full,
-    paidAmount,
-    pendingAmount,
-    template,
-  );
-};
-
-// Generate PDF based on selected template
-
-exports.generatePdfByTemplate = async (
-  bill,
-  paidAmount,
-  pendingAmount,
-  template,
-) => {
-  const doc = new PDFDocument({ size: "A4", margin: 40 });
-  const buffers = [];
-  doc.on("data", buffers.push.bind(buffers));
-  const endPromise = new Promise((resolve) =>
-    doc.on("end", () => resolve(Buffer.concat(buffers))),
-  );
+  const settings = await invoiceSettingsService.getInvoiceSettings(vendorId);
+  const template = settings.invoiceTemplate || "template1";
 
   switch (template) {
-    case "template2":
-      this.generateTemplate2(doc, bill, paidAmount, pendingAmount);
-      break;
-    case "template3":
-      this.generateTemplate3(doc, bill, paidAmount, pendingAmount);
-      break;
     case "template1":
+      return await this.generateTemplate1PDF(bill);
+    case "template2":
+      return await this.generateTemplate2PDF(bill);
+    case "template3":
+      return await this.generateTemplate3PDF(bill);
     default:
-      this.generateTemplate1(doc, bill, paidAmount, pendingAmount);
-      break;
+      return await this.generateTemplate1PDF(bill);
   }
-
-  doc.end();
-  return await endPromise;
 };
 
 //  Template 1: Classic Professional Invoice
