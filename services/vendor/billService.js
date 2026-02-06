@@ -491,13 +491,13 @@ exports.generateBillPdf = async (billId, vendorId) => {
 
   switch (template) {
     case "template1":
-      return await this.generateTemplate1PDF(bill);
+      return await this.generateTemplate1(bill);
     case "template2":
-      return await this.generateTemplate2PDF(bill);
+      return await this.generateTemplate2(bill);
     case "template3":
-      return await this.generateTemplate3PDF(bill);
+      return await this.generateTemplate3(bill);
     default:
-      return await this.generateTemplate1PDF(bill);
+      return await this.generateTemplate1(bill);
   }
 };
 
