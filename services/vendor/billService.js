@@ -13,7 +13,6 @@ const { Op } = require("sequelize");
 const invoiceSettingsService = require("./invoiceSettingsService");
 const { whatsappLink } = require("../../utils/whatsappHelper");
 const { renderTemplate } = require("../../utils/templateRenderer");
-const puppeteer = require("puppeteer");
 const { generatePdfFromHtml } = require("../../utils/pdfGenerator");
 
 function toNumber(v) {
