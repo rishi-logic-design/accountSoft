@@ -8,7 +8,7 @@ exports.getInvoiceSettings = async (vendorId) => {
 
   if (!settings) {
     // Create default settings
-    settings = await VendorInvoiceSettings.create({
+    settings = await InvoiceSettingsModel.create({
       vendorId,
       prefix: "INV",
       startCount: 1001,
@@ -27,7 +27,7 @@ exports.getInvoiceSettings = async (vendorId) => {
 exports.updateInvoiceSettings = async (vendorId, payload) => {
   const { prefix, startCount, invoiceTemplate } = payload;
 
-  let settings = await VendorInvoiceSettings.findOne({
+  let settings = await InvoiceSettingsModel.findOne({
     where: { vendorId },
   });
 
@@ -89,7 +89,7 @@ exports.getNextInvoiceNumber = async (vendorId, customNumber = null) => {
 };
 
 exports.reserveInvoiceNumber = async (vendorId, number) => {
-  const settings = await VendorInvoiceSettings.findOne({
+  const settings = await InvoiceSettingsModel.findOne({
     where: { vendorId },
   });
 
