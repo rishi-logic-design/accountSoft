@@ -14,6 +14,7 @@ const invoiceSettingsService = require("./invoiceSettingsService");
 const { whatsappLink } = require("../../utils/whatsappHelper");
 const { renderTemplate } = require("../../utils/templateRenderer");
 const puppeteer = require("puppeteer");
+const { generatePdfFromHtml } = require("../../utils/pdfGenerator");
 
 function toNumber(v) {
   return parseFloat(v || 0);
@@ -500,30 +501,9 @@ exports.generateBillPdf = async (billId, vendorId) => {
     vendor: bill.vendor,
     items: bill.items,
   });
-  const browser = await puppeteer.launch({
-    headless: "new",
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--no-zygote",
-      "--single-process",
-    ],
-  });
 
-  const page = await browser.newPage();
-  await page.setContent(html, { waitUntil: "networkidle0" });
-
-  const pdfBuffer = await page.pdf({
-    format: "A4",
-    printBackground: true,
-  });
-
-  await browser.close();
-  return pdfBuffer;
+  return await generatePdfFromHtml(html);
 };
-
 exports.getWhatsappLinkForBill = async (billId, vendorId, messageOverride) => {
   const { bill, pendingAmount } = await this.getBillById(billId, vendorId);
   if (!bill) throw new Error("Bill not found");

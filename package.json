@@ -24,7 +24,7 @@
     "mysql2": "^3.15.3",
     "node-cron": "^4.2.1",
     "pdfkit": "^0.17.2",
-    "puppeteer": "^24.37.2",
+    "playwright-chromium": "^1.58.2",
     "sequelize": "^6.37.7",
     "uuid": "^13.0.0"
   },
