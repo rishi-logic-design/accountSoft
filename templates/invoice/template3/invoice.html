@@ -1,0 +1,264 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Invoice - {{billNumber}}</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Helvetica", "Arial", sans-serif;
+        padding: 40px;
+        background: white;
+        color: #333;
+      }
+
+      .invoice-container {
+        max-width: 750px;
+        margin: 0 auto;
+      }
+
+      .header {
+        margin-bottom: 50px;
+      }
+
+      .invoice-number {
+        font-size: 48px;
+        font-weight: 300;
+        color: #111;
+        margin-bottom: 10px;
+      }
+
+      .invoice-date {
+        font-size: 14px;
+        color: #666;
+      }
+
+      .parties {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 60px;
+        gap: 40px;
+      }
+
+      .party {
+        flex: 1;
+      }
+
+      .party-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #999;
+        margin-bottom: 10px;
+      }
+
+      .party-name {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+
+      .party-details {
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 40px;
+      }
+
+      thead tr {
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      th {
+        padding: 15px 8px;
+        text-align: left;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #999;
+        font-weight: 500;
+      }
+
+      th.text-right,
+      td.text-right {
+        text-align: right;
+      }
+
+      td {
+        padding: 20px 8px;
+        border-bottom: 1px solid #f5f5f5;
+        font-size: 14px;
+      }
+
+      .description {
+        font-weight: 500;
+      }
+
+      .summary {
+        margin-left: auto;
+        width: 300px;
+      }
+
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        font-size: 14px;
+      }
+
+      .summary-row.total {
+        border-top: 2px solid #111;
+        margin-top: 10px;
+        padding-top: 15px;
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .summary-row.paid {
+        color: #059669;
+      }
+
+      .summary-row.pending {
+        color: #dc2626;
+        font-weight: 600;
+      }
+
+      .notes-section {
+        margin-top: 60px;
+        padding-top: 30px;
+        border-top: 1px solid #e0e0e0;
+      }
+
+      .notes-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #999;
+        margin-bottom: 10px;
+      }
+
+      .notes-content {
+        font-size: 14px;
+        color: #666;
+        line-height: 1.6;
+      }
+
+      .footer {
+        margin-top: 80px;
+        padding-top: 20px;
+        border-top: 1px solid #e0e0e0;
+        text-align: center;
+        font-size: 12px;
+        color: #999;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="invoice-container">
+      <div class="header">
+        <div class="invoice-number">{{bill.billNumber}}</div>
+        <div class="invoice-date">{{formatDate bill.billDate}}</div>
+      </div>
+
+      <div class="parties">
+        <div class="party">
+          <div class="party-label">From</div>
+          <div class="party-name">{{vendor.businessName}}</div>
+          <div class="party-details">
+            <div>{{vendor.address}}</div>
+            <div>{{vendor.mobile}}</div>
+            <div>{{vendor.email}}</div>
+            {{#if vendor.gstNumber}}
+            <div>GST: {{vendor.gstNumber}}</div>
+            {{/if}}
+          </div>
+        </div>
+
+        <div class="party">
+          <div class="party-label">To</div>
+          <div class="party-name">{{customer.customerName}}</div>
+          <div class="party-details">
+            {{#if customer.businessName}}
+            <div>{{customer.businessName}}</div>
+            {{/if}}
+            <div>{{customer.address}}</div>
+            <div>{{customer.mobile}}</div>
+            {{#if customer.email}}
+            <div>{{customer.email}}</div>
+            {{/if}} {{#if customer.gstNumber}}
+            <div>GST: {{customer.gstNumber}}</div>
+            {{/if}}
+          </div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 50%">Description</th>
+            <th style="width: 12%">Quantity</th>
+            <th class="text-right" style="width: 13%">Rate</th>
+            <th class="text-right" style="width: 10%">GST%</th>
+            <th class="text-right" style="width: 15%">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td class="description">{{this.description}}</td>
+            <td>{{formatNumber this.qty}}</td>
+            <td class="text-right">₹{{formatNumber this.rate}}</td>
+            <td class="text-right">{{formatNumber this.gstPercent}}%</td>
+            <td class="text-right">₹{{formatNumber this.totalWithGst}}</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <div class="summary">
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span>₹{{formatNumber bill.totalWithoutGST}}</span>
+        </div>
+        <div class="summary-row">
+          <span>GST</span>
+          <span>₹{{formatNumber bill.gstTotal}}</span>
+        </div>
+        <div class="summary-row total">
+          <span>Total</span>
+          <span>₹{{formatNumber bill.totalWithGST}}</span>
+        </div>
+        {{#if bill.paidAmount}}
+        <div class="summary-row paid">
+          <span>Paid</span>
+          <span>₹{{formatNumber bill.paidAmount}}</span>
+        </div>
+        {{/if}} {{#if bill.pendingAmount}}
+        <div class="summary-row pending">
+          <span>Due</span>
+          <span>₹{{formatNumber bill.pendingAmount}}</span>
+        </div>
+        {{/if}}
+      </div>
+
+      {{#if bill.note}}
+      <div class="notes-section">
+        <div class="notes-label">Notes</div>
+        <div class="notes-content">{{bill.note}}</div>
+      </div>
+      {{/if}}
+
+      <div class="footer">Thank you for your business</div>
+    </div>
+  </body>
+</html>

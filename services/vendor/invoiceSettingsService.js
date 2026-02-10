@@ -1,195 +1,141 @@
-const { InvoiceSettingsModel, BillModel, sequelize } = require("../../models");
-const { Op } = require("sequelize");
-const path = require("path");
+const { VendorInvoiceSettings } = require("../../models");
+const { getAvailableTemplates } = require("../../utils/templateRenderer");
 
 exports.getInvoiceSettings = async (vendorId) => {
-  if (!vendorId) throw new Error("vendorId is required");
-
-  let settings = await InvoiceSettingsModel.findOne({
+  let settings = await VendorInvoiceSettings.findOne({
     where: { vendorId },
   });
 
   if (!settings) {
-    settings = await InvoiceSettingsModel.create({
+    // Create default settings
+    settings = await VendorInvoiceSettings.create({
       vendorId,
       prefix: "INV",
       startCount: 1001,
       currentCount: 1001,
-      invoiceTemplate: "template1",
-      usedNumbers: [],
+      invoiceTemplate: "template1", // Default template
+      usedNumbers: JSON.stringify([]),
     });
   }
 
-  return settings;
+  return {
+    ...settings.toJSON(),
+    usedNumbers: JSON.parse(settings.usedNumbers || "[]"),
+  };
 };
 
 exports.updateInvoiceSettings = async (vendorId, payload) => {
-  if (!vendorId) throw new Error("vendorId is required");
+  const { prefix, startCount, invoiceTemplate } = payload;
 
+  let settings = await VendorInvoiceSettings.findOne({
+    where: { vendorId },
+  });
+
+  if (!settings) {
+    settings = await VendorInvoiceSettings.create({
+      vendorId,
+      prefix: prefix || "INV",
+      startCount: startCount || 1001,
+      currentCount: startCount || 1001,
+      invoiceTemplate: invoiceTemplate || "template1",
+      usedNumbers: JSON.stringify([]),
+    });
+  } else {
+    const updateData = {};
+
+    if (prefix !== undefined) updateData.prefix = prefix;
+    if (invoiceTemplate !== undefined)
+      updateData.invoiceTemplate = invoiceTemplate;
+
+    // If startCount changed, reset everything
+    if (startCount !== undefined && startCount !== settings.startCount) {
+      updateData.startCount = startCount;
+      updateData.currentCount = startCount;
+      updateData.usedNumbers = JSON.stringify([]);
+    }
+
+    await settings.update(updateData);
+  }
+
+  return {
+    ...settings.toJSON(),
+    usedNumbers: JSON.parse(settings.usedNumbers || "[]"),
+  };
+};
+
+exports.getNextInvoiceNumber = async (vendorId, customNumber = null) => {
   const settings = await this.getInvoiceSettings(vendorId);
 
-  const updateData = {};
+  let numericPart = settings.currentCount;
 
-  if (payload.prefix !== undefined) {
-    updateData.prefix = payload.prefix.toUpperCase().trim();
-  }
-
-  if (payload.startCount !== undefined) {
-    const newStartCount = parseInt(payload.startCount);
-    if (newStartCount < 1) {
-      throw new Error("Start count must be at least 1");
-    }
-    updateData.startCount = newStartCount;
-    updateData.currentCount = newStartCount;
-    updateData.usedNumbers = [];
-  }
-
-  if (payload.invoiceTemplate !== undefined) {
+  // If custom number requested, check if available
+  if (customNumber) {
+    const requested = parseInt(customNumber);
     if (
-      !["template1", "template2", "template3"].includes(payload.invoiceTemplate)
+      !isNaN(requested) &&
+      !settings.usedNumbers.includes(requested) &&
+      requested >= settings.startCount
     ) {
-      throw new Error("Invalid invoice template");
-    }
-    updateData.invoiceTemplate = payload.invoiceTemplate;
-  }
-
-  await settings.update(updateData);
-
-  return settings;
-};
-
-exports.getNextInvoiceNumber = async (vendorId, requestedNumber = null) => {
-  const settings = await this.getInvoiceSettings(vendorId);
-  const usedNumbers = settings.usedNumbers || [];
-
-  let invoiceNumber;
-
-  if (requestedNumber !== null) {
-    const numericPart = parseInt(requestedNumber);
-
-    if (isNaN(numericPart) || numericPart < 1) {
-      throw new Error("Invalid invoice number");
-    }
-
-    if (usedNumbers.includes(numericPart)) {
-      throw new Error(
-        `Invoice number ${numericPart} is already used. Please use the next sequential number.`,
-      );
-    }
-
-    const expectedNext = settings.currentCount;
-    if (numericPart !== expectedNext) {
-      throw new Error(
-        `You must use invoice number ${expectedNext}. Skipping numbers is not allowed.`,
-      );
-    }
-
-    invoiceNumber = numericPart;
-  } else {
-    invoiceNumber = settings.currentCount;
-
-    while (usedNumbers.includes(invoiceNumber)) {
-      invoiceNumber++;
+      numericPart = requested;
     }
   }
 
   return {
-    fullNumber: `${settings.prefix}${String(invoiceNumber).padStart(String(settings.startCount).length, "0")}`,
-    numericPart: invoiceNumber,
+    fullNumber: `${settings.prefix}${String(numericPart).padStart(String(settings.startCount).length, "0")}`,
     prefix: settings.prefix,
-    template: settings.invoiceTemplate,
+    numericPart,
+    template: settings.invoiceTemplate || "template1", 
   };
 };
 
-exports.reserveInvoiceNumber = async (
-  vendorId,
-  numericPart,
-  transaction = null,
-) => {
-  const executeQuery = async (t) => {
-    const settings = await InvoiceSettingsModel.findOne({
-      where: { vendorId },
-      transaction: t,
-      lock: t ? t.LOCK.UPDATE : undefined,
-    });
+exports.reserveInvoiceNumber = async (vendorId, number) => {
+  const settings = await VendorInvoiceSettings.findOne({
+    where: { vendorId },
+  });
 
-    if (!settings) throw new Error("Invoice settings not found");
+  if (!settings) throw new Error("Invoice settings not found");
 
-    const usedNumbers = settings.usedNumbers || [];
+  const usedNumbers = JSON.parse(settings.usedNumbers || "[]");
 
-    if (usedNumbers.includes(numericPart)) {
-      throw new Error("Invoice number already used");
-    }
-
-    usedNumbers.push(numericPart);
-
-    const newCurrentCount = numericPart + 1;
-
-    await settings.update(
-      {
-        usedNumbers,
-        currentCount: newCurrentCount,
-      },
-      { transaction: t },
-    );
-
-    return settings;
-  };
-
-  if (transaction) {
-    return await executeQuery(transaction);
-  } else {
-    return await sequelize.transaction(async (t) => {
-      return await executeQuery(t);
-    });
+  if (!usedNumbers.includes(number)) {
+    usedNumbers.push(number);
   }
+
+  let nextCount = settings.currentCount;
+  while (usedNumbers.includes(nextCount)) {
+    nextCount++;
+  }
+
+  await settings.update({
+    usedNumbers: JSON.stringify(usedNumbers),
+    currentCount: nextCount,
+  });
+
+  return true;
 };
 
-exports.checkInvoiceNumberAvailability = async (vendorId, numericPart) => {
+exports.checkInvoiceNumber = async (vendorId, number) => {
   const settings = await this.getInvoiceSettings(vendorId);
-  const usedNumbers = settings.usedNumbers || [];
+  const numericPart = parseInt(number);
 
-  const isUsed = usedNumbers.includes(parseInt(numericPart));
-  const expectedNext = settings.currentCount;
-  const isSequential = parseInt(numericPart) === expectedNext;
+  const isAvailable =
+    !isNaN(numericPart) &&
+    !settings.usedNumbers.includes(numericPart) &&
+    numericPart >= settings.startCount;
 
   return {
-    available: !isUsed && isSequential,
-    isUsed,
-    isSequential,
-    expectedNext,
-    message: isUsed
-      ? `Number ${numericPart} is already used`
-      : !isSequential
-        ? `You must use ${expectedNext}. Skipping numbers is not allowed.`
-        : "Number is available",
+    available: isAvailable,
+    number: numericPart,
   };
 };
 
-exports.getInvoiceTemplatePreview = async (vendorId) => {
-  const settings = await this.getInvoiceSettings(vendorId);
+exports.getTemplatePreview = async () => {
+  const templates = getAvailableTemplates();
 
   return {
-    currentTemplate: settings.invoiceTemplate,
-    templates: [
-      {
-        id: "template1",
-        name: "Classic Template",
-        description: "Traditional invoice layout with company header",
-        preview: "/api/vendor/invoice-settings/template-images/template1.png",
-      },
-      {
-        id: "template2",
-        name: "Modern Template",
-        description: "Clean and modern design with color accents",
-        preview: "/api/vendor/invoice-settings/template-images/template2.png",
-      },
-      {
-        id: "template3",
-        name: "Minimal Template",
-        description: "Simple and minimalist invoice format",
-        preview: "/api/vendor/invoice-settings/template-images/template3.png",
-      },
-    ],
+    templates: templates.map((t) => ({
+      ...t,
+      preview: `/templates/previews/${t.id}.png`, 
+    })),
   };
 };

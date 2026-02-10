@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
-  const InvoiceSettings = sequelize.define(
-    "InvoiceSettings",
+  const VendorInvoiceSettings = sequelize.define(
+    "VendorInvoiceSettings",
     {
       id: {
         type: DataTypes.INTEGER.UNSIGNED,
@@ -11,50 +11,46 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER.UNSIGNED,
         allowNull: false,
         unique: true,
+        comment: "Reference to vendor",
       },
       prefix: {
         type: DataTypes.STRING(10),
         allowNull: false,
         defaultValue: "INV",
-        comment: "Invoice number prefix (e.g., INV, BILL, etc.)",
+        comment: "Invoice number prefix (e.g., INV, BILL)",
       },
       startCount: {
         type: DataTypes.INTEGER.UNSIGNED,
         allowNull: false,
         defaultValue: 1001,
-        comment: "Starting count for invoice numbers",
+        comment: "Starting invoice number",
       },
       currentCount: {
         type: DataTypes.INTEGER.UNSIGNED,
         allowNull: false,
         defaultValue: 1001,
-        comment: "Current invoice count",
+        comment: "Next available invoice number",
       },
       invoiceTemplate: {
-        type: DataTypes.ENUM("template1", "template2", "template3"),
-        allowNull: false,
+        type: DataTypes.STRING(50),
+        allowNull: true,
         defaultValue: "template1",
-        comment: "Selected invoice template format",
+        comment:
+          "Default template for invoices (template1, template2, template3)",
       },
       usedNumbers: {
         type: DataTypes.TEXT,
         allowNull: true,
-        comment: "JSON array of used invoice numbers to prevent duplicates",
-        get() {
-          const value = this.getDataValue("usedNumbers");
-          return value ? JSON.parse(value) : [];
-        },
-        set(value) {
-          this.setDataValue("usedNumbers", JSON.stringify(value || []));
-        },
+        defaultValue: "[]",
+        comment: "JSON array of used invoice numbers",
       },
     },
     {
-      tableName: "invoice_settings",
+      tableName: "vendor_invoice_settings",
       timestamps: true,
       paranoid: false,
     },
   );
 
-  return InvoiceSettings;
+  return VendorInvoiceSettings;
 };

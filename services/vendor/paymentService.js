@@ -37,24 +37,30 @@ exports.createPayment = async (vendorId, payload) => {
     status,
     adjustedInvoices,
   } = payload;
-
+  if (subType === "customer") {
+    if (!customerId) {
+      throw new Error("customerId is required when subType is customer");
+    }
+  } else {
+    if (customerId) {
+      throw new Error(
+        `customerId should not be provided when subType is ${subType}`,
+      );
+    }
+  }
   return await sequelize.transaction(async (t) => {
-    // Vendor check
     const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
     if (!vendor) throw new Error("Vendor not found");
 
-    // Customer check
-    if (customerId && subType === "customer") {
+    if (subType === "customer") {
       const customer = await CustomerModel.findByPk(customerId, {
         transaction: t,
       });
       if (!customer) throw new Error("Customer not found");
     }
 
-    // Generate payment number
     const paymentNumber = await generatePaymentNumber(PaymentModel, t);
 
-    // Calculate outstanding before and after payment
     let totalOutstanding = 0;
     let outstandingAfterPayment = 0;
 
@@ -72,12 +78,11 @@ exports.createPayment = async (vendorId, payload) => {
       }
     }
 
-    // Create payment
     const payment = await PaymentModel.create(
       {
         paymentNumber,
         vendorId,
-        customerId,
+        customerId: subType === "customer" ? customerId : null,
         type,
         subType,
         amount: toNumber(amount).toFixed(2),
@@ -103,7 +108,6 @@ exports.createPayment = async (vendorId, payload) => {
       { transaction: t },
     );
 
-    // Create transaction entry
     if (TransactionModel) {
       await TransactionModel.create(
         {
@@ -125,7 +129,6 @@ exports.createPayment = async (vendorId, payload) => {
       );
     }
 
-    // BILL UPDATE LOGIC - Only if credit payment
     if (
       type === "credit" &&
       Array.isArray(adjustedInvoices) &&
@@ -188,7 +191,6 @@ exports.createPayment = async (vendorId, payload) => {
       }
     }
 
-    // Fetch the complete payment with relations before returning
     const completePayment = await PaymentModel.findByPk(payment.id, {
       include: [
         {
