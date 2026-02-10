@@ -9,7 +9,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       customerId: {
         type: DataTypes.INTEGER.UNSIGNED,
-        allowNull: false,
+        allowNull: true,
       },
       vendorId: {
         type: DataTypes.INTEGER.UNSIGNED,
