@@ -5,8 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node --watch server.js",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "start": "node --watch server.js"
   },
   "keywords": [],
   "author": "",
@@ -25,7 +24,7 @@
     "mysql2": "^3.15.3",
     "node-cron": "^4.2.1",
     "pdfkit": "^0.17.2",
-    "puppeteer": "^24.37.1",
+    "puppeteer": "^24.37.2",
     "sequelize": "^6.37.7",
     "uuid": "^13.0.0"
   },
