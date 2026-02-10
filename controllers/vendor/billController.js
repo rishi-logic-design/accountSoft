@@ -77,13 +77,9 @@ exports.generateBillPdf = async (req, res, next) => {
   try {
     const vendorId = req.user.vendorId || req.user.id;
 
-    // Get template from query parameter (optional override)
-    const templateOverride = req.query.template;
-
     const pdfBuffer = await billService.generateBillPdf(
       req.params.id,
       vendorId,
-      templateOverride,
     );
 
     res.setHeader("Content-Type", "application/pdf");

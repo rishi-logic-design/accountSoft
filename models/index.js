@@ -44,7 +44,7 @@ const CustomerOtpModel = CustomerOtp(sequelize, Sequelize);
 const VendorGstNumberModel = VendorGstNumber(sequelize, Sequelize);
 const VendorPaymentDetailsModel = VendorPaymentDetails(sequelize, Sequelize);
 const NotificationModel = NotificationModelFactory(sequelize, Sequelize);
-const InvoiceSettingsModel = InvoiceSettings(sequelize, Sequelize); // NEW
+const InvoiceSettingsModel = InvoiceSettings(sequelize, Sequelize); 
 
 // Vendor - Customer
 VendorModel.hasMany(NotificationModel, {

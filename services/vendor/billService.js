@@ -7,6 +7,7 @@ const {
   CustomerModel,
   VendorModel,
   sequelize,
+  InvoiceSettingsModel,
 } = require("../../models");
 const { Op } = require("sequelize");
 const invoiceSettingsService = require("./invoiceSettingsService");
@@ -475,7 +476,7 @@ exports.editBill = async (billId, vendorId, payload) => {
   });
 };
 
-exports.generateBillPdf = async (billId, vendorId, templateOverride = null) => {
+exports.generateBillPdf = async (billId, vendorId) => {
   const bill = await BillModel.findOne({
     where: { id: billId, vendorId },
     include: [
@@ -487,7 +488,11 @@ exports.generateBillPdf = async (billId, vendorId, templateOverride = null) => {
 
   if (!bill) throw new Error("Bill not found");
 
-  const template = templateOverride || bill.invoiceTemplate || "invoice1";
+  const invoiceSettings = await InvoiceSettingsModel.findOne({
+    where: { vendorId },
+  });
+
+  const template = invoiceSettings?.selectedTemplate || "invoice1";
 
   const html = renderTemplate(template, {
     bill,
@@ -498,7 +503,9 @@ exports.generateBillPdf = async (billId, vendorId, templateOverride = null) => {
 
   const browser = await puppeteer.launch({
     headless: "new",
-    args: ["--no-sandbox"],
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    executablePath:
+      process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/google-chrome-stable",
   });
 
   const page = await browser.newPage();
