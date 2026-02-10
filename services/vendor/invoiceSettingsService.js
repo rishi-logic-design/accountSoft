@@ -129,14 +129,16 @@ exports.checkInvoiceNumberAvailability = async (vendorId, number) => {
   };
 };
 
-exports.getInvoiceTemplatePreview = async (vendorId) => {
+exports.getInvoiceTemplatePreview = async () => {
   const templates = getAvailableTemplates();
+
+  const FIREBASE_BASE_URL =
+    "https://firebasestorage.googleapis.com/v0/b/auditra-bcd8e.firebasestorage.app/o/invoice-templates%2F";
 
   return {
     templates: templates.map((t) => ({
       ...t,
-      preview: `/templates/previews/${t.id}.png`,
+      preview: `${FIREBASE_BASE_URL}${t.id}.png?alt=media`,
     })),
   };
 };
-
