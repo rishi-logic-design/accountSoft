@@ -500,14 +500,15 @@ exports.generateBillPdf = async (billId, vendorId) => {
     vendor: bill.vendor,
     items: bill.items,
   });
-
   const browser = await puppeteer.launch({
     headless: "new",
-    executablePath: "/usr/bin/chromium",
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-zygote",
+      "--single-process",
     ],
   });
 
