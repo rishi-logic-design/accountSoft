@@ -35,7 +35,7 @@ const customerDashboardRoutes = require("./routes/Customer/customerDashboardRout
 const customerVendorPaymentRoutes = require("./routes/Customer/customerVendorPaymentRoutes");
 const customerGstNumberRoutes = require("./routes/Customer/customerGstNumberRoutes");
 const notificationRoutes = require("./routes/Vendors/notificationRoutes");
-const invoiceSettingsRoutes = require("./routes/Vendors/invoiceSettingsRoutes"); 
+const invoiceSettingsRoutes = require("./routes/Vendors/invoiceSettingsRoutes");
 
 app.use(
   cors({
@@ -64,6 +64,7 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date() });
 });
 
+app.use("/templates", express.static(path.join(__dirname, "templates")));
 // Routes
 app.use("/uploads", express.static("uploads"));
 app.use("/auth", authRoutes);
@@ -91,7 +92,7 @@ app.use("/api/customer/dashboard", customerDashboardRoutes);
 app.use("/api/customer/vendor-payment-details", customerVendorPaymentRoutes);
 app.use("/api/customer/vendor-gst-number", customerGstNumberRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/api/vendor/invoice-settings", invoiceSettingsRoutes); 
+app.use("/api/vendor/invoice-settings", invoiceSettingsRoutes);
 
 const PORT = process.env.PORT || 5000;
 

@@ -487,8 +487,7 @@ exports.generateBillPdf = async (billId, vendorId, templateOverride = null) => {
 
   if (!bill) throw new Error("Bill not found");
 
-  // Use template override from query param, or bill's saved template, or default
-  const template = templateOverride || bill.invoiceTemplate || "template1";
+  const template = templateOverride || bill.invoiceTemplate || "invoice1";
 
   const html = renderTemplate(template, {
     bill,

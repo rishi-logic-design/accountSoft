@@ -28,7 +28,7 @@ module.exports = (sequelize, DataTypes) => {
       invoiceTemplate: {
         type: DataTypes.STRING(50),
         allowNull: true,
-        defaultValue: "template1",
+        defaultValue: "invoice1",
         comment:
           "Template to use for PDF generation (template1, template2, template3)",
       },
