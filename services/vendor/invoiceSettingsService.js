@@ -1,8 +1,8 @@
-const { VendorInvoiceSettings } = require("../../models");
+const { InvoiceSettingsModel } = require("../../models");
 const { getAvailableTemplates } = require("../../utils/templateRenderer");
 
 exports.getInvoiceSettings = async (vendorId) => {
-  let settings = await VendorInvoiceSettings.findOne({
+  let settings = await InvoiceSettingsModel.findOne({
     where: { vendorId },
   });
 
@@ -32,7 +32,7 @@ exports.updateInvoiceSettings = async (vendorId, payload) => {
   });
 
   if (!settings) {
-    settings = await VendorInvoiceSettings.create({
+    settings = await InvoiceSettingsModel.create({
       vendorId,
       prefix: prefix || "INV",
       startCount: startCount || 1001,
@@ -84,7 +84,7 @@ exports.getNextInvoiceNumber = async (vendorId, customNumber = null) => {
     fullNumber: `${settings.prefix}${String(numericPart).padStart(String(settings.startCount).length, "0")}`,
     prefix: settings.prefix,
     numericPart,
-    template: settings.invoiceTemplate || "template1", 
+    template: settings.invoiceTemplate || "template1",
   };
 };
 
@@ -114,7 +114,7 @@ exports.reserveInvoiceNumber = async (vendorId, number) => {
   return true;
 };
 
-exports.checkInvoiceNumber = async (vendorId, number) => {
+exports.checkInvoiceNumberAvailability = async (vendorId, number) => {
   const settings = await this.getInvoiceSettings(vendorId);
   const numericPart = parseInt(number);
 
@@ -129,13 +129,13 @@ exports.checkInvoiceNumber = async (vendorId, number) => {
   };
 };
 
-exports.getTemplatePreview = async () => {
+exports.getInvoiceTemplatePreview = async (vendorId) => {
   const templates = getAvailableTemplates();
 
   return {
     templates: templates.map((t) => ({
       ...t,
-      preview: `/templates/previews/${t.id}.png`, 
+      preview: `/templates/previews/${t.id}.png`,
     })),
   };
 };

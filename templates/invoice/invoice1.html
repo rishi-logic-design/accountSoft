@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+  <head>
+    <style>
+      body {
+        font-family: Arial;
+      }
+      .header {
+        color: #2563eb;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 class="header">INVOICE</h1>
+
+    <p>Invoice No: {{bill.billNumber}}</p>
+    <p>Date: {{formatDate bill.billDate}}</p>
+
+    <hr />
+
+    <p><strong>Customer:</strong> {{customer.customerName}}</p>
+
+    <table width="100%" border="1" cellspacing="0">
+      <tr>
+        <th>#</th>
+        <th>Description</th>
+        <th>Qty</th>
+        <th>Rate</th>
+        <th>Amount</th>
+      </tr>
+      {{#each items}}
+      <tr>
+        <td>{{add @index 1}}</td>
+        <td>{{description}}</td>
+        <td>{{qty}}</td>
+        <td>{{formatNumber rate}}</td>
+        <td>{{formatNumber amount}}</td>
+      </tr>
+      {{/each}}
+    </table>
+
+    <h3>Total: ₹{{formatNumber bill.totalWithGST}}</h3>
+  </body>
+</html>
