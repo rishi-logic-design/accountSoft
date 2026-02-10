@@ -108,11 +108,11 @@ exports.createPayment = async (vendorId, payload) => {
       { transaction: t },
     );
 
-    if (TransactionModel) {
+    if (TransactionModel && subType === "customer") {
       await TransactionModel.create(
         {
           vendorId,
-          customerId,
+          customerId: subType === "customer" ? customerId : null,
           amount: toNumber(amount).toFixed(2),
           type: "payment",
           description:
