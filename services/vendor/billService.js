@@ -2,358 +2,583 @@ const {
   BillModel,
   BillItemModel,
   ChallanModel,
+  ChallanItemModel,
+  TransactionModel,
   CustomerModel,
   VendorModel,
+  sequelize,
 } = require("../../models");
+const { Op } = require("sequelize");
 const invoiceSettingsService = require("./invoiceSettingsService");
-const { generateBillPDF } = require("../../utils/templateRenderer");
+const { whatsappLink } = require("../../utils/whatsappHelper");
+const { renderTemplate } = require("../../utils/templateRenderer");
+const puppeteer = require("puppeteer");
+
+function toNumber(v) {
+  return parseFloat(v || 0);
+}
+
+async function generateBillNumberWithSettings(
+  vendorId,
+  customNumber = null,
+  transaction,
+) {
+  try {
+    // Get next invoice number from settings
+    const invoiceInfo = await invoiceSettingsService.getNextInvoiceNumber(
+      vendorId,
+      customNumber,
+    );
+
+    // Reserve the number
+    await invoiceSettingsService.reserveInvoiceNumber(
+      vendorId,
+      invoiceInfo.numericPart,
+    );
+
+    return {
+      billNumber: invoiceInfo.fullNumber,
+      prefix: invoiceInfo.prefix,
+      count: invoiceInfo.numericPart,
+      template: invoiceInfo.template || "template1",
+    };
+  } catch (error) {
+    throw error;
+  }
+}
 
 exports.createBill = async (vendorId, payload) => {
   const {
     customerId,
-    challanIds,
-    billDate,
+    challanIds = [],
     discountPercent = 0,
     gstPercent = 0,
-    customInvoicePrefix = null, // NEW: Allow custom prefix per bill
-    note = null,
+    note,
+    customInvoiceNumber = null,
+    invoiceTemplate = null,
+    customInvoicePrefix = null,
   } = payload;
 
-  // Get invoice settings
-  const invoiceSettings =
-    await invoiceSettingsService.getInvoiceSettings(vendorId);
-
-  // Get next invoice number
-  const invoiceInfo =
-    await invoiceSettingsService.getNextInvoiceNumber(vendorId);
-
-  // Determine which prefix to use: custom (if provided) OR system default
-  const finalPrefix = customInvoicePrefix || invoiceSettings.prefix;
-
-  // Create full bill number: prefix + numeric part
-  const billNumber = `${finalPrefix}${String(invoiceInfo.numericPart).padStart(
-    String(invoiceSettings.startCount).length,
-    "0",
-  )}`;
-
-  // Fetch challans
-  const challans = await ChallanModel.findAll({
-    where: {
-      id: challanIds,
-      vendorId,
-      customerId,
-    },
-    include: [
-      {
-        association: "items",
-        include: ["category"],
-      },
-    ],
-  });
-
-  if (challans.length === 0) {
-    throw new Error("No valid challans found");
+  if (!customerId) throw new Error("customerId required");
+  if (!Array.isArray(challanIds) || challanIds.length === 0) {
+    throw new Error("At least one challan must be selected");
   }
 
-  // Calculate totals
-  let subtotal = 0;
-  const billItems = [];
+  return await sequelize.transaction(async (t) => {
+    const vendor = await VendorModel.findByPk(vendorId, { transaction: t });
+    if (!vendor) throw new Error("Vendor not found");
 
-  challans.forEach((challan) => {
-    challan.items.forEach((item) => {
-      const itemTotal = item.pricePerUnit * item.qty;
-      subtotal += itemTotal;
-
-      billItems.push({
-        productName: item.productName,
-        categoryId: item.categoryId,
-        qty: item.qty,
-        unit: item.unit,
-        pricePerUnit: item.pricePerUnit,
-        amount: itemTotal,
-        challanId: challan.id,
-      });
+    const customer = await CustomerModel.findByPk(customerId, {
+      transaction: t,
     });
-  });
+    if (!customer) throw new Error("Customer not found");
 
-  const discountAmount = (subtotal * discountPercent) / 100;
-  const totalWithoutGST = subtotal - discountAmount;
-  const gstTotal = (totalWithoutGST * gstPercent) / 100;
-  const totalWithGST = totalWithoutGST + gstTotal;
-
-  // Create bill with template from settings
-  const bill = await BillModel.create({
-    billNumber,
-    invoicePrefix: finalPrefix, // Store the prefix used
-    invoiceCount: invoiceInfo.numericPart, // Store numeric part
-    customInvoicePrefix: customInvoicePrefix, // Store if custom prefix was used
-    invoiceTemplate: invoiceSettings.invoiceTemplate || "template1", // Use template from settings
-    vendorId,
-    customerId,
-    billDate,
-    subtotal,
-    gstTotal,
-    totalWithoutGST,
-    totalWithGST,
-    totalAmount: totalWithGST,
-    paidAmount: 0,
-    pendingAmount: totalWithGST,
-    status: "pending",
-    note,
-    challanIds: JSON.stringify(challanIds),
-  });
-
-  // Create bill items
-  const itemsWithBillId = billItems.map((item) => ({
-    ...item,
-    billId: bill.id,
-  }));
-
-  await BillItemModel.bulkCreate(itemsWithBillId);
-
-  // Update challans as billed
-  await ChallanModel.update(
-    { status: "billed" },
-    {
+    const challans = await ChallanModel.findAll({
       where: {
         id: challanIds,
+        vendorId,
+        customerId,
+        status: "unpaid",
       },
-    },
-  );
+      include: [{ model: ChallanItemModel, as: "items" }],
+      transaction: t,
+    });
 
-  // Reserve the invoice number
-  await invoiceSettingsService.reserveInvoiceNumber(
-    vendorId,
-    invoiceInfo.numericPart,
-  );
+    if (challans.length !== challanIds.length) {
+      throw new Error("One or more challans are already billed or invalid");
+    }
 
-  // Fetch complete bill with relations
-  const completeBill = await BillModel.findByPk(bill.id, {
-    include: [
+    let subtotal = 0;
+    const billItems = [];
+
+    for (const ch of challans) {
+      for (const it of ch.items) {
+        const qty = toNumber(it.qty);
+        const rate = toNumber(it.pricePerUnit);
+        const amount = +(qty * rate).toFixed(2);
+
+        subtotal += amount;
+
+        billItems.push({
+          challanId: ch.id,
+          description: it.productName,
+          qty,
+          rate,
+          amount,
+          gstPercent: toNumber(it.gstPercent || 0),
+          totalWithGst: amount,
+        });
+      }
+    }
+
+    subtotal = +subtotal.toFixed(2);
+
+    const discountAmount =
+      discountPercent > 0
+        ? +((subtotal * discountPercent) / 100).toFixed(2)
+        : 0;
+
+    const discountedSubtotal = +(subtotal - discountAmount).toFixed(2);
+
+    const gstAmount =
+      gstPercent > 0
+        ? +((discountedSubtotal * gstPercent) / 100).toFixed(2)
+        : 0;
+
+    const totalWithGST = +(discountedSubtotal + gstAmount).toFixed(2);
+
+    // Generate bill number with invoice settings
+    const billNumberInfo = await generateBillNumberWithSettings(
+      vendorId,
+      customInvoiceNumber,
+      t,
+    );
+
+    const systemPrefix = billNumberInfo.prefix;
+
+    const finalPrefix = customInvoicePrefix
+      ? customInvoicePrefix.toUpperCase().trim()
+      : systemPrefix;
+
+    const finalBillNumber = `${finalPrefix}${billNumberInfo.count}`;
+
+    // Use provided template or default from settings
+    const template = invoiceTemplate || billNumberInfo.template || "template1";
+
+    const bill = await BillModel.create(
       {
-        association: "customer",
-        include: ["vendor"],
+        billNumber: finalBillNumber,
+        invoicePrefix: systemPrefix,
+        customInvoicePrefix: customInvoicePrefix || null,
+        invoiceCount: billNumberInfo.count,
+        invoiceTemplate: template,
+        vendorId,
+        customerId,
+        billDate: new Date(),
+        subtotal,
+        gstTotal: gstAmount,
+        totalWithoutGST: discountedSubtotal,
+        totalWithGST,
+        totalAmount: totalWithGST,
+        paidAmount: 0,
+        pendingAmount: totalWithGST,
+        status: "pending",
+        note: note || null,
+        challanIds: JSON.stringify(challanIds),
+      },
+      { transaction: t },
+    );
+
+    await BillItemModel.bulkCreate(
+      billItems.map((i) => ({ ...i, billId: bill.id })),
+      { transaction: t },
+    );
+
+    await ChallanModel.update(
+      {
+        status: "paid",
       },
       {
-        association: "items",
-        include: ["category"],
+        where: {
+          id: challanIds,
+          vendorId,
+        },
+        transaction: t,
       },
-    ],
+    );
+
+    return await BillModel.findByPk(bill.id, {
+      include: [
+        { model: BillItemModel, as: "items" },
+        { model: CustomerModel, as: "customer" },
+      ],
+      transaction: t,
+    });
   });
-
-  return completeBill;
 };
 
 exports.listBills = async ({
   vendorId,
-  page = 1,
-  limit = 20,
-  status,
   customerId,
-}) => {
-  const where = { vendorId };
+  page = 1,
+  size = 20,
+  search,
+  fromDate,
+  toDate,
+  status,
+  sortBy = "billDate",
+  sortOrder = "DESC",
+} = {}) => {
+  const where = {};
 
-  if (status) where.status = status;
-  if (customerId) where.customerId = customerId;
+  if (vendorId) where.vendorId = vendorId;
 
-  const offset = (page - 1) * limit;
+  if (customerId) where.customerId = Number(customerId);
 
-  const { count, rows } = await BillModel.findAndCountAll({
+  if (status) {
+    if (Array.isArray(status)) {
+      where.status = { [Op.in]: status };
+    } else {
+      where.status = status;
+    }
+  }
+
+  if (fromDate || toDate) {
+    where.billDate = {};
+    if (fromDate) {
+      where.billDate[Op.gte] = new Date(fromDate);
+    }
+    if (toDate) {
+      const endDate = new Date(toDate);
+      endDate.setHours(23, 59, 59, 999);
+      where.billDate[Op.lte] = endDate;
+    }
+  }
+
+  if (search) {
+    where[Op.or] = [{ billNumber: { [Op.like]: `%${search}%` } }];
+  }
+
+  const result = await BillModel.findAndCountAll({
     where,
     include: [
       {
-        association: "customer",
-        attributes: ["id", "customerName", "mobileNumber", "company"],
+        model: CustomerModel,
+        as: "customer",
+        attributes: ["id", "customerName", "businessName", "mobile"],
+        where: search
+          ? {
+              [Op.or]: [
+                { customerName: { [Op.like]: `%${search}%` } },
+                { businessName: { [Op.like]: `%${search}%` } },
+              ],
+            }
+          : undefined,
+        required: search ? true : false,
       },
     ],
-    order: [["createdAt", "DESC"]],
-    limit: parseInt(limit),
-    offset: parseInt(offset),
+    limit: Number(size),
+    offset: (Number(page) - 1) * Number(size),
+    order: [[sortBy, sortOrder.toUpperCase()]],
+    distinct: true,
   });
 
   return {
-    rows,
-    total: count,
-    page: parseInt(page),
-    totalPages: Math.ceil(count / limit),
+    total: result.count,
+    rows: result.rows,
+    page: Number(page),
+    size: Number(size),
+    totalPages: Math.ceil(result.count / Number(size)),
+    hasNextPage: Number(page) < Math.ceil(result.count / Number(size)),
+    hasPrevPage: Number(page) > 1,
   };
 };
 
 exports.getBillById = async (billId, vendorId) => {
+  const where = { id: billId };
+  if (vendorId) where.vendorId = vendorId;
+
   const bill = await BillModel.findOne({
-    where: { id: billId, vendorId },
+    where,
     include: [
-      {
-        association: "customer",
-        include: ["vendor"],
-      },
-      {
-        association: "items",
-        include: ["category"],
-      },
+      { model: BillItemModel, as: "items" },
+      { model: CustomerModel, as: "customer" },
     ],
   });
 
-  if (!bill) {
-    throw new Error("Bill not found");
-  }
+  if (!bill) throw new Error("Bill not found");
 
-  return bill;
-};
-
-exports.editBill = async (billId, vendorId, payload) => {
-  const bill = await BillModel.findOne({
-    where: { id: billId, vendorId },
+  // Get all payments related to this bill
+  const payments = await TransactionModel.findAll({
+    where: {
+      vendorId: bill.vendorId,
+      customerId: bill.customerId,
+      billId: bill.id,
+      type: "payment",
+    },
+    order: [["transactionDate", "DESC"]],
   });
 
-  if (!bill) {
-    throw new Error("Bill not found");
-  }
+  // Calculate totals
+  const paid = payments.reduce((s, p) => s + toNumber(p.amount), 0);
+  const totalAmount = toNumber(bill.totalWithGST);
+  const due = +(totalAmount - paid).toFixed(2);
 
-  const {
-    billDate,
-    discountPercent,
-    gstPercent,
-    customInvoicePrefix, // NEW: Allow changing prefix
-    note,
-  } = payload;
-
-  const updateData = {};
-
-  if (billDate) updateData.billDate = billDate;
-  if (note !== undefined) updateData.note = note;
-
-  // Allow updating custom prefix
-  if (customInvoicePrefix !== undefined) {
-    updateData.customInvoicePrefix = customInvoicePrefix;
-
-    // Regenerate bill number with new prefix
-    const numericPart = bill.invoiceCount || bill.billNumber.replace(/\D/g, "");
-    const invoiceSettings =
-      await invoiceSettingsService.getInvoiceSettings(vendorId);
-    const finalPrefix = customInvoicePrefix || invoiceSettings.prefix;
-
-    updateData.billNumber = `${finalPrefix}${String(numericPart).padStart(
-      String(invoiceSettings.startCount).length,
-      "0",
-    )}`;
-    updateData.invoicePrefix = finalPrefix;
-  }
-
-  if (discountPercent !== undefined || gstPercent !== undefined) {
-    const items = await BillItemModel.findAll({
-      where: { billId: bill.id },
-    });
-
-    const subtotal = items.reduce((sum, item) => sum + Number(item.amount), 0);
-    const discount = discountPercent !== undefined ? discountPercent : 0;
-    const gst = gstPercent !== undefined ? gstPercent : 0;
-
-    const discountAmount = (subtotal * discount) / 100;
-    const totalWithoutGST = subtotal - discountAmount;
-    const gstTotal = (totalWithoutGST * gst) / 100;
-    const totalWithGST = totalWithoutGST + gstTotal;
-
-    updateData.subtotal = subtotal;
-    updateData.gstTotal = gstTotal;
-    updateData.totalWithoutGST = totalWithoutGST;
-    updateData.totalWithGST = totalWithGST;
-    updateData.totalAmount = totalWithGST;
-    updateData.pendingAmount = totalWithGST - bill.paidAmount;
-  }
-
-  await bill.update(updateData);
-
-  return this.getBillById(billId, vendorId);
-};
-
-exports.markBillPaid = async (billId, vendorId, payload) => {
-  const bill = await this.getBillById(billId, vendorId);
-
-  const { paidAmount, paymentDate, paymentMode } = payload;
-
-  const newPaidAmount =
-    Number(bill.paidAmount) + Number(paidAmount || bill.pendingAmount);
-  const newPendingAmount = Number(bill.totalAmount) - newPaidAmount;
-
+  // Determine status
   let status = "pending";
-  if (newPendingAmount <= 0) {
+  if (due <= 0) {
     status = "paid";
-  } else if (newPaidAmount > 0) {
+  } else if (paid > 0) {
     status = "partial";
   }
 
-  await bill.update({
-    paidAmount: newPaidAmount,
-    pendingAmount: newPendingAmount,
-    status,
-  });
+  // Update bill if status or amounts changed
+  if (
+    bill.status !== status ||
+    toNumber(bill.paidAmount) !== paid ||
+    toNumber(bill.pendingAmount) !== due
+  ) {
+    await bill.update({
+      status,
+      paidAmount: paid.toFixed(2),
+      pendingAmount: due.toFixed(2),
+    });
+  }
 
-  return this.getBillById(billId, vendorId);
+  return {
+    bill,
+    payments,
+    paidAmount: paid.toFixed(2),
+    pendingAmount: due.toFixed(2),
+    totalAmount: totalAmount.toFixed(2),
+  };
+};
+
+exports.markBillPaid = async (billId, vendorId, payload) => {
+  return await sequelize.transaction(async (t) => {
+    const bill = await BillModel.findOne({
+      where: { id: billId, vendorId },
+      transaction: t,
+    });
+    if (!bill) throw new Error("Bill not found");
+
+    const amount = toNumber(payload.paymentAmount);
+    if (amount <= 0) throw new Error("paymentAmount must be > 0");
+
+    // Create transaction record
+    const trx = await TransactionModel.create(
+      {
+        vendorId,
+        customerId: bill.customerId,
+        amount: amount.toFixed(2),
+        type: "payment",
+        description: payload.note || `Payment for ${bill.billNumber}`,
+        transactionDate: payload.transactionDate || new Date(),
+        billId: bill.id,
+      },
+      { transaction: t },
+    );
+
+    // Calculate total paid from all transactions
+    const allPayments = await TransactionModel.sum("amount", {
+      where: {
+        vendorId,
+        customerId: bill.customerId,
+        billId: bill.id,
+        type: "payment",
+      },
+      transaction: t,
+    });
+
+    const totalPaid = toNumber(allPayments);
+    const totalAmount = toNumber(bill.totalWithGST);
+    const pending = totalAmount - totalPaid;
+
+    // Determine status
+    let status = "pending";
+    if (pending <= 0) {
+      status = "paid";
+    } else if (totalPaid > 0) {
+      status = "partial";
+    }
+
+    // Update bill with payment tracking
+    await bill.update(
+      {
+        status,
+        paidAmount: totalPaid.toFixed(2),
+        pendingAmount: Math.max(0, pending).toFixed(2),
+      },
+      { transaction: t },
+    );
+
+    return {
+      bill,
+      payment: trx,
+      totalPaid: totalPaid.toFixed(2),
+      pendingAmount: Math.max(0, pending).toFixed(2),
+    };
+  });
+};
+
+exports.editBill = async (billId, vendorId, payload) => {
+  return await sequelize.transaction(async (t) => {
+    const bill = await BillModel.findOne({
+      where: { id: billId, vendorId },
+      transaction: t,
+    });
+    if (!bill) throw new Error("Bill not found");
+    if (bill.status === "paid") throw new Error("Cannot edit a paid bill");
+
+    if (payload.items) {
+      // delete existing items and recreate
+      await BillItemModel.destroy({
+        where: { billId: bill.id },
+        transaction: t,
+      });
+      let subtotal = 0,
+        gstTotal = 0;
+      const toCreate = [];
+      for (const mi of payload.items) {
+        const qty = toNumber(mi.qty);
+        const rate = toNumber(mi.rate);
+        const amount = +(qty * rate).toFixed(2);
+        const gstAmt = +((amount * toNumber(mi.gstPercent || 0)) / 100).toFixed(
+          2,
+        );
+        const totalWithGst = +(amount + gstAmt).toFixed(2);
+        subtotal += amount;
+        gstTotal += gstAmt;
+        toCreate.push({
+          billId: bill.id,
+          challanId: mi.challanId || null,
+          description: mi.description || "Item",
+          qty,
+          rate,
+          amount,
+          gstPercent: toNumber(mi.gstPercent || 0),
+          totalWithGst,
+        });
+      }
+      await BillItemModel.bulkCreate(toCreate, { transaction: t });
+      subtotal = +subtotal.toFixed(2);
+      gstTotal = +gstTotal.toFixed(2);
+      const totalWithGST = +(subtotal + gstTotal).toFixed(2);
+
+      // Update bill totals and recalculate pending
+      const paidAmount = toNumber(bill.paidAmount);
+      const newPending = totalWithGST - paidAmount;
+
+      await bill.update(
+        {
+          subtotal,
+          gstTotal,
+          totalWithoutGST: subtotal,
+          totalWithGST,
+          totalAmount: totalWithGST,
+          pendingAmount: Math.max(0, newPending).toFixed(2),
+        },
+        { transaction: t },
+      );
+    }
+
+    if (payload.note !== undefined)
+      await bill.update({ note: payload.note }, { transaction: t });
+    if (payload.billDate)
+      await bill.update({ billDate: payload.billDate }, { transaction: t });
+
+    const updated = await BillModel.findByPk(bill.id, {
+      include: [{ model: BillItemModel, as: "items" }],
+      transaction: t,
+    });
+    return updated;
+  });
 };
 
 exports.generateBillPdf = async (billId, vendorId, templateOverride = null) => {
-  const bill = await this.getBillById(billId, vendorId);
-
-  const templateToUse = templateOverride || bill.invoiceTemplate || "template1";
-
-  const pdfBuffer = await generateBillPDF(bill, templateToUse);
-  return pdfBuffer;
-};
-
-exports.getWhatsappLinkForBill = async (
-  billId,
-  vendorId,
-  customMessage = null,
-) => {
-  const bill = await this.getBillById(billId, vendorId);
-
-  const message =
-    customMessage ||
-    `Hello ${bill.customer.customerName}, your bill ${bill.billNumber} for ₹${bill.totalAmount} is pending. Please make payment at your earliest convenience.`;
-
-  const whatsappLink = `https://wa.me/${bill.customer.mobileNumber}?text=${encodeURIComponent(message)}`;
-
-  return { whatsappLink, message };
-};
-
-exports.deleteBill = async (billId, vendorId) => {
   const bill = await BillModel.findOne({
     where: { id: billId, vendorId },
-  });
-
-  if (!bill) {
-    throw new Error("Bill not found");
-  }
-
-  // Update challans back to unpaid
-  if (bill.challanIds) {
-    const challanIds = JSON.parse(bill.challanIds);
-    await ChallanModel.update(
-      { status: "unpaid" },
-      {
-        where: { id: challanIds },
-      },
-    );
-  }
-
-  await bill.destroy();
-  return true;
-};
-
-exports.getVendorPendingBillTotal = async (vendorId) => {
-  const result = await BillModel.findOne({
-    where: { vendorId },
-    attributes: [
-      [
-        BillModel.sequelize.fn("SUM", BillModel.sequelize.col("pendingAmount")),
-        "totalPending",
-      ],
+    include: [
+      { model: CustomerModel, as: "customer" },
+      { model: BillItemModel, as: "items" },
+      { model: VendorModel, as: "vendor" },
     ],
   });
 
+  if (!bill) throw new Error("Bill not found");
+
+  // Use template override from query param, or bill's saved template, or default
+  const template = templateOverride || bill.invoiceTemplate || "template1";
+
+  const html = renderTemplate(template, {
+    bill,
+    customer: bill.customer,
+    vendor: bill.vendor,
+    items: bill.items,
+  });
+
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: ["--no-sandbox"],
+  });
+
+  const page = await browser.newPage();
+  await page.setContent(html, { waitUntil: "networkidle0" });
+
+  const pdfBuffer = await page.pdf({
+    format: "A4",
+    printBackground: true,
+  });
+
+  await browser.close();
+  return pdfBuffer;
+};
+
+exports.getWhatsappLinkForBill = async (billId, vendorId, messageOverride) => {
+  const { bill, pendingAmount } = await this.getBillById(billId, vendorId);
+  if (!bill) throw new Error("Bill not found");
+
+  const customer = await CustomerModel.findByPk(bill.customerId);
+  const phone = (customer && customer.mobile) || "";
+  if (!phone) throw new Error("Customer phone not found");
+
+  const message =
+    messageOverride ||
+    `Hello ${customer.customerName || ""}, Your Bill ${bill.billNumber} dated ${
+      bill.billDate
+    } for ₹${
+      bill.totalWithGST
+    } is generated. Pending amount: ₹${pendingAmount}`;
+  const link = whatsappLink(phone, message);
+  return { phone, link, message };
+};
+
+exports.deleteBill = async (billId, vendorId) => {
+  return await sequelize.transaction(async (t) => {
+    const bill = await BillModel.findOne({
+      where: { id: billId, vendorId },
+      transaction: t,
+    });
+
+    if (!bill) throw new Error("Bill not found");
+
+    const hasPayments = await TransactionModel.count({
+      where: { billId: bill.id, type: "payment" },
+      transaction: t,
+    });
+
+    if (hasPayments > 0) {
+      throw new Error(
+        "Cannot delete bill with payments. Mark as cancelled instead.",
+      );
+    }
+
+    await BillItemModel.destroy({
+      where: { billId: bill.id },
+      transaction: t,
+    });
+
+    await bill.destroy({ transaction: t });
+
+    return true;
+  });
+};
+
+exports.getVendorPendingBillTotal = async (vendorId) => {
+  if (!vendorId) throw new Error("vendorId is required");
+
+  const total = await BillModel.sum("pendingAmount", {
+    where: {
+      vendorId: Number(vendorId),
+      status: {
+        [Op.in]: ["pending", "partial"],
+      },
+    },
+  });
+
   return {
-    totalPending: result?.dataValues?.totalPending || 0,
+    vendorId: Number(vendorId),
+    totalPendingAmount: Number(total || 0).toFixed(2),
   };
 };
 
@@ -362,11 +587,11 @@ exports.updateBillTemplate = async (billId, vendorId, templateId) => {
     where: { id: billId, vendorId },
   });
 
-  if (!bill) {
-    throw new Error("Bill not found");
-  }
+  if (!bill) throw new Error("Bill not found");
 
-  await bill.update({ invoiceTemplate: templateId });
+  await bill.update({
+    invoiceTemplate: templateId,
+  });
 
-  return this.getBillById(billId, vendorId);
+  return bill;
 };
