@@ -5,12 +5,12 @@ require("dotenv").config({
       : ".env.development",
 });
 const express = require("express");
+const path = require("path");
+const app = express();
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const { sequelize } = require("./models");
 const errorMiddleware = require("./middleware/errorMiddleware");
-const path = require("path");
-const app = express();
 // Routes
 const authRoutes = require("./routes/Vendors/authRoutes");
 const vendorRoutes = require("./routes/Vendors/vendorRoutes");
@@ -48,6 +48,7 @@ app.use(
 
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
+app.use("/templates", express.static(path.join(__dirname, "templates")));
 
 app.get("/", (req, res) => {
   res.json({
@@ -64,7 +65,6 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date() });
 });
 
-app.use("/templates", express.static(path.join(__dirname, "templates")));
 // Routes
 app.use("/uploads", express.static("uploads"));
 app.use("/auth", authRoutes);
