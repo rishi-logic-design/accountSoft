@@ -40,8 +40,22 @@ exports.createPayment = asyncHandler(async (req, res) => {
   const uploadedAttachments = Array.isArray(attachments) ? attachments : [];
 
   // Required field validation
-  if (!customerId) {
-    return error(res, "Customer is required", 400);
+  if (subType === "customer") {
+    if (!customerId) {
+      return error(
+        res,
+        "Customer is required when payment sub-type is customer",
+        400,
+      );
+    }
+  } else {
+    if (customerId) {
+      return error(
+        res,
+        `Customer should not be provided for sub-type ${subType}`,
+        400,
+      );
+    }
   }
 
   if (!type || !["credit", "debit"].includes(type)) {
@@ -138,7 +152,7 @@ exports.createPayment = asyncHandler(async (req, res) => {
   }
 
   const payload = {
-    customerId,
+    customerId: subType === "customer" ? customerId : null,
     type,
     subType,
     amount,
