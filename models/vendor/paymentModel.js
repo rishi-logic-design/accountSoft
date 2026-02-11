@@ -18,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       customerId: {
         type: DataTypes.INTEGER.UNSIGNED,
-        allowNull: true, 
+        allowNull: true,
       },
       type: {
         type: DataTypes.ENUM("credit", "debit"),
@@ -33,7 +33,7 @@ module.exports = (sequelize, DataTypes) => {
           "cash-withdrawal",
           "bank-charges",
           "electricity-bill",
-          "miscellaneous"
+          "miscellaneous",
         ),
         allowNull: false,
         defaultValue: "customer",
@@ -56,7 +56,7 @@ module.exports = (sequelize, DataTypes) => {
           "online",
           "upi",
           "card",
-          "other"
+          "other",
         ),
         allowNull: false,
         defaultValue: "cash",
@@ -85,37 +85,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         comment: "Linked challan ID if payment is against a challan",
       },
-      // Bank transfer details
-      bankName: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      accountNumber: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      ifscCode: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      // Online payment details
-      upiId: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      // Cheque details
-      chequeNumber: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      chequeDate: {
-        type: DataTypes.DATEONLY,
-        allowNull: true,
-      },
-      chequeBankName: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
+
       // Payment status
       status: {
         type: DataTypes.ENUM("pending", "completed", "failed", "cancelled"),
@@ -155,7 +125,7 @@ module.exports = (sequelize, DataTypes) => {
         { fields: ["status"] },
         { fields: ["paymentNumber"], unique: true },
       ],
-    }
+    },
   );
 
   return Payment;

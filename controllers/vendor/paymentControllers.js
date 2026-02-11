@@ -26,13 +26,6 @@ exports.createPayment = asyncHandler(async (req, res) => {
     billId,
     challanId,
     attachments,
-    bankName,
-    accountNumber,
-    ifscCode,
-    upiId,
-    chequeNumber,
-    chequeDate,
-    chequeBankName,
     status,
     adjustedInvoices,
   } = req.body;
@@ -94,45 +87,6 @@ exports.createPayment = asyncHandler(async (req, res) => {
     return error(res, "Valid payment method is required", 400);
   }
 
-  // Method-specific validation
-  if (method === "bank") {
-    if (!bankName || !accountNumber || !ifscCode) {
-      return error(
-        res,
-        "Bank name, account number, and IFSC code are required for bank transfers",
-        400,
-      );
-    }
-
-    // Validate IFSC code
-    const ifscValidation = validateIFSCCode(ifscCode);
-    if (!ifscValidation.isValid) {
-      return error(res, ifscValidation.message, 400);
-    }
-  }
-
-  if (method === "upi" || method === "online") {
-    if (!upiId) {
-      return error(res, "UPI ID is required for UPI/online payments", 400);
-    }
-
-    // Validate UPI ID format
-    const upiRegex = /^[\w.-]+@[\w.-]+$/;
-    if (!upiRegex.test(upiId)) {
-      return error(res, "Invalid UPI ID format", 400);
-    }
-  }
-
-  if (method === "cheque") {
-    if (!chequeNumber || !chequeDate || !chequeBankName) {
-      return error(
-        res,
-        "Cheque number, date, and bank name are required for cheque payments",
-        400,
-      );
-    }
-  }
-
   if (adjustedInvoices && !Array.isArray(adjustedInvoices)) {
     return error(res, "Adjusted invoices must be an array", 400);
   }
@@ -163,13 +117,6 @@ exports.createPayment = asyncHandler(async (req, res) => {
     billId,
     challanId,
     attachments: uploadedAttachments,
-    bankName,
-    accountNumber,
-    ifscCode,
-    upiId,
-    chequeNumber,
-    chequeDate,
-    chequeBankName,
     status: status || "completed",
     adjustedInvoices,
   };
