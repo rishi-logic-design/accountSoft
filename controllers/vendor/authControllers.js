@@ -77,11 +77,15 @@ exports.login = asyncHandler(async (req, res) => {
         mobile: user.mobile,
         email: user.email,
         role: user.role,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       },
     },
     "Logged in",
   );
 });
+
 exports.getLoginDetail = asyncHandler(async (req, res) => {
   const user = req.user;
 
@@ -101,6 +105,66 @@ exports.getLoginDetail = asyncHandler(async (req, res) => {
       createdAt: user.createdAt || new Date(),
     },
     "Login user details fetched successfully",
+  );
+});
+
+exports.updateProfile = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { name, email, mobile } = req.body;
+
+  if (!name || !email || !mobile) {
+    return error(res, "Name, email and mobile are required", 400);
+  }
+
+  const user = await UserModel.findByPk(userId);
+
+  if (!user) {
+    return error(res, "User not found", 404);
+  }
+
+  if (email !== user.email) {
+    const existingEmail = await UserModel.findOne({
+      where: {
+        email,
+        id: { [require("sequelize").Op.ne]: userId },
+      },
+    });
+    if (existingEmail) {
+      return error(res, "Email already exists", 400);
+    }
+  }
+
+  if (mobile !== user.mobile) {
+    const existingMobile = await UserModel.findOne({
+      where: {
+        mobile,
+        id: { [require("sequelize").Op.ne]: userId },
+      },
+    });
+    if (existingMobile) {
+      return error(res, "Mobile number already exists", 400);
+    }
+  }
+
+  await user.update({
+    name,
+    email,
+    mobile,
+  });
+
+  success(
+    res,
+    {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      mobile: user.mobile,
+      role: user.role,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    },
+    "Profile updated successfully",
   );
 });
 
@@ -238,6 +302,7 @@ exports.exchangeFirebaseToken = asyncHandler(async (req, res) => {
 
   return error(res, "User not found", 404);
 });
+
 const otpStore = new Map();
 
 exports.sendOtp = asyncHandler(async (req, res) => {
