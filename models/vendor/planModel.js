@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
       },
 
       duration: {
-        type: DataTypes.INTEGER, // 1, 3, 6, 12
+        type: DataTypes.INTEGER, 
         allowNull: false,
         defaultValue: 1,
         comment: "Duration value (e.g., 1, 3, 6, 12)",

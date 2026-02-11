@@ -1,14 +1,9 @@
-const {
-  SubscriptionModel,
-  PlanModel,
-  VendorModel,
-} = require("../../models");
+const { SubscriptionModel, PlanModel, VendorModel } = require("../../models");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
 const subscriptionService = require("../../services/vendor/subscriptionService");
 const { Op } = require("sequelize");
 
-// Create Plan
 exports.createPlan = asyncHandler(async (req, res) => {
   console.log("📦 Creating new plan:", req.body);
 
@@ -23,19 +18,50 @@ exports.createPlan = asyncHandler(async (req, res) => {
     features,
   } = req.body;
 
-  // Validation
   if (!name || !duration || !price) {
     console.log("❌ Validation Failed: Missing required fields");
     return error(res, "Name, duration, and price are required", 400);
   }
 
+  const parsedDuration = parseInt(duration);
+  const parsedUnit = (durationUnit || "month").toLowerCase();
+
+  const allowedPlans = [
+    { duration: 1, unit: "month" },
+    { duration: 3, unit: "month" },
+    { duration: 6, unit: "month" },
+    { duration: 9, unit: "month" },
+    { duration: 1, unit: "year" },
+  ];
+
+  const isValidPlan = allowedPlans.some(
+    (plan) => plan.duration === parsedDuration && plan.unit === parsedUnit,
+  );
+
+  if (!isValidPlan) {
+    return error(
+      res,
+      "Only 1, 3, 6, 9 month and 1 year plans are allowed",
+      400,
+    );
+  }
+  const existingPlan = await PlanModel.findOne({
+    where: {
+      duration: parsedDuration,
+      durationUnit: parsedUnit,
+    },
+  });
+
+  if (existingPlan) {
+    return error(res, "This plan already exists", 409);
+  }
   const plan = await PlanModel.create({
     name,
     priceMonthly: priceMonthly || 0,
     priceYearly: priceYearly || 0,
     description,
-    duration: parseInt(duration),
-    durationUnit: durationUnit || "month",
+    duration: parsedDuration,
+    durationUnit: parsedUnit,
     price: parseFloat(price),
     features: features || [],
     status: "Active",
@@ -86,7 +112,7 @@ exports.deletePlan = asyncHandler(async (req, res) => {
     return error(
       res,
       `Cannot delete plan. It has ${activeSubscriptions} active subscription(s)`,
-      400
+      400,
     );
   }
 
@@ -113,21 +139,18 @@ exports.assignSubscription = asyncHandler(async (req, res) => {
 
   const { vendorId, planId } = req.body;
 
-  // Validate vendor
   const vendor = await VendorModel.findByPk(vendorId);
   if (!vendor) {
     console.log("❌ Vendor not found");
     return error(res, "Vendor not found", 404);
   }
 
-  // Validate plan
   const plan = await PlanModel.findByPk(planId);
   if (!plan) {
     console.log("❌ Plan not found");
     return error(res, "Plan not found", 404);
   }
 
-  // Check if vendor already has an active subscription
   const existingSubscription = await SubscriptionModel.findOne({
     where: {
       vendorId,
@@ -140,11 +163,10 @@ exports.assignSubscription = asyncHandler(async (req, res) => {
     return error(
       res,
       "Vendor already has an active subscription. Please cancel or expire it first.",
-      409
+      409,
     );
   }
 
-  // Calculate start and end dates based on plan duration
   const startDate = new Date();
   const endDate = new Date();
 
@@ -153,14 +175,13 @@ exports.assignSubscription = asyncHandler(async (req, res) => {
   } else if (plan.durationUnit === "year") {
     endDate.setFullYear(endDate.getFullYear() + plan.duration);
   } else {
-    // Default to 1 month if durationUnit not set
     endDate.setMonth(endDate.getMonth() + 1);
   }
 
   console.log(
     `📅 Subscription dates: ${startDate.toISOString().split("T")[0]} to ${
       endDate.toISOString().split("T")[0]
-    }`
+    }`,
   );
 
   // Create subscription
@@ -187,14 +208,14 @@ exports.assignSubscription = asyncHandler(async (req, res) => {
         { model: PlanModel, as: "plan" },
         { model: VendorModel, as: "vendor" },
       ],
-    }
+    },
   );
 
   success(
     res,
     subscriptionWithRelations,
     "Subscription assigned successfully",
-    201
+    201,
   );
 });
 
@@ -215,7 +236,7 @@ exports.editSubscription = asyncHandler(async (req, res) => {
   if (req.body.endDate) {
     await VendorModel.update(
       { expiryDate: req.body.endDate },
-      { where: { id: sub.vendorId } }
+      { where: { id: sub.vendorId } },
     );
   }
 
@@ -278,13 +299,13 @@ exports.cancelSubscription = asyncHandler(async (req, res) => {
   console.log("❌ Cancelling subscription:", req.params.id);
 
   const subscription = await subscriptionService.cancelSubscription(
-    req.params.id
+    req.params.id,
   );
 
   // Update vendor status to Inactive
   await VendorModel.update(
     { status: "Inactive" },
-    { where: { id: subscription.vendorId } }
+    { where: { id: subscription.vendorId } },
   );
 
   console.log("✅ Subscription cancelled successfully");
@@ -322,7 +343,7 @@ exports.getExpiringSubscriptions = asyncHandler(async (req, res) => {
   });
 
   console.log(
-    `✅ Found ${expiringSubscriptions.length} expiring subscriptions`
+    `✅ Found ${expiringSubscriptions.length} expiring subscriptions`,
   );
   success(res, expiringSubscriptions);
 });
@@ -345,7 +366,7 @@ exports.getExpiredToday = asyncHandler(async (req, res) => {
   });
 
   console.log(
-    `✅ Found ${expiredSubscriptions.length} subscriptions expiring today`
+    `✅ Found ${expiredSubscriptions.length} subscriptions expiring today`,
   );
   success(res, expiredSubscriptions);
 });
@@ -388,7 +409,7 @@ exports.renewSubscription = asyncHandler(async (req, res) => {
   console.log(
     `📅 New subscription dates: ${startDate.toISOString().split("T")[0]} to ${
       endDate.toISOString().split("T")[0]
-    }`
+    }`,
   );
 
   // Update subscription
@@ -405,7 +426,7 @@ exports.renewSubscription = asyncHandler(async (req, res) => {
       expiryDate: endDate.toISOString().split("T")[0],
       status: "Active",
     },
-    { where: { id: subscription.vendorId } }
+    { where: { id: subscription.vendorId } },
   );
 
   console.log("✅ Subscription renewed successfully");
@@ -418,7 +439,7 @@ exports.renewSubscription = asyncHandler(async (req, res) => {
         { model: PlanModel, as: "plan" },
         { model: VendorModel, as: "vendor" },
       ],
-    }
+    },
   );
 
   success(res, renewedSubscription, "Subscription renewed successfully");

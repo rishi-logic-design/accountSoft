@@ -30,7 +30,6 @@ exports.createSubscription = async (
     const plan = await PlanModel.findByPk(planId, { transaction: t });
     if (!plan) throw new Error("Plan not found");
 
-    // Check overlapping active subscription
     const overlapping = await SubscriptionModel.findOne({
       where: {
         vendorId,
@@ -57,7 +56,6 @@ exports.createSubscription = async (
       );
     }
 
-    // If forceReplace: mark existing active subscriptions as cancelled/expired
     if (overlapping && options.forceReplace) {
       overlapping.status = "cancelled";
       await overlapping.save({ transaction: t });
@@ -76,7 +74,6 @@ exports.createSubscription = async (
       { transaction: t }
     );
 
-    // update vendor's subscription info (optional fields in vendor model)
     await vendor.update(
       {
         subscriptionDate: startDate,
@@ -123,14 +120,11 @@ exports.updateSubscription = async (id, data) => {
     const sub = await SubscriptionModel.findByPk(id, { transaction: t });
     if (!sub) throw new Error("Subscription not found");
 
-    // update fields
     await sub.update(data, { transaction: t });
 
-    // recalc status if endDate present or status changed
     if (data.endDate) {
       sub.status = calculateStatus(data.endDate);
       await sub.save({ transaction: t });
-      // also update vendor's expiryDate if this subscription is assigned to vendor
       const vendor = await VendorModel.findByPk(sub.vendorId, {
         transaction: t,
       });
@@ -143,7 +137,6 @@ exports.updateSubscription = async (id, data) => {
   });
 };
 
-
 exports.cancelSubscription = async (id) => {
   return await sequelize.transaction(async (t) => {
     const sub = await SubscriptionModel.findByPk(id, { transaction: t });
@@ -152,10 +145,8 @@ exports.cancelSubscription = async (id) => {
     sub.status = "cancelled";
     await sub.save({ transaction: t });
 
-    // Optionally clear vendor expiryDate or set to null — depends on business rule.
     const vendor = await VendorModel.findByPk(sub.vendorId, { transaction: t });
     if (vendor) {
-      // If vendor's expiryDate equals this subscription endDate, clear it
       if (
         vendor.expiryDate &&
         sub.endDate &&
@@ -182,7 +173,6 @@ exports.renewSubscription = async (id, { extendMonths, newEndDate } = {}) => {
     if (newEndDate) {
       end = new Date(newEndDate);
     } else {
-      // extend by months
       end.setMonth(end.getMonth() + extendMonths);
     }
 
@@ -192,7 +182,6 @@ exports.renewSubscription = async (id, { extendMonths, newEndDate } = {}) => {
     sub.status = calculateStatus(endIso);
     await sub.save({ transaction: t });
 
-    // update vendor expiryDate if applicable
     const vendor = await VendorModel.findByPk(sub.vendorId, { transaction: t });
     if (vendor) {
       await vendor.update({ expiryDate: endIso }, { transaction: t });
