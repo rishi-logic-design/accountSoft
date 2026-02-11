@@ -82,6 +82,27 @@ exports.login = asyncHandler(async (req, res) => {
     "Logged in",
   );
 });
+exports.getLoginDetail = asyncHandler(async (req, res) => {
+  const user = req.user;
+
+  if (!user) {
+    return error(res, "User not found", 404);
+  }
+
+  success(
+    res,
+    {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      mobile: user.mobile,
+      role: user.role,
+      isActive: user.isActive,
+      createdAt: user.createdAt || new Date(),
+    },
+    "Login user details fetched successfully",
+  );
+});
 
 exports.exchangeFirebaseToken = asyncHandler(async (req, res) => {
   const { mobile, firebaseUid } = req.body;

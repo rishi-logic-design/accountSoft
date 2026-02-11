@@ -1,10 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const authCtrl = require("../../controllers/vendor/authControllers");
-const auth = require("../../middleware/authMiddleware");
+const { auth } = require("../../middleware/authMiddleware");
 
 router.post("/register", authCtrl.register);
 router.post("/login", authCtrl.login);
+router.get("/me", authCtrl.getLoginDetail);
 
 router.post("/send-otp", authCtrl.sendOtp);
 router.post("/verify-otp", authCtrl.verifyOtp);
@@ -22,7 +23,7 @@ router.post("/vendor/resend-otp", authCtrl.resendVendorOtp);
 
 router.post(
   "/vendor/exchange-firebase-token",
-  authCtrl.exchangeVendorFirebaseToken
+  authCtrl.exchangeVendorFirebaseToken,
 );
 
 router.post("/customer/check", authCtrl.checkCustomer);
@@ -32,8 +33,7 @@ router.post("/customer/verify-otp", authCtrl.verifyCustomerOtp);
 router.post("/customer/resend-otp", authCtrl.resendCustomerOtp);
 router.post(
   "/customer/exchange-firebase-token",
-  authCtrl.exchangeCustomerFirebaseToken
+  authCtrl.exchangeCustomerFirebaseToken,
 );
-router.use(auth);
 
 module.exports = router;

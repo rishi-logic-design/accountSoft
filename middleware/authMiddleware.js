@@ -49,7 +49,7 @@ module.exports = async (req, res, next) => {
 
       case "vendor":
         const vendor = await VendorModel.findByPk(
-          decoded.id || decoded.vendorId
+          decoded.id || decoded.vendorId,
         );
 
         if (!vendor) {
@@ -107,7 +107,7 @@ module.exports = async (req, res, next) => {
                 ],
               },
             ],
-          }
+          },
         );
 
         if (!customer) {
@@ -181,6 +181,40 @@ module.exports = async (req, res, next) => {
     return res.status(401).json({
       success: false,
       message: "Authentication failed",
+    });
+  }
+};
+
+exports.protect = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "No token provided",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await UserModel.findByPk(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    req.user = user; // attach user to request
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired token",
     });
   }
 };
