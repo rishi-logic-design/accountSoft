@@ -128,7 +128,6 @@ exports.createBill = async (vendorId, payload) => {
 
     const totalWithGST = +(discountedSubtotal + gstAmount).toFixed(2);
 
-    // Generate bill number with invoice settings
     const billNumberInfo = await generateBillNumberWithSettings(
       vendorId,
       customInvoiceNumber,
@@ -505,8 +504,7 @@ exports.getBillHtml = async (billId, vendorId) => {
     where: { vendorId },
   });
 
-  const templateId =
-    bill.invoiceTemplate || settings?.invoiceTemplate || "template1";
+  const templateId = settings?.invoiceTemplate || "template1";
 
   const templateData = {
     billNumber: bill.billNumber,
