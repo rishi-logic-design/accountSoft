@@ -1,44 +1,336 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Invoice - {{billNumber}}</title>
     <style>
-      body {
-        font-family: Arial;
+      @media print {
+        @page {
+          size: A4;
+          margin: 20mm 10mm;
+        }
+        body {
+          margin: 0;
+          padding: 0;
+        }
       }
-      .header {
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        color: #333;
+        line-height: 1.6;
+        background: #fff;
+      }
+
+      .invoice-container {
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 20px;
+        background: white;
+      }
+
+      .invoice-header {
+        border-bottom: 3px solid #2563eb;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+      }
+
+      .invoice-header h1 {
         color: #2563eb;
+        font-size: 32px;
+        margin-bottom: 10px;
+      }
+
+      .invoice-number {
+        font-size: 18px;
+        color: #666;
+        font-weight: 600;
+      }
+
+      .invoice-date {
+        color: #888;
+        font-size: 14px;
+        margin-top: 5px;
+      }
+
+      .invoice-parties {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 40px;
+      }
+
+      .party-section {
+        width: 48%;
+      }
+
+      .party-section h3 {
+        color: #2563eb;
+        font-size: 14px;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+        font-weight: 600;
+      }
+
+      .party-details {
+        background: #f8fafc;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #2563eb;
+      }
+
+      .party-details p {
+        margin: 5px 0;
+        font-size: 14px;
+      }
+
+      .party-name {
+        font-weight: 600;
+        font-size: 16px;
+        color: #1e293b;
+        margin-bottom: 8px;
+      }
+
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+      }
+
+      .items-table thead {
+        background: #2563eb;
+        color: white;
+      }
+
+      .items-table th {
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .items-table td {
+        padding: 12px;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 14px;
+      }
+
+      .items-table tbody tr:hover {
+        background: #f8fafc;
+      }
+
+      .items-table .text-right {
+        text-align: right;
+      }
+
+      .items-table .text-center {
+        text-align: center;
+      }
+
+      .summary-section {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 30px;
+      }
+
+      .summary-table {
+        width: 350px;
+      }
+
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .summary-row.total {
+        background: #2563eb;
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: 700;
+        margin-top: 10px;
+        border: none;
+      }
+
+      .summary-label {
+        font-weight: 500;
+      }
+
+      .summary-value {
+        font-weight: 600;
+      }
+
+      .status-badge {
+        display: inline-block;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-top: 10px;
+      }
+
+      .status-paid {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .status-partial {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+
+      .notes-section {
+        margin-top: 40px;
+        padding: 20px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border-left: 4px solid #64748b;
+      }
+
+      .notes-section h3 {
+        color: #475569;
+        font-size: 14px;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+
+      .notes-section p {
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .footer {
+        margin-top: 50px;
+        padding-top: 20px;
+        border-top: 2px solid #e2e8f0;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 12px;
       }
     </style>
   </head>
   <body>
-    <h1 class="header">INVOICE</h1>
+    <div class="invoice-container">
+      <!-- Header -->
+      <div class="invoice-header">
+        <h1>INVOICE</h1>
+        <div class="invoice-number">Invoice #{{billNumber}}</div>
+        <div class="invoice-date">Date: {{formatDate date}}</div>
+        {{#if dueDate}}
+        <div class="invoice-date">Due Date: {{formatDate dueDate}}</div>
+        {{/if}}
+        <span class="status-badge status-{{status}}">{{uppercase status}}</span>
+      </div>
 
-    <p>Invoice No: {{bill.billNumber}}</p>
-    <p>Date: {{formatDate bill.billDate}}</p>
+      <!-- Parties Information -->
+      <div class="invoice-parties">
+        <div class="party-section">
+          <h3>Bill To</h3>
+          <div class="party-details">
+            <div class="party-name">{{customer.name}}</div>
+            {{#if customer.company}}
+            <p><strong>Company:</strong> {{customer.company}}</p>
+            {{/if}} {{#if customer.address}}
+            <p><strong>Address:</strong> {{customer.address}}</p>
+            {{/if}} {{#if customer.gstNumber}}
+            <p><strong>GSTIN:</strong> {{customer.gstNumber}}</p>
+            {{/if}} {{#if customer.phone}}
+            <p><strong>Phone:</strong> {{customer.phone}}</p>
+            {{/if}}
+          </div>
+        </div>
+      </div>
 
-    <hr />
+      <!-- Items Table -->
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>S.No</th>
+            <th>Description</th>
+            <th class="text-center">Quantity</th>
+            <th class="text-right">Rate</th>
+            <th class="text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td>{{add @index 1}}</td>
+            <td>
+              {{this.description}}{{#if this.itemName}}{{this.itemName}}{{/if}}
+            </td>
+            <td class="text-center">
+              {{this.quantity}}{{#if this.qty}}{{this.qty}}{{/if}} {{this.unit}}
+            </td>
+            <td class="text-right">
+              ₹{{formatNumber this.rate}}{{#if this.price}}{{formatNumber
+              this.price}}{{/if}}
+            </td>
+            <td class="text-right">
+              ₹{{formatNumber this.amount}}{{#if this.total}}{{formatNumber
+              this.total}}{{/if}}
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
 
-    <p><strong>Customer:</strong> {{customer.customerName}}</p>
+      <!-- Summary -->
+      <div class="summary-section">
+        <div class="summary-table">
+          <div class="summary-row">
+            <span class="summary-label">Subtotal:</span>
+            <span class="summary-value">₹{{formatNumber subtotal}}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">GST ({{gstPercentage}}%):</span>
+            <span class="summary-value">₹{{formatNumber gstTotal}}</span>
+          </div>
+          <div class="summary-row total">
+            <span class="summary-label">Total Amount:</span>
+            <span class="summary-value">₹{{formatNumber totalAmount}}</span>
+          </div>
+          {{#if paidAmount}}
+          <div class="summary-row">
+            <span class="summary-label">Paid Amount:</span>
+            <span class="summary-value">₹{{formatNumber paidAmount}}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Pending Amount:</span>
+            <span class="summary-value">₹{{formatNumber pendingAmount}}</span>
+          </div>
+          {{/if}}
+        </div>
+      </div>
 
-    <table width="100%" border="1" cellspacing="0">
-      <tr>
-        <th>#</th>
-        <th>Description</th>
-        <th>Qty</th>
-        <th>Rate</th>
-        <th>Amount</th>
-      </tr>
-      {{#each items}}
-      <tr>
-        <td>{{add @index 1}}</td>
-        <td>{{description}}</td>
-        <td>{{qty}}</td>
-        <td>{{formatNumber rate}}</td>
-        <td>{{formatNumber amount}}</td>
-      </tr>
-      {{/each}}
-    </table>
+      <!-- Notes -->
+      {{#if notes}}
+      <div class="notes-section">
+        <h3>Notes</h3>
+        <p>{{notes}}</p>
+      </div>
+      {{/if}}
 
-    <h3>Total: ₹{{formatNumber bill.totalWithGST}}</h3>
+      <!-- Footer -->
+      <div class="footer">
+        <p>Thank you for your business!</p>
+      </div>
+    </div>
   </body>
 </html>
