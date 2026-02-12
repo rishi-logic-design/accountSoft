@@ -96,8 +96,8 @@ exports.generateBillPdf = async (req, res, next) => {
 exports.getBillHtml = async (req, res, next) => {
   try {
     const vendorId = req.user.vendorId || req.user.id;
-    const BillModel = require("../../models/index");
-    const InvoiceSettingsModel = require("../../models/index");
+    const BillModel = require("../../models/vendor/billModel");
+    const InvoiceSettingsModel = require("../../models/vendor/invoiceSettingsModel");
 
     const bill = await BillModel.findOne({
       _id: req.params.id,
