@@ -7,7 +7,7 @@ const {
   CustomerModel,
 } = require("../../models");
 const { renderTemplate } = require("../../utils/templateRenderer");
-const InvoiceSettings = require("../../models/vendor/invoiceSettingsModel");
+const {InvoiceSettings} = require("../../models/vendor/invoiceSettingsModel");
 
 exports.list = async (customerId, filters = {}) => {
   const { page = 1, size = 20, search, status, fromDate, toDate } = filters;
