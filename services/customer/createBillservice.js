@@ -81,117 +81,115 @@ exports.getById = async (billId, customerId) => {
 };
 
 exports.getMyBillHtml = async (billId, customerId) => {
-  const bill = await BillModel.findOne({
-    where: { id: billId, customerId },
-    include: [
-      {
-        model: VendorModel,
-        as: "vendor",
-        attributes: [
-          "id",
-          "vendorName",
-          "businessName",
-          "gst",
-          "mobile",
-          "address",
-        ],
+  try {
+    const bill = await BillModel.findOne({
+      where: {
+        id: Number(billId),
+        customerId: Number(customerId),
       },
-      {
-        model: CustomerModel,
-        as: "customer",
-        attributes: [
-          "id",
-          "customerName",
-          "company",
-          "mobileNumber",
-          "homeAddress",
-          "gstNumber",
-          "businessName",
-        ],
-      },
-      {
-        model: BillItemModel,
-        as: "items",
-      },
-    ],
-  });
+      include: [
+        {
+          model: VendorModel,
+          as: "vendor",
+          required: false,
+        },
+        {
+          model: CustomerModel,
+          as: "customer",
+          required: false,
+        },
+        {
+          model: BillItemModel,
+          as: "items",
+          required: false,
+        },
+      ],
+    });
 
-  if (!bill) {
-    throw new Error("Bill not found");
-  }
-
-  // Get vendor's invoice settings for template
-  const settings = await InvoiceSettings.findOne({
-    where: { vendorId: bill.vendorId },
-  });
-
-  const templateId = settings?.invoiceTemplate || "template1";
-
-  // Format address helper
-  const formatAddress = (address) => {
-    if (!address) return "Address not provided";
-    try {
-      const addr = typeof address === "string" ? JSON.parse(address) : address;
-      const parts = [
-        addr.houseNo,
-        addr.streetNo,
-        addr.residencyName,
-        addr.areaCity,
-        addr.state,
-        addr.pincode,
-      ].filter(Boolean);
-      return parts.join(", ");
-    } catch (e) {
-      return address;
+    if (!bill) {
+      return {
+        html: "<h2>Bill not found</h2>",
+        templateId: null,
+        billNumber: null,
+      };
     }
-  };
 
-  // Calculate total quantity
-  const totalQty = (bill.items || []).reduce((sum, item) => {
-    return sum + parseFloat(item.qty || item.quantity || 0);
-  }, 0);
+    const settings = await InvoiceSettings.findOne({
+      where: { vendorId: bill.vendorId },
+    });
 
-  const templateData = {
-    billNumber: bill.billNumber,
-    date: bill.billDate || new Date(),
-    dueDate: bill.dueDate,
-    customer: {
-      name: bill.customer?.customerName || "N/A",
-      company: bill.customer?.company || bill.customer?.businessName || "",
-      address: formatAddress(bill.customer?.homeAddress),
-      gstNumber: bill.customer?.gstNumber || "",
-      phone: bill.customer?.mobileNumber || bill.customer?.mobile || "",
-    },
-    items: (bill.items || []).map((item) => ({
-      description: item.description || item.itemName,
-      itemName: item.itemName || item.description,
-      quantity: item.qty || item.quantity,
-      qty: item.qty || item.quantity,
-      unit: item.unit || "",
-      rate: item.rate || item.price,
-      price: item.price || item.rate,
-      amount: item.amount || item.total,
-      total: item.total || item.amount,
-      hsn: item.hsn || "",
-    })),
-    totalQty: totalQty,
-    subtotal: bill.subtotal || bill.totalWithoutGST || 0,
-    gstPercentage: bill.gstPercentage || 18,
-    gstTotal: bill.gstTotal || bill.gst || 0,
-    totalAmount: bill.totalWithGST || bill.totalAmount || 0,
-    paidAmount: bill.paidAmount || 0,
-    pendingAmount: bill.pendingAmount || 0,
-    status: bill.status || "pending",
-    notes: bill.note || bill.notes || "",
-  };
+    const templateId = settings?.invoiceTemplate || "template1";
 
-  const html = renderTemplate(templateId, templateData);
+    const formatAddress = (address) => {
+      if (!address) return "Address not provided";
+      try {
+        const addr =
+          typeof address === "string" ? JSON.parse(address) : address;
 
-  return {
-    html,
-    templateId,
-    billNumber: bill.billNumber,
-  };
+        return [
+          addr.houseNo,
+          addr.streetNo,
+          addr.residencyName,
+          addr.areaCity,
+          addr.state,
+          addr.pincode,
+        ]
+          .filter(Boolean)
+          .join(", ");
+      } catch {
+        return address;
+      }
+    };
+
+    const totalQty = (bill.items || []).reduce((sum, item) => {
+      return sum + parseFloat(item.qty || item.quantity || 0);
+    }, 0);
+
+    const templateData = {
+      billNumber: bill.billNumber || "",
+      date: bill.billDate || new Date(),
+      dueDate: bill.dueDate || "",
+      customer: {
+        name: bill.customer?.customerName || "N/A",
+        company: bill.customer?.company || bill.customer?.businessName || "",
+        address: formatAddress(bill.customer?.homeAddress),
+        gstNumber: bill.customer?.gstNumber || "",
+        phone: bill.customer?.mobileNumber || bill.customer?.mobile || "",
+      },
+      items: (bill.items || []).map((item) => ({
+        description: item.description || item.itemName || "",
+        itemName: item.itemName || item.description || "",
+        quantity: item.qty || item.quantity || 0,
+        qty: item.qty || item.quantity || 0,
+        unit: item.unit || "",
+        rate: item.rate || item.price || 0,
+        price: item.price || item.rate || 0,
+        amount: item.amount || item.total || 0,
+        total: item.total || item.amount || 0,
+        hsn: item.hsn || "",
+      })),
+      totalQty,
+      subtotal: bill.subtotal || bill.totalWithoutGST || 0,
+      gstPercentage: bill.gstPercentage || 18,
+      gstTotal: bill.gstTotal || bill.gst || 0,
+      totalAmount: bill.totalWithGST || bill.totalAmount || 0,
+      paidAmount: bill.paidAmount || 0,
+      pendingAmount: bill.pendingAmount || 0,
+      status: bill.status || "pending",
+      notes: bill.note || bill.notes || "",
+    };
+
+    const html = renderTemplate(templateId, templateData);
+
+    return {
+      html,
+      templateId,
+      billNumber: bill.billNumber,
+    };
+  } catch (error) {
+    console.error("getMyBillHtml Error:", error);
+    throw error;
+  }
 };
 
 exports.generateMyBillPdf = async (billId, customerId) => {
