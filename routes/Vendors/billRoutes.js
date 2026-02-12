@@ -12,6 +12,7 @@ router.get("/templates", billCtrl.getTemplates);
 router.post("/", billCtrl.createBill);
 router.get("/", billCtrl.listBills);
 router.get("/pending-total", billCtrl.getVendorPendingBillTotal);
+router.get("/:id/html", billCtrl.getBillHtml);
 router.get("/:id/download", billCtrl.generateBillPdf);
 router.get("/:id", billCtrl.getBill);
 router.put("/:id/mark-paid", billCtrl.markBillPaid);

@@ -477,32 +477,49 @@ exports.editBill = async (billId, vendorId, payload) => {
 };
 
 exports.generateBillPdf = async (billId, vendorId) => {
-  const bill = await BillModel.findOne({
-    where: { id: billId, vendorId },
-    include: [
-      { model: CustomerModel, as: "customer" },
-      { model: BillItemModel, as: "items" },
-      { model: VendorModel, as: "vendor" },
-    ],
-  });
+  const bill = await BillModel.findOne({ id: billId, vendorId }).populate(
+    "customerId",
+    "customerName company mobileNumber homeAddress gstNumber businessName",
+  );
 
-  if (!bill) throw new Error("Bill not found");
+  if (!bill) {
+    throw new Error("Bill not found");
+  }
 
-  const invoiceSettings = await InvoiceSettingsModel.findOne({
-    where: { vendorId },
-  });
+  const settings = await InvoiceSettingsModel.findOne({ vendorId });
+  const templateId =
+    bill.invoiceTemplate || settings?.invoiceTemplate || "template1";
 
-  const template = invoiceSettings?.selectedTemplate || "invoice1";
+  // Prepare data for template
+  const templateData = {
+    billNumber: bill.billNumber,
+    date: bill.date || new Date(),
+    dueDate: bill.dueDate,
+    customer: {
+      name: bill.customerId?.customerName || "N/A",
+      company: bill.customerId?.company || bill.customerId?.businessName || "",
+      address: formatAddress(bill.customerId?.homeAddress),
+      gstNumber: bill.customerId?.gstNumber || "",
+      phone: bill.customerId?.mobileNumber || "",
+    },
+    items: bill.items || [],
+    subtotal: bill.subtotal || bill.totalWithoutGST || 0,
+    gstPercentage: bill.gstPercentage || 18,
+    gstTotal: bill.gstTotal || bill.gst || 0,
+    totalAmount: bill.totalWithGST || bill.totalAmount || 0,
+    paidAmount: bill.paidAmount || 0,
+    pendingAmount: bill.pendingAmount || 0,
+    status: bill.status || "pending",
+    notes: bill.notes || "",
+  };
 
-  const html = renderTemplate(template, {
-    bill,
-    customer: bill.customer,
-    vendor: bill.vendor,
-    items: bill.items,
-  });
+  const html = renderTemplate(templateId, templateData);
 
-  return await generatePdfFromHtml(html);
+  const pdfBuffer = await generatePdfFromHtml(html);
+
+  return pdfBuffer;
 };
+
 exports.getWhatsappLinkForBill = async (billId, vendorId, messageOverride) => {
   const { bill, pendingAmount } = await this.getBillById(billId, vendorId);
   if (!bill) throw new Error("Bill not found");
