@@ -34,6 +34,14 @@ exports.getMyBill = asyncHandler(async (req, res) => {
 
   success(res, response);
 });
+
+exports.getMyBillHtml = asyncHandler(async (req, res) => {
+  const customerId = req.user.id;
+  const html = await service.getMyBillHtml(req.params.id, customerId);
+
+  success(res, html);
+});
+
 exports.downloadMyBillPdf = asyncHandler(async (req, res) => {
   const customerId = req.user.id;
   const billId = req.params.billId;

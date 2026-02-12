@@ -513,7 +513,7 @@ exports.getBillHtml = async (billId, vendorId) => {
     customer: {
       name: bill.customer?.customerName || "N/A",
       company: bill.customer?.businessName || "",
-      address: bill.customer?.homeAddress || "",
+      address: formatAddress(bill.customerId?.homeAddress),
       gstNumber: bill.customer?.gstNumber || "",
       phone: bill.customer?.mobile || "",
     },
@@ -624,3 +624,23 @@ exports.updateBillTemplate = async (billId, vendorId, templateId) => {
 
   return bill;
 };
+function formatAddress(address) {
+  if (!address) return "Address not provided";
+
+  try {
+    const addr = typeof address === "string" ? JSON.parse(address) : address;
+
+    const parts = [
+      addr.houseNo,
+      addr.streetNo,
+      addr.residencyName,
+      addr.areaCity,
+      addr.state,
+      addr.pincode,
+    ].filter(Boolean);
+
+    return parts.join(", ");
+  } catch (e) {
+    return address;
+  }
+}

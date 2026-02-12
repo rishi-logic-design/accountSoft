@@ -25,6 +25,19 @@ Handlebars.registerHelper("add", function (a, b) {
   return a + b;
 });
 
+Handlebars.registerHelper("divide", function (a, b) {
+  if (!a || !b) return 0;
+  return parseFloat(a) / parseFloat(b);
+});
+
+Handlebars.registerHelper("totalQty", function (items) {
+  if (!items || !Array.isArray(items)) return 0;
+  return items.reduce((sum, item) => {
+    const qty = item.quantity || item.qty || 0;
+    return sum + parseFloat(qty);
+  }, 0);
+});
+
 Handlebars.registerHelper("getStatusColor", function (status) {
   const colors = {
     pending: "#f59e0b",
