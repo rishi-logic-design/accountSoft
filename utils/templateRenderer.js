@@ -98,6 +98,8 @@ function getTemplateDisplayName(templateId) {
     template1: "Modern Blue",
     template2: "Classic Professional",
     template3: "Minimal Clean",
+    template4: "Premium Corporate",
+    template5: "Export Invoice",
   };
   return names[templateId] || templateId;
 }
@@ -107,6 +109,8 @@ function getTemplateDescription(templateId) {
     template1: "Modern design with blue accents and clean layout",
     template2: "Traditional invoice with bordered sections and formal styling",
     template3: "Minimalist design with elegant typography",
+    template4: "Professional corporate invoice with detailed sections",
+    template5: "Export-ready invoice with comprehensive details",
   };
   return descriptions[templateId] || "";
 }

@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tax Invoice - {{billNumber}}</title>
+    <style>
+      @media print {
+        @page {
+          size: A4;
+          margin: 15mm;
+        }
+        body {
+          margin: 0;
+          padding: 0;
+        }
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #000;
+        line-height: 1.4;
+        background: #fff;
+        font-size: 12px;
+      }
+      .invoice-container {
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 15px;
+        background: white;
+        border: 1px solid #ddd;
+      }
+      .header-section {
+        border: 1px solid #000;
+        padding: 10px;
+        margin-bottom: 3px;
+      }
+      .company-name {
+        font-size: 18px;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+      }
+      .company-address {
+        text-align: center;
+        font-size: 11px;
+        margin-bottom: 5px;
+      }
+      .tax-invoice-title {
+        text-align: center;
+        font-weight: 700;
+        font-size: 14px;
+        border: 1px solid #000;
+        padding: 5px;
+        margin: 3px 0;
+        background: #f0f0f0;
+      }
+      .original-tag {
+        text-align: right;
+        font-size: 10px;
+        font-style: italic;
+      }
+      .invoice-meta {
+        display: flex;
+        justify-content: space-between;
+        border: 1px solid #000;
+        padding: 10px;
+        margin-bottom: 3px;
+      }
+      .bill-to-section {
+        border: 1px solid #000;
+        padding: 10px;
+        margin-bottom: 3px;
+      }
+      .bill-to-section strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+      }
+      .bill-to-section p {
+        margin: 2px 0;
+        font-size: 11px;
+      }
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 3px;
+        border: 1px solid #000;
+      }
+      .items-table th {
+        background: #f0f0f0;
+        border: 1px solid #000;
+        padding: 8px 5px;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .items-table td {
+        border: 1px solid #000;
+        padding: 8px 5px;
+        font-size: 11px;
+        vertical-align: top;
+      }
+      .items-table .text-right {
+        text-align: right;
+      }
+      .items-table .text-center {
+        text-align: center;
+      }
+      .totals-section {
+        border: 1px solid #000;
+        padding: 10px;
+      }
+      .totals-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 3px 0;
+        font-size: 11px;
+      }
+      .totals-row.grand-total {
+        font-weight: 700;
+        font-size: 13px;
+        border-top: 2px solid #000;
+        padding-top: 5px;
+        margin-top: 5px;
+      }
+      .amount-words {
+        border: 1px solid #000;
+        padding: 8px;
+        margin: 3px 0;
+        font-size: 11px;
+        font-style: italic;
+      }
+      .bank-details {
+        border: 1px solid #000;
+        padding: 10px;
+        margin: 3px 0;
+        font-size: 11px;
+      }
+      .bank-details strong {
+        display: block;
+        margin-bottom: 5px;
+      }
+      .footer-note {
+        border: 1px solid #000;
+        padding: 10px;
+        margin: 3px 0;
+        font-size: 10px;
+      }
+      .signature-section {
+        text-align: right;
+        margin-top: 20px;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="invoice-container">
+      <div class="header-section">
+        <div class="company-name">YOUR COMPANY NAME</div>
+        <div class="company-address">
+          Address Line 1, Address Line 2, City, State - Pincode
+        </div>
+        <div class="company-address">
+          Phone: +91-XXXXXXXXXX | Email: your@email.com
+        </div>
+      </div>
+
+      <div class="tax-invoice-title">TAX INVOICE</div>
+      <div class="original-tag">original</div>
+
+      <div class="invoice-meta">
+        <div>
+          <strong>Invoice No:</strong> {{billNumber}}<br />
+          <strong>Date:</strong> {{formatDate date}}
+        </div>
+        <div style="text-align: right">
+          {{#if dueDate}}<strong>Due Date:</strong> {{formatDate
+          dueDate}}{{/if}}
+        </div>
+      </div>
+
+      <div class="bill-to-section">
+        <strong>To: {{customer.name}}</strong>
+        {{#if customer.company}}
+        <p>{{customer.company}}</p>
+        {{/if}} {{#if customer.address}}
+        <p>{{customer.address}}</p>
+        {{/if}} {{#if customer.gstNumber}}
+        <p><strong>GSTIN:</strong> {{customer.gstNumber}}</p>
+        {{/if}} {{#if customer.phone}}
+        <p><strong>Phone:</strong> {{customer.phone}}</p>
+        {{/if}}
+      </div>
+
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th style="width: 40px">Sr No</th>
+            <th>Product Name</th>
+            <th style="width: 80px">HSN/SAC</th>
+            <th class="text-center" style="width: 60px">Qty</th>
+            <th class="text-right" style="width: 80px">Rate</th>
+            <th class="text-right" style="width: 100px">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td class="text-center">{{add @index 1}}</td>
+            <td>
+              {{#if
+              this.description}}{{this.description}}{{else}}{{this.itemName}}{{/if}}
+            </td>
+            <td class="text-center">
+              {{#if this.hsn}}{{this.hsn}}{{else}}-{{/if}}
+            </td>
+            <td class="text-center">
+              {{#if this.quantity}}{{this.quantity}}{{else}}{{this.qty}}{{/if}}
+            </td>
+            <td class="text-right">
+              {{#if this.rate}}{{formatNumber this.rate}}{{else}}{{formatNumber
+              this.price}}{{/if}}
+            </td>
+            <td class="text-right">
+              {{#if this.amount}}{{formatNumber
+              this.amount}}{{else}}{{formatNumber this.total}}{{/if}}
+            </td>
+          </tr>
+          {{/each}}
+          <tr>
+            <td colspan="6" style="height: 100px; border: none"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="totals-section">
+        <div style="display: flex; justify-content: space-between">
+          <div style="width: 60%"></div>
+          <div style="width: 38%">
+            <div class="totals-row">
+              <span>Sub Total:</span>
+              <span>₹{{formatNumber subtotal}}</span>
+            </div>
+            <div class="totals-row">
+              <span
+                >CGST {{#if
+                gstPercentage}}({{gstPercentage}}%){{else}}(9%){{/if}}:</span
+              >
+              <span>₹{{formatNumber (divide gstTotal 2)}}</span>
+            </div>
+            <div class="totals-row">
+              <span
+                >SGST {{#if
+                gstPercentage}}({{gstPercentage}}%){{else}}(9%){{/if}}:</span
+              >
+              <span>₹{{formatNumber (divide gstTotal 2)}}</span>
+            </div>
+            <div class="totals-row grand-total">
+              <span>Grand Total:</span>
+              <span>₹{{formatNumber totalAmount}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="amount-words">
+        <strong>Amount in Words:</strong> Rupees {{#if totalAmount}}[Amount in
+        words]{{/if}} Only
+      </div>
+
+      {{#if notes}}
+      <div class="footer-note"><strong>Note:</strong> {{notes}}</div>
+      {{/if}}
+
+      <div class="footer-note">
+        <strong>Condition:</strong><br />
+        1. Goods sold will not be taken back.<br />
+        2. Interest @ 18% p.a. will be charged if payment is not made within due
+        date.<br />
+        3. All disputes subject to [Your City] Jurisdiction only.
+      </div>
+
+      <div class="signature-section">
+        <p>For, YOUR COMPANY NAME</p>
+        <br /><br />
+        <p>(Authorised Signatory)</p>
+      </div>
+    </div>
+  </body>
+</html>

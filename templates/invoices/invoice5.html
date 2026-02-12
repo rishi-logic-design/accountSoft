@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Export Invoice - {{billNumber}}</title>
+    <style>
+      @media print {
+        @page {
+          size: A4;
+          margin: 15mm;
+        }
+        body {
+          margin: 0;
+          padding: 0;
+        }
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        color: #000;
+        line-height: 1.5;
+        background: #fff;
+        font-size: 12px;
+      }
+      .invoice-container {
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 20px;
+        background: white;
+        border: 3px solid #0066cc;
+      }
+      .header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #0066cc;
+      }
+      .company-logo {
+        width: 80px;
+        height: 80px;
+        border: 2px solid #ccc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: #999;
+      }
+      .company-info {
+        flex: 1;
+        padding-left: 20px;
+      }
+      .company-info h2 {
+        font-size: 22px;
+        color: #0066cc;
+        margin-bottom: 5px;
+      }
+      .company-info p {
+        font-size: 11px;
+        margin: 2px 0;
+        color: #555;
+      }
+      .invoice-title {
+        background: #0066cc;
+        color: white;
+        text-align: center;
+        padding: 12px;
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+      }
+      .invoice-subtitle {
+        text-align: center;
+        font-size: 10px;
+        margin-bottom: 15px;
+        color: #666;
+        font-style: italic;
+      }
+      .customer-invoice-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+      .customer-details {
+        width: 58%;
+        border: 2px solid #0066cc;
+        padding: 12px;
+      }
+      .customer-details h3 {
+        font-size: 12px;
+        color: #0066cc;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #0066cc;
+        padding-bottom: 3px;
+      }
+      .customer-details p {
+        font-size: 11px;
+        margin: 3px 0;
+      }
+      .invoice-details {
+        width: 38%;
+        border: 2px solid #0066cc;
+        padding: 12px;
+      }
+      .invoice-details table {
+        width: 100%;
+      }
+      .invoice-details td {
+        padding: 4px;
+        font-size: 11px;
+      }
+      .invoice-details td:first-child {
+        font-weight: 600;
+      }
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+        border: 2px solid #0066cc;
+      }
+      .items-table th {
+        background: #0066cc;
+        color: white;
+        border: 1px solid #0066cc;
+        padding: 10px 8px;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .items-table td {
+        border: 1px solid #0066cc;
+        padding: 10px 8px;
+        font-size: 11px;
+      }
+      .items-table .text-right {
+        text-align: right;
+      }
+      .items-table .text-center {
+        text-align: center;
+      }
+      .summary-section {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+      }
+      .amount-words {
+        width: 58%;
+        border: 2px solid #0066cc;
+        padding: 12px;
+      }
+      .amount-words h4 {
+        font-size: 12px;
+        margin-bottom: 5px;
+        color: #0066cc;
+      }
+      .amount-words p {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      .totals-box {
+        width: 38%;
+        border: 2px solid #0066cc;
+        padding: 12px;
+      }
+      .total-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 5px 0;
+        font-size: 11px;
+      }
+      .total-row.grand {
+        background: #0066cc;
+        color: white;
+        padding: 8px;
+        margin-top: 8px;
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .terms-section {
+        border: 2px solid #0066cc;
+        padding: 12px;
+        margin-bottom: 15px;
+      }
+      .terms-section h4 {
+        font-size: 12px;
+        margin-bottom: 8px;
+        color: #0066cc;
+        border-bottom: 1px solid #0066cc;
+        padding-bottom: 3px;
+      }
+      .terms-section p {
+        font-size: 10px;
+        margin: 3px 0;
+        line-height: 1.4;
+      }
+      .bank-section {
+        border: 2px solid #0066cc;
+        padding: 12px;
+        margin-bottom: 15px;
+        background: #f0f8ff;
+      }
+      .bank-section h4 {
+        font-size: 12px;
+        margin-bottom: 8px;
+        color: #0066cc;
+      }
+      .bank-section p {
+        font-size: 10px;
+        margin: 2px 0;
+      }
+      .footer-section {
+        text-align: right;
+        margin-top: 30px;
+      }
+      .footer-section p {
+        font-size: 11px;
+        margin: 3px 0;
+      }
+      .signature-line {
+        margin-top: 50px;
+        border-top: 1px solid #000;
+        width: 200px;
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="invoice-container">
+      <div class="header-section">
+        <div class="company-logo">LOGO</div>
+        <div class="company-info">
+          <h2>YOUR COMPANY NAME</h2>
+          <p>
+            <strong>Address:</strong> 301, Building Name, Area, City, State -
+            Pincode
+          </p>
+          <p>
+            <strong>Phone:</strong> +91-XXXXXXXXXX |
+            <strong>Email:</strong> contact@company.com
+          </p>
+          <p><strong>Website:</strong> www.yourcompany.com</p>
+        </div>
+      </div>
+
+      <div class="invoice-title">EXPORT INVOICE</div>
+      <div class="invoice-subtitle">
+        ORIGINAL FOR RECIPIENT<br />Supply Meant for Export Under Bond or Letter
+        of Undertaking without Payment of Integrated Tax (IGST)
+      </div>
+
+      <div class="customer-invoice-info">
+        <div class="customer-details">
+          <h3>Customer Detail</h3>
+          <p><strong>Name:</strong> {{customer.name}}</p>
+          {{#if customer.company}}
+          <p><strong>Company:</strong> {{customer.company}}</p>
+          {{/if}} {{#if customer.address}}
+          <p><strong>Address:</strong> {{customer.address}}</p>
+          {{/if}} {{#if customer.phone}}
+          <p><strong>Phone:</strong> {{customer.phone}}</p>
+          {{/if}} {{#if customer.gstNumber}}
+          <p><strong>GSTIN:</strong> {{customer.gstNumber}}</p>
+          {{/if}}
+        </div>
+        <div class="invoice-details">
+          <table>
+            <tr>
+              <td>Invoice No.</td>
+              <td>{{billNumber}}</td>
+            </tr>
+            <tr>
+              <td>Invoice Date</td>
+              <td>{{formatDate date}}</td>
+            </tr>
+            {{#if dueDate}}
+            <tr>
+              <td>Due Date</td>
+              <td>{{formatDate dueDate}}</td>
+            </tr>
+            {{/if}}
+          </table>
+        </div>
+      </div>
+
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th style="width: 40px">Sr. No.</th>
+            <th>Name of Product / Service</th>
+            <th style="width: 80px">HSN / SAC</th>
+            <th class="text-center" style="width: 60px">Qty</th>
+            <th class="text-right" style="width: 100px">Rate</th>
+            <th class="text-right" style="width: 100px">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td class="text-center">{{add @index 1}}</td>
+            <td>
+              {{#if
+              this.description}}{{this.description}}{{else}}{{this.itemName}}{{/if}}
+            </td>
+            <td class="text-center">
+              {{#if this.hsn}}{{this.hsn}}{{else}}-{{/if}}
+            </td>
+            <td class="text-center">
+              {{#if this.quantity}}{{this.quantity}}{{else}}{{this.qty}}{{/if}}
+            </td>
+            <td class="text-right">
+              ₹{{#if this.rate}}{{formatNumber this.rate}}{{else}}{{formatNumber
+              this.price}}{{/if}}
+            </td>
+            <td class="text-right">
+              ₹{{#if this.amount}}{{formatNumber
+              this.amount}}{{else}}{{formatNumber this.total}}{{/if}}
+            </td>
+          </tr>
+          {{/each}}
+          <tr>
+            <td colspan="4"></td>
+            <td class="text-right"><strong>Total</strong></td>
+            <td class="text-right">
+              <strong>₹{{formatNumber subtotal}}</strong>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="summary-section">
+        <div class="amount-words">
+          <h4>Total in words</h4>
+          <p>[AMOUNT IN WORDS] RUPEES ONLY</p>
+          <p style="margin-top: 10px; font-size: 10px; font-weight: normal">
+            <strong>(E & O.E.)</strong>
+          </p>
+        </div>
+        <div class="totals-box">
+          <div class="total-row grand">
+            <span>Total Amount</span>
+            <span>₹{{formatNumber totalAmount}}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="terms-section">
+        <h4>Terms and Conditions</h4>
+        <p>• Subject to our home Jurisdiction.</p>
+        <p>• Our Responsibility Ceases as soon as goods leaves our Premises.</p>
+        <p>• Goods once sold will not taken back.</p>
+        <p>• Delivery Ex-Premises.</p>
+        {{#if notes}}
+        <p>• {{notes}}</p>
+        {{/if}}
+      </div>
+
+      <div class="bank-section">
+        <h4>Please find my account details below</h4>
+        <p><strong>Account number:</strong> XXXXXXXXXXXX</p>
+        <p><strong>Bank Name:</strong> YOUR BANK NAME</p>
+        <p><strong>Account Type:</strong> Savings/Current</p>
+        <p><strong>Account holder's name:</strong> YOUR NAME</p>
+        <p><strong>IFSC Code:</strong> XXXXXX</p>
+        <p><strong>UPI ID:</strong> yourname@upi</p>
+      </div>
+
+      <div class="footer-section">
+        <p>Certified that the particulars given above are true and correct.</p>
+        <p style="margin-top: 10px"><strong>For YOUR COMPANY NAME</strong></p>
+        <div class="signature-line"></div>
+        <p>Authorised Signatory</p>
+      </div>
+    </div>
+  </body>
+</html>
