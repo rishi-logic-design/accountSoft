@@ -5,9 +5,9 @@ const {
   BillItemModel,
   VendorModel,
   CustomerModel,
+  InvoiceSettingsModel,
 } = require("../../models");
 const { renderTemplate } = require("../../utils/templateRenderer");
-const InvoiceSettings = require("../../models");
 
 exports.list = async (customerId, filters = {}) => {
   const { page = 1, size = 20, search, status, fromDate, toDate } = filters;
@@ -114,7 +114,7 @@ exports.getMyBillHtml = async (billId, customerId) => {
       };
     }
 
-    const settings = await InvoiceSettings.findOne({
+    const settings = await InvoiceSettingsModel.findOne({
       where: { vendorId: bill.vendorId },
     });
 
