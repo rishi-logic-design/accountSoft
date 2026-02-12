@@ -476,39 +476,58 @@ exports.editBill = async (billId, vendorId, payload) => {
   });
 };
 exports.getBillHtml = async (billId, vendorId) => {
-  const bill = await BillModel.findOne({ _id: billId, vendorId }).populate(
-    "customerId",
-    "customerName company mobileNumber homeAddress gstNumber businessName",
-  );
+  const bill = await BillModel.findOne({
+    where: { id: billId, vendorId },
+    include: [
+      {
+        model: CustomerModel,
+        as: "customer",
+        attributes: [
+          "customerName",
+          "businessName",
+          "mobile",
+          "homeAddress",
+          "gstNumber",
+        ],
+      },
+      {
+        model: BillItemModel,
+        as: "items",
+      },
+    ],
+  });
 
   if (!bill) {
     throw new Error("Bill not found");
   }
 
-  const settings = await InvoiceSettingsModel.findOne({ vendorId });
+  const settings = await InvoiceSettingsModel.findOne({
+    where: { vendorId },
+  });
+
   const templateId =
     bill.invoiceTemplate || settings?.invoiceTemplate || "template1";
 
   const templateData = {
     billNumber: bill.billNumber,
-    date: bill.date || new Date(),
-    dueDate: bill.dueDate,
+    date: bill.billDate || new Date(),
+
     customer: {
-      name: bill.customerId?.customerName || "N/A",
-      company: bill.customerId?.company || bill.customerId?.businessName || "",
-      address: formatAddress(bill.customerId?.homeAddress),
-      gstNumber: bill.customerId?.gstNumber || "",
-      phone: bill.customerId?.mobileNumber || "",
+      name: bill.customer?.customerName || "N/A",
+      company: bill.customer?.businessName || "",
+      address: bill.customer?.homeAddress || "",
+      gstNumber: bill.customer?.gstNumber || "",
+      phone: bill.customer?.mobile || "",
     },
+
     items: bill.items || [],
-    subtotal: bill.subtotal || bill.totalWithoutGST || 0,
-    gstPercentage: bill.gstPercentage || 18,
-    gstTotal: bill.gstTotal || bill.gst || 0,
-    totalAmount: bill.totalWithGST || bill.totalAmount || 0,
+    subtotal: bill.subtotal || 0,
+    gstTotal: bill.gstTotal || 0,
+    totalAmount: bill.totalWithGST || 0,
     paidAmount: bill.paidAmount || 0,
     pendingAmount: bill.pendingAmount || 0,
     status: bill.status || "pending",
-    notes: bill.notes || "",
+    notes: bill.note || "",
   };
 
   const html = renderTemplate(templateId, templateData);
