@@ -475,9 +475,8 @@ exports.editBill = async (billId, vendorId, payload) => {
     return updated;
   });
 };
-
-exports.generateBillPdf = async (billId, vendorId) => {
-  const bill = await BillModel.findOne({ id: billId, vendorId }).populate(
+exports.getBillHtml = async (billId, vendorId) => {
+  const bill = await BillModel.findOne({ _id: billId, vendorId }).populate(
     "customerId",
     "customerName company mobileNumber homeAddress gstNumber businessName",
   );
@@ -490,7 +489,6 @@ exports.generateBillPdf = async (billId, vendorId) => {
   const templateId =
     bill.invoiceTemplate || settings?.invoiceTemplate || "template1";
 
-  // Prepare data for template
   const templateData = {
     billNumber: bill.billNumber,
     date: bill.date || new Date(),
@@ -515,8 +513,16 @@ exports.generateBillPdf = async (billId, vendorId) => {
 
   const html = renderTemplate(templateId, templateData);
 
-  const pdfBuffer = await generatePdfFromHtml(html);
+  return {
+    html,
+    templateId,
+    billNumber: bill.billNumber,
+  };
+};
 
+exports.generateBillPdf = async (billId, vendorId) => {
+  const htmlData = await exports.getBillHtml(billId, vendorId);
+  const pdfBuffer = await generatePdfFromHtml(htmlData.html);
   return pdfBuffer;
 };
 

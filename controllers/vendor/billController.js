@@ -96,75 +96,11 @@ exports.generateBillPdf = async (req, res, next) => {
 exports.getBillHtml = async (req, res, next) => {
   try {
     const vendorId = req.user.vendorId || req.user.id;
-    const BillModel = require("../../models/vendor/billModel");
-    const InvoiceSettingsModel = require("../../models/vendor/invoiceSettingsModel");
+    const html = await billService.getBillHtml(req.params.id, vendorId);
 
-    const bill = await BillModel.findOne({
-      _id: req.params.id,
-      vendorId,
-    }).populate(
-      "customerId",
-      "customerName company mobileNumber homeAddress gstNumber businessName",
-    );
-
-    if (!bill) {
-      return res.status(404).json({
-        success: false,
-        message: "Bill not found",
-      });
-    }
-    const settings = await InvoiceSettingsModel.findOne({ vendorId });
-    const templateId =
-      bill.invoiceTemplate || settings?.invoiceTemplate || "template1";
-    const formatAddress = (address) => {
-      if (!address) return "Address not provided";
-      try {
-        const addr =
-          typeof address === "string" ? JSON.parse(address) : address;
-        const parts = [
-          addr.houseNo,
-          addr.streetNo,
-          addr.residencyName,
-          addr.areaCity,
-          addr.state,
-          addr.pincode,
-        ].filter(Boolean);
-        return parts.join(", ");
-      } catch (e) {
-        return address;
-      }
-    };
-
-    const templateData = {
-      billNumber: bill.billNumber,
-      date: bill.date || new Date(),
-      dueDate: bill.dueDate,
-      customer: {
-        name: bill.customerId?.customerName || "N/A",
-        company:
-          bill.customerId?.company || bill.customerId?.businessName || "",
-        address: formatAddress(bill.customerId?.homeAddress),
-        gstNumber: bill.customerId?.gstNumber || "",
-        phone: bill.customerId?.mobileNumber || "",
-      },
-      items: bill.items || [],
-      subtotal: bill.subtotal || bill.totalWithoutGST || 0,
-      gstPercentage: bill.gstPercentage || 18,
-      gstTotal: bill.gstTotal || bill.gst || 0,
-      totalAmount: bill.totalWithGST || bill.totalAmount || 0,
-      paidAmount: bill.paidAmount || 0,
-      pendingAmount: bill.pendingAmount || 0,
-      status: bill.status || "pending",
-      notes: bill.notes || "",
-    };
-    const html = renderTemplate(templateId, templateData);
     res.json({
       success: true,
-      data: {
-        html,
-        templateId,
-        billNumber: bill.billNumber,
-      },
+      data: html,
     });
   } catch (error) {
     next(error);
