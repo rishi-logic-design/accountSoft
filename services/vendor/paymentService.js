@@ -593,11 +593,11 @@ exports.getPaymentStats = async (vendorId, options = {}) => {
     bankBalance: bankBalance.toFixed(2),
 
     totalCredit: (
-      parseFloat(cashCredit || 0) + parseFloat(bankCredit || 0)
+      parseFloat(totalCredit || 0) + parseFloat(bankCredit || 0)
     ).toFixed(2),
 
     totalDebit: (
-      parseFloat(cashDebit || 0) + parseFloat(bankDebit || 0)
+      parseFloat(totalDebit || 0) + parseFloat(bankDebit || 0)
     ).toFixed(2),
 
     totalBalance: (cashBalance + bankBalance).toFixed(2),
