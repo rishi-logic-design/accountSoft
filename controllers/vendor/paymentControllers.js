@@ -2,6 +2,7 @@ const paymentService = require("../../services/vendor/paymentService");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
 const notificationService = require("../../services/vendor/notificationService");
+const { PaymentModel } = require("../../models");
 
 exports.createPayment = asyncHandler(async (req, res) => {
   const vendorId =
@@ -276,6 +277,14 @@ exports.setOpeningBalance = asyncHandler(async (req, res) => {
   }
 
   const { method, amount } = req.body;
+a
+  if (!method) {
+    return error(res, "Payment method is required (cash or bank)", 400);
+  }
+
+  if (!amount) {
+    return error(res, "Amount is required", 400);
+  }
 
   const opening = await paymentService.setOpeningBalance(
     vendorId,
