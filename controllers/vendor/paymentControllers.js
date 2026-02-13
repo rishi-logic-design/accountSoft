@@ -277,7 +277,7 @@ exports.setOpeningBalance = asyncHandler(async (req, res) => {
   }
 
   const { method, amount } = req.body;
-a
+
   if (!method) {
     return error(res, "Payment method is required (cash or bank)", 400);
   }
