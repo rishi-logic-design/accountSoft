@@ -489,7 +489,7 @@ exports.deletePayment = async (id, vendorId) => {
   });
 };
 
-exports.setOpeningBalance = asyncHandler(async (req, res) => {
+exports.setOpeningBalance = async (req, res) => {
   const vendorId =
     req.user?.role === "vendor" ? req.user.id : req.body.vendorId;
 
@@ -535,7 +535,7 @@ exports.setOpeningBalance = asyncHandler(async (req, res) => {
   });
 
   success(res, opening, "Opening balance set successfully");
-});
+};
 
 exports.getPaymentStats = async (vendorId, options = {}) => {
   const { fromDate, toDate } = options;

@@ -1,7 +1,6 @@
 const paymentService = require("../../services/vendor/paymentService");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
-const { validateIFSCCode } = require("../../utils/paymentUtil");
 const notificationService = require("../../services/vendor/notificationService");
 
 exports.createPayment = asyncHandler(async (req, res) => {
