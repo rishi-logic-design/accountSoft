@@ -575,13 +575,13 @@ exports.getPaymentStats = async (vendorId, options = {}) => {
   ]);
   const cashBalance =
     parseFloat(cashOpening || 0) +
-    parseFloat(cashCredit || 0) -
-    parseFloat(cashDebit || 0);
+    parseFloat(totalCredit || 0) -
+    parseFloat(totalDebit || 0);
 
   const bankBalance =
     parseFloat(bankOpening || 0) +
-    parseFloat(bankCredit || 0) -
-    parseFloat(bankDebit || 0);
+    parseFloat(totalCredit || 0) -
+    parseFloat(totalDebit || 0);
 
   return {
     financialYearStart: financialStart,
