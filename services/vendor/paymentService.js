@@ -489,7 +489,7 @@ exports.deletePayment = async (id, vendorId) => {
   });
 };
 
-exports.setOpeningBalance = async (req, res) => {
+exports.setOpeningBalance = async (vendorId, method, amount) => {
   if (!["cash", "bank"].includes(method)) {
     throw new Error("Invalid account type. Must be 'cash' or 'bank'");
   }
@@ -508,12 +508,12 @@ exports.setOpeningBalance = async (req, res) => {
         paymentDate: financialStart,
         openingBalance: { [Op.gt]: 0 },
       },
-      transation: t,
+      transaction: t,
     });
 
     if (existing) {
       throw new Error(
-        `Opening balance already set for ${method} in this finacial year. Cannot edit or update opening balance.`,
+        `Opening balance already set for ${method} in this financial year. Cannot edit or update opening balance.`,
       );
     }
 
@@ -532,7 +532,7 @@ exports.setOpeningBalance = async (req, res) => {
         status: "completed",
         note: `Opening balance for ${method} - Financial Year ${financialStart.getFullYear()}-${financialStart.getFullYear() + 1}`,
       },
-      { transation: t },
+      { transaction: t },
     );
     return opening;
   });
