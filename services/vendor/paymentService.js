@@ -552,8 +552,10 @@ exports.getPaymentStats = async (vendorId, options = {}) => {
   const [
     cashOpening,
     bankOpening,
-    totalCredit,
-    totalDebit,
+    cashCredit,
+    cashDebit,
+    bankCredit,
+    bankDebit,
     totalPayments,
     paymentsByMethod,
   ] = await Promise.all([
@@ -575,13 +577,13 @@ exports.getPaymentStats = async (vendorId, options = {}) => {
   ]);
   const cashBalance =
     parseFloat(cashOpening || 0) +
-    parseFloat(totalCredit || 0) -
-    parseFloat(totalDebit || 0);
+    parseFloat(cashCredit || 0) -
+    parseFloat(cashDebit || 0);
 
   const bankBalance =
     parseFloat(bankOpening || 0) +
-    parseFloat(totalCredit || 0) -
-    parseFloat(totalDebit || 0);
+    parseFloat(bankCredit || 0) -
+    parseFloat(bankDebit || 0);
 
   return {
     financialYearStart: financialStart,
@@ -593,11 +595,11 @@ exports.getPaymentStats = async (vendorId, options = {}) => {
     bankBalance: bankBalance.toFixed(2),
 
     totalCredit: (
-      parseFloat(totalCredit || 0) + parseFloat(bankCredit || 0)
+      parseFloat(cashCredit || 0) + parseFloat(bankCredit || 0)
     ).toFixed(2),
 
     totalDebit: (
-      parseFloat(totalDebit || 0) + parseFloat(bankDebit || 0)
+      parseFloat(cashDebit || 0) + parseFloat(bankDebit || 0)
     ).toFixed(2),
 
     totalBalance: (cashBalance + bankBalance).toFixed(2),
