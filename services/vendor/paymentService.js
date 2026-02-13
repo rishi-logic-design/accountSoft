@@ -585,11 +585,22 @@ exports.getPaymentStats = async (vendorId, options = {}) => {
 
   return {
     financialYearStart: financialStart,
+
     cashOpening: parseFloat(cashOpening || 0).toFixed(2),
     bankOpening: parseFloat(bankOpening || 0).toFixed(2),
-    totalCredit: parseFloat(totalCredit || 0).toFixed(2),
-    totalDebit: parseFloat(totalDebit || 0).toFixed(2),
-    netAmount: parseFloat((totalCredit || 0) - (totalDebit || 0)).toFixed(2),
+
+    cashBalance: cashBalance.toFixed(2),
+    bankBalance: bankBalance.toFixed(2),
+
+    totalCredit: (
+      parseFloat(cashCredit || 0) + parseFloat(bankCredit || 0)
+    ).toFixed(2),
+
+    totalDebit: (
+      parseFloat(cashDebit || 0) + parseFloat(bankDebit || 0)
+    ).toFixed(2),
+
+    totalBalance: (cashBalance + bankBalance).toFixed(2),
     totalPayments,
     paymentsByMethod,
   };
