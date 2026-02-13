@@ -216,56 +216,22 @@ exports.updatePayment = asyncHandler(async (req, res) => {
   if (!id || isNaN(id)) {
     return error(res, "Invalid payment ID", 400);
   }
+  const existingPayment = await PaymentModel.findOne({
+    where: { id, vendorId },
+  });
 
-  const {
-    amount,
-    paymentDate,
-    method,
-    bankName,
-    accountNumber,
-    ifscCode,
-    upiId,
-    chequeNumber,
-    chequeDate,
-    chequeBankName,
-  } = req.body;
+  if (!existingPayment) {
+    return error(res, "Payment not found", 404);
+  }
+
+  if (parseFloat(existingPayment.openingBalance) > 0) {
+    return error(res, "Opening balance cannot be edited", 400);
+  }
+  const { amount } = req.body;
 
   // Validate amount if updating
   if (amount !== undefined && parseFloat(amount) <= 0) {
     return error(res, "Amount must be greater than 0", 400);
-  }
-
-  // Method-specific validation
-  if (method === "bank" && (bankName || accountNumber || ifscCode)) {
-    if (!bankName || !accountNumber || !ifscCode) {
-      return error(
-        res,
-        "Bank name, account number, and IFSC code are all required for bank transfers",
-        400,
-      );
-    }
-
-    const ifscValidation = validateIFSCCode(ifscCode);
-    if (!ifscValidation.isValid) {
-      return error(res, ifscValidation.message, 400);
-    }
-  }
-
-  if ((method === "upi" || method === "online") && upiId) {
-    const upiRegex = /^[\w.-]+@[\w.-]+$/;
-    if (!upiRegex.test(upiId)) {
-      return error(res, "Invalid UPI ID format", 400);
-    }
-  }
-
-  if (method === "cheque" && (chequeNumber || chequeDate || chequeBankName)) {
-    if (!chequeNumber || !chequeDate || !chequeBankName) {
-      return error(
-        res,
-        "Cheque number, date, and bank name are all required for cheque payments",
-        400,
-      );
-    }
   }
 
   const payment = await paymentService.updatePayment(id, vendorId, req.body);
@@ -286,10 +252,39 @@ exports.deletePayment = asyncHandler(async (req, res) => {
   if (!id || isNaN(id)) {
     return error(res, "Invalid payment ID", 400);
   }
+  const payment = await PaymentModel.findOne({
+    where: { id, vendorId },
+  });
 
+  if (!payment) {
+    return error(res, "Payment not found", 404);
+  }
+
+  if (parseFloat(payment.openingBalance) > 0) {
+    return error(res, "Opening balance cannot be deleted", 400);
+  }
   await paymentService.deletePayment(id, vendorId);
 
   success(res, null, "Payment deleted successfully");
+});
+
+exports.setOpeningBalance = asyncHandler(async (req, res) => {
+  const vendorId =
+    req.user?.role === "vendor" ? req.user.id : req.body.vendorId;
+
+  if (!vendorId) {
+    return error(res, "Vendor ID required", 400);
+  }
+
+  const { method, amount } = req.body;
+
+  const opening = await paymentService.setOpeningBalance(
+    vendorId,
+    method,
+    amount,
+  );
+
+  success(res, opening, "Opening balance set successfully");
 });
 
 exports.getPaymentStats = asyncHandler(async (req, res) => {

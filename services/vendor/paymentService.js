@@ -14,6 +14,23 @@ function toNumber(v) {
   return parseFloat(v || 0);
 }
 
+function getFinancialYearStartDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1;
+
+  const startYear = month >= 4 ? year : year - 1;
+  return new Date(`${startYear}-04-01`);
+}
+
+function getFinancialYearStartDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1;
+
+  const startYear = month >= 4 ? year : year - 1;
+  return new Date(`${startYear}-04-01`);
+}
 exports.createPayment = async (vendorId, payload) => {
   const {
     customerId,
@@ -472,8 +489,57 @@ exports.deletePayment = async (id, vendorId) => {
   });
 };
 
+exports.setOpeningBalance = asyncHandler(async (req, res) => {
+  const vendorId =
+    req.user?.role === "vendor" ? req.user.id : req.body.vendorId;
+
+  const { method, amount } = req.body; // cash or bank
+
+  if (!["cash", "bank"].includes(method)) {
+    return error(res, "Invalid account type", 400);
+  }
+
+  if (!amount || isNaN(amount)) {
+    return error(res, "Invalid amount", 400);
+  }
+
+  const financialStart = getFinancialYearStartDate();
+
+  // Already exists check
+  const existing = await PaymentModel.findOne({
+    where: {
+      vendorId,
+      method,
+      paymentDate: financialStart,
+      openingBalance: { [Op.gt]: 0 },
+    },
+  });
+
+  if (existing) {
+    return error(
+      res,
+      "Opening balance already set for this financial year",
+      400,
+    );
+  }
+
+  const opening = await PaymentModel.create({
+    paymentNumber: `OPEN-${Date.now()}`,
+    vendorId,
+    type: "credit",
+    amount: 0,
+    openingBalance: amount,
+    paymentDate: financialStart,
+    method,
+    status: "completed",
+  });
+
+  success(res, opening, "Opening balance set successfully");
+});
+
 exports.getPaymentStats = async (vendorId, options = {}) => {
   const { fromDate, toDate } = options;
+  const financialStart = getFinancialYearStartDate();
 
   const where = { vendorId, status: "completed" };
 
@@ -483,24 +549,44 @@ exports.getPaymentStats = async (vendorId, options = {}) => {
     if (toDate) where.paymentDate[Op.lte] = toDate;
   }
 
-  const [totalCredit, totalDebit, totalPayments, paymentsByMethod] =
-    await Promise.all([
-      PaymentModel.sum("amount", { where: { ...where, type: "credit" } }),
-      PaymentModel.sum("amount", { where: { ...where, type: "debit" } }),
-      PaymentModel.count({ where }),
-      PaymentModel.findAll({
-        where,
-        attributes: [
-          "method",
-          [sequelize.fn("COUNT", sequelize.col("id")), "count"],
-          [sequelize.fn("SUM", sequelize.col("amount")), "total"],
-        ],
-        group: ["method"],
-        raw: true,
-      }),
-    ]);
+  const [
+    cashOpening,
+    bankOpening,
+    totalCredit,
+    totalDebit,
+    totalPayments,
+    paymentsByMethod,
+  ] = await Promise.all([
+    PaymentModel.sum("openingBalance", { where: { ...where, method: "cash" } }),
+    PaymentModel.sum("openingBalance", { where: { ...where, method: "bank" } }),
+    PaymentModel.sum("amount", { where: { ...where, type: "credit" } }),
+    PaymentModel.sum("amount", { where: { ...where, type: "debit" } }),
+    PaymentModel.count({ where }),
+    PaymentModel.findAll({
+      where,
+      attributes: [
+        "method",
+        [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+        [sequelize.fn("SUM", sequelize.col("amount")), "total"],
+      ],
+      group: ["method"],
+      raw: true,
+    }),
+  ]);
+  const cashBalance =
+    parseFloat(cashOpening || 0) +
+    parseFloat(cashCredit || 0) -
+    parseFloat(cashDebit || 0);
+
+  const bankBalance =
+    parseFloat(bankOpening || 0) +
+    parseFloat(bankCredit || 0) -
+    parseFloat(bankDebit || 0);
 
   return {
+    financialYearStart: financialStart,
+    cashOpening: parseFloat(cashOpening || 0).toFixed(2),
+    bankOpening: parseFloat(bankOpening || 0).toFixed(2),
     totalCredit: parseFloat(totalCredit || 0).toFixed(2),
     totalDebit: parseFloat(totalDebit || 0).toFixed(2),
     netAmount: parseFloat((totalCredit || 0) - (totalDebit || 0)).toFixed(2),

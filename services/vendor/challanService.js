@@ -189,13 +189,8 @@ exports.listChallans = async ({
 
   if (vendorId) where.vendorId = vendorId;
   if (customerId) where.customerId = Number(customerId);
-  if (status) {
-    where.status = status;
+  if (status) where.status = status;
 
-    if (status === "unpaid") {
-      where.billId = null; 
-    }
-  }
   if (fromDate || toDate) {
     where.challanDate = {};
     if (fromDate) where.challanDate[Op.gte] = fromDate;

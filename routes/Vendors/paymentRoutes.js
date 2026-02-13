@@ -5,6 +5,7 @@ const authenticate = require("../../middleware/authMiddleware");
 router.use(authenticate);
 
 router.post("/", paymentController.createPayment);
+router.post("/opening-balance", paymentController.setOpeningBalance);
 
 router.get("/", paymentController.listPayments);
 router.get("/stats", paymentController.getPaymentStats);
