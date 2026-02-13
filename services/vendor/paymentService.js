@@ -8,7 +8,7 @@ const {
   sequelize,
 } = require("../../models");
 const { generatePaymentNumber } = require("../../utils/paymentUtil");
-const { Op } = require("sequelize");
+const { Op, where } = require("sequelize");
 
 function toNumber(v) {
   return parseFloat(v || 0);
@@ -490,51 +490,52 @@ exports.deletePayment = async (id, vendorId) => {
 };
 
 exports.setOpeningBalance = async (req, res) => {
-  const vendorId =
-    req.user?.role === "vendor" ? req.user.id : req.body.vendorId;
-
-  const { method, amount } = req.body; // cash or bank
-
   if (!["cash", "bank"].includes(method)) {
-    return error(res, "Invalid account type", 400);
+    throw new Error("Invalid account type. Must be 'cash' or 'bank'");
   }
 
-  if (!amount || isNaN(amount)) {
-    return error(res, "Invalid amount", 400);
+  if (!amount || isNaN(amount) || parseFloat(amount) < 0) {
+    throw new Error("Invalid amount");
   }
 
   const financialStart = getFinancialYearStartDate();
 
-  // Already exists check
-  const existing = await PaymentModel.findOne({
-    where: {
-      vendorId,
-      method,
-      paymentDate: financialStart,
-      openingBalance: { [Op.gt]: 0 },
-    },
-  });
+  return await sequelize.transaction(async (t) => {
+    const existing = await PaymentModel.findOne({
+      where: {
+        vendorId,
+        method,
+        paymentDate: financialStart,
+        openingBalance: { [Op.gt]: 0 },
+      },
+      transation: t,
+    });
 
-  if (existing) {
-    return error(
-      res,
-      "Opening balance already set for this financial year",
-      400,
+    if (existing) {
+      throw new Error(
+        `Opening balance already set for ${method} in this finacial year. Cannot edit or update opening balance.`,
+      );
+    }
+
+    const paymentNumber = await generatePaymentNumber(PaymentModel, t);
+
+    const opening = await PaymentModel.create(
+      {
+        paymentNumber,
+        vendorId,
+        type: "credit",
+        amount: 0,
+        openingBalance: parseFloat(amount).toFixed(2),
+        paymentDate: financialStart,
+        method,
+        subType: method === "cash" ? "cash-deposit" : "miscellaneous",
+        status: "completed",
+        note: `Opening balance for ${method} - Financial Year ${financialStart.getFullYear()}-${financialStart.getFullYear() + 1}`,
+      },
+      { transation: t },
     );
-  }
-
-  const opening = await PaymentModel.create({
-    paymentNumber: `OPEN-${Date.now()}`,
-    vendorId,
-    type: "credit",
-    amount: 0,
-    openingBalance: amount,
-    paymentDate: financialStart,
-    method,
-    status: "completed",
+    return opening;
   });
-
-  success(res, opening, "Opening balance set successfully");
 };
 
 exports.getPaymentStats = async (vendorId, options = {}) => {
@@ -548,21 +549,63 @@ exports.getPaymentStats = async (vendorId, options = {}) => {
     if (fromDate) where.paymentDate[Op.gte] = fromDate;
     if (toDate) where.paymentDate[Op.lte] = toDate;
   }
+  const cashOpeningBalance = await PaymentModel.sum("openingBalance", {
+    where: {
+      vendorId,
+      method: "cash",
+      paymentDate: financialStart,
+      openingBalance: { [Op.gt]: 0 },
+    },
+  });
+  const bankOpeningBalance = await PaymentModel.sum("openingBalance", {
+    where: {
+      vendorId,
+      method: "bank",
+      paymentDate: financialStart,
+      openingBalance: { [Op.gt]: 0 },
+    },
+  });
 
-  const [
-    cashOpening,
-    bankOpening,
-    cashCredit,
-    cashDebit,
-    bankCredit,
-    bankDebit,
-    totalPayments,
-    paymentsByMethod,
-  ] = await Promise.all([
-    PaymentModel.sum("openingBalance", { where: { ...where, method: "cash" } }),
-    PaymentModel.sum("openingBalance", { where: { ...where, method: "bank" } }),
-    PaymentModel.sum("amount", { where: { ...where, type: "credit" } }),
-    PaymentModel.sum("amount", { where: { ...where, type: "debit" } }),
+  const cashCredit = await PaymentModel.sum("amount", {
+    where: {
+      vendorId,
+      method: "cash",
+      type: "credit",
+      status: "completed",
+      ...(fromDate || toDate ? { paymentDate: where.paymentDate } : {}),
+    },
+  });
+
+  const cashDebit = await PaymentModel.sum("amount", {
+    where: {
+      vendorId,
+      method: "cash",
+      type: "debit",
+      status: "completed",
+      ...(fromDate || toDate ? { paymentDate: where.paymentDate } : {}),
+    },
+  });
+  const bankCredit = await PaymentModel.sum("amount", {
+    where: {
+      vendorId,
+      method: "bank",
+      type: "credit",
+      status: "completed",
+      ...(fromDate || toDate ? { paymentDate: where.paymentDate } : {}),
+    },
+  });
+
+  const bankDebit = await PaymentModel.sum("amount", {
+    where: {
+      vendorId,
+      method: "bank",
+      type: "debit",
+      status: "completed",
+      ...(fromDate || toDate ? { paymentDate: where.paymentDate } : {}),
+    },
+  });
+
+  const [totalPayments, paymentsByMethod] = await Promise.all([
     PaymentModel.count({ where }),
     PaymentModel.findAll({
       where,
@@ -575,24 +618,29 @@ exports.getPaymentStats = async (vendorId, options = {}) => {
       raw: true,
     }),
   ]);
+
   const cashBalance =
-    parseFloat(cashOpening || 0) +
+    parseFloat(cashOpeningBalance || 0) +
     parseFloat(cashCredit || 0) -
     parseFloat(cashDebit || 0);
 
   const bankBalance =
-    parseFloat(bankOpening || 0) +
+    parseFloat(bankOpeningBalance || 0) +
     parseFloat(bankCredit || 0) -
     parseFloat(bankDebit || 0);
-
   return {
     financialYearStart: financialStart,
 
-    cashOpening: parseFloat(cashOpening || 0).toFixed(2),
-    bankOpening: parseFloat(bankOpening || 0).toFixed(2),
+    cashOpening: parseFloat(cashOpeningBalance || 0).toFixed(2),
+    bankOpening: parseFloat(bankOpeningBalance || 0).toFixed(2),
 
     cashBalance: cashBalance.toFixed(2),
     bankBalance: bankBalance.toFixed(2),
+
+    cashCredit: parseFloat(cashCredit || 0).toFixed(2),
+    cashDebit: parseFloat(cashDebit || 0).toFixed(2),
+    bankCredit: parseFloat(bankCredit || 0).toFixed(2),
+    bankDebit: parseFloat(bankDebit || 0).toFixed(2),
 
     totalCredit: (
       parseFloat(cashCredit || 0) + parseFloat(bankCredit || 0)
@@ -634,7 +682,6 @@ exports.getCustomerOutstanding = async (vendorId, customerId) => {
 };
 
 exports.getCustomerPendingInvoices = async (vendorId, customerId) => {
-  // Get all bills with pending/partial status
   const bills = await BillModel.findAll({
     where: {
       vendorId,
