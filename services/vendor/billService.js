@@ -52,6 +52,7 @@ exports.createBill = async (vendorId, payload) => {
   const {
     customerId,
     challanIds = [],
+    items = [], // New: Direct items without challan
     discountPercent = 0,
     gstPercent = 0,
     note,
@@ -61,8 +62,21 @@ exports.createBill = async (vendorId, payload) => {
   } = payload;
 
   if (!customerId) throw new Error("customerId required");
-  if (!Array.isArray(challanIds) || challanIds.length === 0) {
-    throw new Error("At least one challan must be selected");
+
+  // Check if creating bill WITH challan or WITHOUT challan
+  const isWithoutChallan = items && items.length > 0;
+  const isWithChallan = challanIds && challanIds.length > 0;
+
+  // Validate: Either challans OR items must be provided
+  if (!isWithoutChallan && !isWithChallan) {
+    throw new Error("Either challanIds or items must be provided");
+  }
+
+  // If both are provided, prioritize items (without challan mode)
+  if (isWithoutChallan && isWithChallan) {
+    throw new Error(
+      "Cannot provide both challanIds and items. Choose one method.",
+    );
   }
 
   return await sequelize.transaction(async (t) => {
@@ -74,45 +88,79 @@ exports.createBill = async (vendorId, payload) => {
     });
     if (!customer) throw new Error("Customer not found");
 
-    const challans = await ChallanModel.findAll({
-      where: {
-        id: challanIds,
-        vendorId,
-        customerId,
-        status: "unpaid",
-      },
-      include: [{ model: ChallanItemModel, as: "items" }],
-      transaction: t,
-    });
-
-    if (challans.length !== challanIds.length) {
-      throw new Error("One or more challans are already billed or invalid");
-    }
-
     let subtotal = 0;
+    let gstTotal = 0;
     const billItems = [];
+    let challanIdsToUpdate = [];
 
-    for (const ch of challans) {
-      for (const it of ch.items) {
-        const qty = toNumber(it.qty);
-        const rate = toNumber(it.pricePerUnit);
+    if (isWithChallan) {
+      // ===== MODE 1: CREATE BILL FROM CHALLANS (Existing Logic) =====
+      const challans = await ChallanModel.findAll({
+        where: {
+          id: challanIds,
+          vendorId,
+          customerId,
+          status: "unpaid",
+        },
+        include: [{ model: ChallanItemModel, as: "items" }],
+        transaction: t,
+      });
+
+      if (challans.length !== challanIds.length) {
+        throw new Error("One or more challans are already billed or invalid");
+      }
+
+      for (const ch of challans) {
+        for (const it of ch.items) {
+          const qty = toNumber(it.qty);
+          const rate = toNumber(it.pricePerUnit);
+          const amount = +(qty * rate).toFixed(2);
+          const gstPercent = toNumber(it.gstPercent || 0);
+          const gstAmt = +((amount * gstPercent) / 100).toFixed(2);
+          const totalWithGst = +(amount + gstAmt).toFixed(2);
+
+          subtotal += amount;
+          gstTotal += gstAmt;
+
+          billItems.push({
+            challanId: ch.id,
+            description: it.productName,
+            qty,
+            rate,
+            amount,
+            gstPercent,
+            totalWithGst,
+          });
+        }
+      }
+
+      challanIdsToUpdate = challanIds;
+    } else {
+      for (const item of items) {
+        const qty = toNumber(item.qty || 1);
+        const rate = toNumber(item.rate || 0);
         const amount = +(qty * rate).toFixed(2);
+        const gstPercent = toNumber(item.gstPercent || 0);
+        const gstAmt = +((amount * gstPercent) / 100).toFixed(2);
+        const totalWithGst = +(amount + gstAmt).toFixed(2);
 
         subtotal += amount;
+        gstTotal += gstAmt;
 
         billItems.push({
-          challanId: ch.id,
-          description: it.productName,
+          challanId: null,
+          description: item.description || item.productName || "Item",
           qty,
           rate,
           amount,
-          gstPercent: toNumber(it.gstPercent || 0),
-          totalWithGst: amount,
+          gstPercent,
+          totalWithGst,
         });
       }
     }
 
     subtotal = +subtotal.toFixed(2);
+    gstTotal = +gstTotal.toFixed(2);
 
     const discountAmount =
       discountPercent > 0
@@ -121,12 +169,13 @@ exports.createBill = async (vendorId, payload) => {
 
     const discountedSubtotal = +(subtotal - discountAmount).toFixed(2);
 
-    const gstAmount =
+    // If global GST is applied, recalculate
+    const finalGstAmount =
       gstPercent > 0
         ? +((discountedSubtotal * gstPercent) / 100).toFixed(2)
-        : 0;
+        : gstTotal;
 
-    const totalWithGST = +(discountedSubtotal + gstAmount).toFixed(2);
+    const totalWithGST = +(discountedSubtotal + finalGstAmount).toFixed(2);
 
     const billNumberInfo = await generateBillNumberWithSettings(
       vendorId,
@@ -156,7 +205,7 @@ exports.createBill = async (vendorId, payload) => {
         customerId,
         billDate: new Date(),
         subtotal,
-        gstTotal: gstAmount,
+        gstTotal: finalGstAmount,
         totalWithoutGST: discountedSubtotal,
         totalWithGST,
         totalAmount: totalWithGST,
@@ -164,7 +213,10 @@ exports.createBill = async (vendorId, payload) => {
         pendingAmount: totalWithGST,
         status: "pending",
         note: note || null,
-        challanIds: JSON.stringify(challanIds),
+        challanIds:
+          challanIdsToUpdate.length > 0
+            ? JSON.stringify(challanIdsToUpdate)
+            : null,
       },
       { transaction: t },
     );
@@ -174,18 +226,21 @@ exports.createBill = async (vendorId, payload) => {
       { transaction: t },
     );
 
-    await ChallanModel.update(
-      {
-        status: "paid",
-      },
-      {
-        where: {
-          id: challanIds,
-          vendorId,
+    // Only update challan status if bill was created from challans
+    if (challanIdsToUpdate.length > 0) {
+      await ChallanModel.update(
+        {
+          status: "paid",
         },
-        transaction: t,
-      },
-    );
+        {
+          where: {
+            id: challanIdsToUpdate,
+            vendorId,
+          },
+          transaction: t,
+        },
+      );
+    }
 
     return await BillModel.findByPk(bill.id, {
       include: [
