@@ -8,19 +8,28 @@ module.exports = (sequelize, DataTypes) => {
         autoIncrement: true,
       },
       billId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
-      challanId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true }, 
-      description: { type: DataTypes.STRING, allowNull: false },
+      challanId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+      itemName: { type: DataTypes.STRING, allowNull: false },
+      hsn: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 1,
+      },
       qty: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 1,
       },
-      rate: {
+      unit: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      price: {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
         defaultValue: 0.0,
       },
-      amount: {
+      discount: {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
         defaultValue: 0.0,
@@ -30,6 +39,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0.0,
       },
+      gstTotal: { type: DataTypes.DECIMAL(12, 2), defaultValue: 0.0 },
       totalWithGst: {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
@@ -40,7 +50,7 @@ module.exports = (sequelize, DataTypes) => {
       tableName: "bill_items",
       timestamps: true,
       paranoid: true,
-    }
+    },
   );
 
   return BillItem;

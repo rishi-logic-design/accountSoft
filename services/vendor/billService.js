@@ -59,6 +59,9 @@ exports.createBill = async (vendorId, payload) => {
     customInvoiceNumber = null,
     invoiceTemplate = null,
     customInvoicePrefix = null,
+    termsAndConditions = null,
+    signatureStamp = null,
+    showSignatureStamp = false,
   } = payload;
 
   if (!customerId) throw new Error("customerId required");
@@ -113,8 +116,8 @@ exports.createBill = async (vendorId, payload) => {
       for (const ch of challans) {
         for (const it of ch.items) {
           const qty = toNumber(it.qty);
-          const rate = toNumber(it.pricePerUnit);
-          const amount = +(qty * rate).toFixed(2);
+          const price = toNumber(it.pricePerUnit);
+          const amount = +(qty * price).toFixed(2);
           const gstPercent = toNumber(it.gstPercent || 0);
           const gstAmt = +((amount * gstPercent) / 100).toFixed(2);
           const totalWithGst = +(amount + gstAmt).toFixed(2);
@@ -124,11 +127,14 @@ exports.createBill = async (vendorId, payload) => {
 
           billItems.push({
             challanId: ch.id,
-            description: it.productName,
+            itemName: it.productName,
+            hsn: it.hsn || 0,
             qty,
-            rate,
-            amount,
+            unit: it.unit || null,
+            price,
+            discount: toNumber(it.discount || 0),
             gstPercent,
+            gstTotal: gstAmt,
             totalWithGst,
           });
         }
@@ -138,8 +144,8 @@ exports.createBill = async (vendorId, payload) => {
     } else {
       for (const item of items) {
         const qty = toNumber(item.qty || 1);
-        const rate = toNumber(item.rate || 0);
-        const amount = +(qty * rate).toFixed(2);
+        const price = toNumber(item.price || item.rate || 0);
+        const amount = +(qty * price).toFixed(2);
         const gstPercent = toNumber(item.gstPercent || 0);
         const gstAmt = +((amount * gstPercent) / 100).toFixed(2);
         const totalWithGst = +(amount + gstAmt).toFixed(2);
@@ -149,11 +155,15 @@ exports.createBill = async (vendorId, payload) => {
 
         billItems.push({
           challanId: null,
-          description: item.description || item.productName || "Item",
+          itemName:
+            item.itemName || item.description || item.productName || "Item",
+          hsn: item.hsn || 0,
           qty,
-          rate,
-          amount,
+          unit: item.unit || null,
+          price,
+          discount: toNumber(item.discount || 0),
           gstPercent,
+          gstTotal: gstAmt,
           totalWithGst,
         });
       }
@@ -217,6 +227,13 @@ exports.createBill = async (vendorId, payload) => {
           challanIdsToUpdate.length > 0
             ? JSON.stringify(challanIdsToUpdate)
             : null,
+        termsAndConditions: termsAndConditions
+          ? Array.isArray(termsAndConditions)
+            ? termsAndConditions.join("\n")
+            : termsAndConditions
+          : null,
+        signatureStamp: signatureStamp || null,
+        showSignatureStamp: !!showSignatureStamp,
       },
       { transaction: t },
     );
@@ -466,7 +483,6 @@ exports.editBill = async (billId, vendorId, payload) => {
     if (bill.status === "paid") throw new Error("Cannot edit a paid bill");
 
     if (payload.items) {
-      // delete existing items and recreate
       await BillItemModel.destroy({
         where: { billId: bill.id },
         transaction: t,
@@ -476,8 +492,8 @@ exports.editBill = async (billId, vendorId, payload) => {
       const toCreate = [];
       for (const mi of payload.items) {
         const qty = toNumber(mi.qty);
-        const rate = toNumber(mi.rate);
-        const amount = +(qty * rate).toFixed(2);
+        const price = toNumber(mi.price || mi.rate || 0);
+        const amount = +(qty * price).toFixed(2);
         const gstAmt = +((amount * toNumber(mi.gstPercent || 0)) / 100).toFixed(
           2,
         );
@@ -487,11 +503,14 @@ exports.editBill = async (billId, vendorId, payload) => {
         toCreate.push({
           billId: bill.id,
           challanId: mi.challanId || null,
-          description: mi.description || "Item",
+          itemName: mi.itemName || mi.description || "Item",
+          hsn: mi.hsn || 0,
           qty,
-          rate,
-          amount,
+          unit: mi.unit || null,
+          price: toNumber(mi.price || mi.rate || 0),
+          discount: toNumber(mi.discount || 0),
           gstPercent: toNumber(mi.gstPercent || 0),
+          gstTotal: gstAmt,
           totalWithGst,
         });
       }
@@ -500,7 +519,6 @@ exports.editBill = async (billId, vendorId, payload) => {
       gstTotal = +gstTotal.toFixed(2);
       const totalWithGST = +(subtotal + gstTotal).toFixed(2);
 
-      // Update bill totals and recalculate pending
       const paidAmount = toNumber(bill.paidAmount);
       const newPending = totalWithGST - paidAmount;
 
@@ -521,6 +539,27 @@ exports.editBill = async (billId, vendorId, payload) => {
       await bill.update({ note: payload.note }, { transaction: t });
     if (payload.billDate)
       await bill.update({ billDate: payload.billDate }, { transaction: t });
+    if (payload.termsAndConditions !== undefined)
+      await bill.update(
+        {
+          termsAndConditions: payload.termsAndConditions
+            ? Array.isArray(payload.termsAndConditions)
+              ? payload.termsAndConditions.join("\n")
+              : payload.termsAndConditions
+            : null,
+        },
+        { transaction: t },
+      );
+    if (payload.signatureStamp !== undefined)
+      await bill.update(
+        { signatureStamp: payload.signatureStamp || null },
+        { transaction: t },
+      );
+    if (payload.showSignatureStamp !== undefined)
+      await bill.update(
+        { showSignatureStamp: !!payload.showSignatureStamp },
+        { transaction: t },
+      );
 
     const updated = await BillModel.findByPk(bill.id, {
       include: [{ model: BillItemModel, as: "items" }],

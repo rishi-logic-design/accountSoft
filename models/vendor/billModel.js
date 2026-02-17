@@ -55,13 +55,27 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 0.0,
         comment: "Remaining amount to be paid",
       },
-
       status: {
         type: DataTypes.ENUM("pending", "paid", "partial", "cancelled"),
         defaultValue: "pending",
       },
       note: { type: DataTypes.TEXT, allowNull: true },
       challanIds: { type: DataTypes.TEXT, allowNull: true },
+      termsAndConditions: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: "Invoice terms and conditions",
+      },
+      signatureStamp: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: "Signature and stamp image URL/path",
+      },
+      showSignatureStamp: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        comment: "Whether to show signature and stamp on invoice",
+      },
     },
     {
       tableName: "bills",
