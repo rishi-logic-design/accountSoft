@@ -52,7 +52,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       pendingAmount: {
         type: DataTypes.DECIMAL(12, 2),
-        defaultValue: 0.0,
+        defaultValue: 0.0, 
         comment: "Remaining amount to be paid",
       },
       status: {

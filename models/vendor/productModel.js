@@ -17,12 +17,12 @@ module.exports = (sequelize, DataTypes) => {
       },
       stock: { type: DataTypes.INTEGER.UNSIGNED, defaultValue: 0 },
       categoryId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
-      createdBy: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false }, // vendor id
+      createdBy: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
     },
     {
       tableName: "products",
       timestamps: true,
-    }
+    },
   );
 
   return Product;
