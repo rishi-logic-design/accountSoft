@@ -70,7 +70,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
         comment: "Signature and stamp image URL/path",
-      },
+      },                
       showSignatureStamp: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,

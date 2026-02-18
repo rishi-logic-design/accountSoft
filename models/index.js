@@ -21,7 +21,8 @@ const CustomerOtp = require("./customer/customerOtpModel");
 const VendorGstNumber = require("./vendor/vendorGstNumberModel");
 const VendorPaymentDetails = require("./vendor/vendorPaymentDetails");
 const NotificationModelFactory = require("./vendor/notificationModel");
-const InvoiceSettings = require("./vendor/invoiceSettingsModel"); 
+const InvoiceSettings = require("./vendor/invoiceSettingsModel");
+const VendorVendor = require("./vendor/vendorVendorModel");
 
 const UserModel = User(sequelize, Sequelize);
 const VendorModel = Vendor(sequelize, Sequelize);
@@ -44,7 +45,8 @@ const CustomerOtpModel = CustomerOtp(sequelize, Sequelize);
 const VendorGstNumberModel = VendorGstNumber(sequelize, Sequelize);
 const VendorPaymentDetailsModel = VendorPaymentDetails(sequelize, Sequelize);
 const NotificationModel = NotificationModelFactory(sequelize, Sequelize);
-const InvoiceSettingsModel = InvoiceSettings(sequelize, Sequelize); 
+const InvoiceSettingsModel = InvoiceSettings(sequelize, Sequelize);
+const VendorVendorModel = VendorVendor(sequelize, Sequelize);
 
 // Vendor - Customer
 VendorModel.hasMany(NotificationModel, {
@@ -315,5 +317,6 @@ module.exports = {
   VendorPaymentDetailsModel,
 
   Notification: NotificationModel,
-  InvoiceSettingsModel, 
+  InvoiceSettingsModel,
+  VendorVendorModel,
 };
