@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const purchaseController = require("../../controllers/vendor/purchaseController");
-const { authenticateVendor } = require("../../middlewares/authMiddleware");
+const auth = require("../../middleware/authMiddleware");
 
-router.use(authenticateVendor);
+router.use(auth);
 
 router.post("/create", purchaseController.createPurchase);
 router.get("/list", purchaseController.listPurchases);
