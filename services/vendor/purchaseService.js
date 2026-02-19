@@ -13,6 +13,7 @@ function toNumber(v) {
 
 exports.createPurchase = async (vendorId, payload) => {
   const {
+    purchaseType,
     sellerId,
     prefix,
     purchaseNumber,
@@ -68,6 +69,7 @@ exports.createPurchase = async (vendorId, payload) => {
 
     const purchase = await PurchaseModel.create(
       {
+        purchaseType: purchaseType || "Tax Invoice",
         prefix: prefix || null,
         purchaseNumber,
         purchaseDate,

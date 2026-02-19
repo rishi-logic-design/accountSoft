@@ -7,6 +7,10 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
         autoIncrement: true,
       },
+      purchaseType: {
+        type: DataTypes.STRING(50),
+        defaultValue: "Tax Invoice",
+      },
       prefix: {
         type: DataTypes.STRING(20),
         allowNull: true,
