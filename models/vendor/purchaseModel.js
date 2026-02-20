@@ -55,6 +55,16 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         comment: "Firebase link for uploaded signature",
       },
+      status: {
+        type: DataTypes.ENUM(
+          "pending",
+          "unpaid",
+          "partial",
+          "paid",
+          "cancelled",
+        ),
+        defaultValue: "pending",
+      },
     },
     {
       tableName: "purchases",

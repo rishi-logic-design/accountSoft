@@ -21,6 +21,7 @@ exports.createPurchase = async (vendorId, payload) => {
     items = [],
     termsAndConditions = null,
     signature = null,
+    status = "pending",
   } = payload;
 
   if (!sellerId) throw new Error("sellerId (Vendor's vendor) required");
@@ -80,6 +81,7 @@ exports.createPurchase = async (vendorId, payload) => {
         totalAmount,
         termsAndConditions: termsAndConditions || null,
         signature: signature || null,
+        status: status || "pending",
       },
       { transaction: t },
     );
@@ -104,6 +106,7 @@ exports.listPurchases = async ({
   page = 1,
   size = 20,
   search,
+  status,
   fromDate,
   toDate,
 } = {}) => {
@@ -113,6 +116,10 @@ exports.listPurchases = async ({
     where.purchaseDate = {};
     if (fromDate) where.purchaseDate[Op.gte] = new Date(fromDate);
     if (toDate) where.purchaseDate[Op.lte] = new Date(toDate);
+  }
+
+  if (status) {
+    where.status = status;
   }
 
   if (search) {
@@ -171,4 +178,16 @@ exports.deletePurchase = async (purchaseId, vendorId) => {
     await purchase.destroy({ transaction: t });
     return true;
   });
+};
+
+exports.updatePurchaseStatus = async (purchaseId, vendorId, status) => {
+  const purchase = await PurchaseModel.findOne({
+    where: { id: purchaseId, vendorId },
+  });
+
+  if (!purchase) throw new Error("Purchase not found");
+
+  purchase.status = status;
+  await purchase.save();
+  return purchase;
 };

@@ -19,12 +19,13 @@ exports.createPurchase = async (req, res) => {
 exports.listPurchases = async (req, res) => {
   try {
     const vendorId = req.user.id;
-    const { page, size, search, fromDate, toDate } = req.query;
+    const { page, size, search, status, fromDate, toDate } = req.query;
     const result = await purchaseService.listPurchases({
       vendorId,
       page,
       size,
       search,
+      status,
       fromDate,
       toDate,
     });
@@ -65,6 +66,28 @@ exports.deletePurchase = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Purchase deleted successfully",
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.updateStatus = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { id } = req.params;
+    const { status } = req.body;
+    const purchase = await purchaseService.updatePurchaseStatus(
+      id,
+      vendorId,
+      status,
+    );
+    res.status(200).json({
+      success: true,
+      data: purchase,
     });
   } catch (error) {
     res.status(400).json({
