@@ -1,6 +1,6 @@
 const {
   PurchasePaymentModel,
-  PurchaseModel,
+  PurchaseBillModel,
   VendorModel,
   VendorVendorModel,
   sequelize,
@@ -105,7 +105,7 @@ exports.createPayment = async (vendorId, payload) => {
         );
         if (!adj.purchaseId) continue;
 
-        const purchase = await PurchaseModel.findByPk(adj.purchaseId, {
+        const purchase = await PurchaseBillModel.findByPk(adj.purchaseId, {
           transaction: t,
         });
 
@@ -116,7 +116,7 @@ exports.createPayment = async (vendorId, payload) => {
 
         const payAmt = toNumber(adj.payAmount);
         const previousPaid = toNumber(purchase.paidAmount);
-        const totalPur = toNumber(purchase.totalAmount);
+        const totalPur = toNumber(purchase.amount);
 
         const newPaidAmount = +(previousPaid + payAmt).toFixed(2);
         const pendingAmount = +(totalPur - newPaidAmount).toFixed(2);
@@ -230,7 +230,7 @@ exports.deletePayment = async (id, vendorId) => {
       for (const adj of payment.adjustedPurchases) {
         if (!adj.purchaseId) continue;
 
-        const purchase = await PurchaseModel.findByPk(adj.purchaseId, {
+        const purchase = await PurchaseBillModel.findByPk(adj.purchaseId, {
           transaction: t,
         });
 
@@ -238,7 +238,7 @@ exports.deletePayment = async (id, vendorId) => {
 
         const payAmt = toNumber(adj.payAmount);
         const previousPaid = toNumber(purchase.paidAmount);
-        const totalPur = toNumber(purchase.totalAmount);
+        const totalPur = toNumber(purchase.amount);
 
         const newPaidAmount = previousPaid - payAmt;
         const pendingAmount = totalPur - newPaidAmount;
@@ -268,7 +268,7 @@ exports.deletePayment = async (id, vendorId) => {
 };
 
 exports.getSellerOutstanding = async (vendorId, sellerId) => {
-  const totalPurchased = await PurchaseModel.sum("totalAmount", {
+  const totalPurchased = await PurchaseBillModel.sum("amount", {
     where: { vendorId, sellerId, status: { [Op.ne]: "cancelled" } },
   });
 
@@ -285,7 +285,7 @@ exports.getSellerOutstanding = async (vendorId, sellerId) => {
 };
 
 exports.getSellerPendingPurchases = async (vendorId, sellerId) => {
-  const purchases = await PurchaseModel.findAll({
+  const purchases = await PurchaseBillModel.findAll({
     where: {
       vendorId,
       sellerId,
@@ -296,12 +296,12 @@ exports.getSellerPendingPurchases = async (vendorId, sellerId) => {
 
   return purchases.map((pur) => ({
     id: pur.id,
-    purchaseNumber: pur.purchaseNumber,
+    invoiceNumber: pur.invoiceNumber,
     purchaseDate: pur.purchaseDate,
-    totalAmount: toNumber(pur.totalAmount).toFixed(2),
+    totalAmount: toNumber(pur.amount).toFixed(2),
     paidAmount: toNumber(pur.paidAmount).toFixed(2),
     pendingAmount: toNumber(
-      pur.pendingAmount || toNumber(pur.totalAmount) - toNumber(pur.paidAmount),
+      pur.pendingAmount || toNumber(pur.amount) - toNumber(pur.paidAmount),
     ).toFixed(2),
     status: pur.status,
   }));

@@ -37,9 +37,8 @@ const customerGstNumberRoutes = require("./routes/Customer/customerGstNumberRout
 const notificationRoutes = require("./routes/Vendors/notificationRoutes");
 const invoiceSettingsRoutes = require("./routes/Vendors/invoiceSettingsRoutes");
 const vendorVendorRoutes = require("./routes/Vendors/vendorVendorRoutes");
-const purchaseRoutes = require("./routes/Vendors/purchaseRoutes");
+const purchaseBillRoutes = require("./routes/Vendors/purchaseBillRoutes");
 const purchasePaymentRoutes = require("./routes/Vendors/purchasePaymentRoutes");
-const vendorBillRoutes = require("./routes/Vendors/vendorBillRoutes");
 
 app.use(
   cors({
@@ -98,9 +97,8 @@ app.use("/api/customer/vendor-gst-number", customerGstNumberRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/vendor/invoice-settings", invoiceSettingsRoutes);
 app.use("/api/vendor/vendors", vendorVendorRoutes);
-app.use("/api/purchases", purchaseRoutes);
+app.use("/api/purchases", purchaseBillRoutes);
 app.use("/api/purchase-payments", purchasePaymentRoutes);
-app.use("/api/vendor-bills", vendorBillRoutes);
 
 const PORT = process.env.PORT || 5000;
 

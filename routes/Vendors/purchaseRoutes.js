@@ -5,8 +5,8 @@ const auth = require("../../middleware/authMiddleware");
 
 router.use(auth);
 
-router.post("/create", purchaseController.createPurchase);
-router.get("/list", purchaseController.listPurchases);
+router.post("/", purchaseController.createPurchase);
+router.get("/", purchaseController.listPurchases);
 router.get("/:id", purchaseController.getPurchaseById);
 router.delete("/:id", purchaseController.deletePurchase);
 router.patch("/:id/status", purchaseController.updateStatus);

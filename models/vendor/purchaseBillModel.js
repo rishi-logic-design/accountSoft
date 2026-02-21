@@ -1,13 +1,13 @@
 module.exports = (sequelize, DataTypes) => {
-  const Purchase = sequelize.define(
-    "Purchase",
+  const PurchaseBill = sequelize.define(
+    "PurchaseBill",
     {
       id: {
         type: DataTypes.INTEGER.UNSIGNED,
         primaryKey: true,
         autoIncrement: true,
       },
-      purchaseNumber: {
+      invoiceNumber: {
         type: DataTypes.STRING,
         allowNull: false,
         comment: "Purchase Invoice Number",
@@ -26,7 +26,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         comment: "The Seller (Vendor's Vendor)",
       },
-      totalAmount: {
+      amount: {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
         defaultValue: 0.0,
@@ -41,7 +41,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0.0,
       },
-      billImage: {
+      billUrl: {
         type: DataTypes.STRING,
         allowNull: true,
         comment: "Firebase URL of the uploaded bill",
@@ -57,11 +57,11 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: "purchases",
+      tableName: "purchase_bills",
       timestamps: true,
       paranoid: true,
     },
   );
 
-  return Purchase;
+  return PurchaseBill;
 };

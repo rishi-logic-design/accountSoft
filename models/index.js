@@ -23,10 +23,8 @@ const VendorPaymentDetails = require("./vendor/vendorPaymentDetails");
 const NotificationModelFactory = require("./vendor/notificationModel");
 const InvoiceSettings = require("./vendor/invoiceSettingsModel");
 const VendorVendor = require("./vendor/vendorVendorModel");
-const Purchase = require("./vendor/purchaseModel");
-const PurchaseItem = require("./vendor/purchaseItemModel");
+const PurchaseBill = require("./vendor/purchaseBillModel");
 const PurchasePayment = require("./vendor/purchasePaymentModel");
-const VendorBill = require("./vendor/vendorBillModel");
 
 const UserModel = User(sequelize, Sequelize);
 const VendorModel = Vendor(sequelize, Sequelize);
@@ -51,10 +49,8 @@ const VendorPaymentDetailsModel = VendorPaymentDetails(sequelize, Sequelize);
 const NotificationModel = NotificationModelFactory(sequelize, Sequelize);
 const InvoiceSettingsModel = InvoiceSettings(sequelize, Sequelize);
 const VendorVendorModel = VendorVendor(sequelize, Sequelize);
-const PurchaseModel = Purchase(sequelize, Sequelize);
-const PurchaseItemModel = PurchaseItem(sequelize, Sequelize);
+const PurchaseBillModel = PurchaseBill(sequelize, Sequelize);
 const PurchasePaymentModel = PurchasePayment(sequelize, Sequelize);
-const VendorBillModel = VendorBill(sequelize, Sequelize);
 
 // Vendor - Customer
 VendorModel.hasMany(NotificationModel, {
@@ -293,34 +289,24 @@ InvoiceSettingsModel.belongsTo(VendorModel, {
   as: "vendor",
 });
 
-// Vendor (Buyer) - Purchase
-VendorModel.hasMany(PurchaseModel, {
+// Vendor (Buyer) - PurchaseBill
+VendorModel.hasMany(PurchaseBillModel, {
   foreignKey: "vendorId",
-  as: "purchases",
+  as: "purchaseBills",
 });
-PurchaseModel.belongsTo(VendorModel, {
+PurchaseBillModel.belongsTo(VendorModel, {
   foreignKey: "vendorId",
   as: "buyer",
 });
 
-// VendorVendor (Seller) - Purchase
-VendorVendorModel.hasMany(PurchaseModel, {
+// VendorVendor (Seller) - PurchaseBill
+VendorVendorModel.hasMany(PurchaseBillModel, {
   foreignKey: "sellerId",
-  as: "sales",
+  as: "bills",
 });
-PurchaseModel.belongsTo(VendorVendorModel, {
+PurchaseBillModel.belongsTo(VendorVendorModel, {
   foreignKey: "sellerId",
   as: "seller",
-});
-
-// Purchase - PurchaseItem
-PurchaseModel.hasMany(PurchaseItemModel, {
-  foreignKey: "purchaseId",
-  as: "items",
-});
-PurchaseItemModel.belongsTo(PurchaseModel, {
-  foreignKey: "purchaseId",
-  as: "purchase",
 });
 
 // Vendor - PurchasePayment
@@ -339,26 +325,6 @@ VendorVendorModel.hasMany(PurchasePaymentModel, {
   as: "incomingPayments",
 });
 PurchasePaymentModel.belongsTo(VendorVendorModel, {
-  foreignKey: "sellerId",
-  as: "seller",
-});
-
-// Vendor - VendorBill
-VendorModel.hasMany(VendorBillModel, {
-  foreignKey: "vendorId",
-  as: "vendorBills",
-});
-VendorBillModel.belongsTo(VendorModel, {
-  foreignKey: "vendorId",
-  as: "buyer",
-});
-
-// VendorVendor - VendorBill
-VendorVendorModel.hasMany(VendorBillModel, {
-  foreignKey: "sellerId",
-  as: "salesBills",
-});
-VendorBillModel.belongsTo(VendorVendorModel, {
   foreignKey: "sellerId",
   as: "seller",
 });
@@ -397,8 +363,6 @@ module.exports = {
   Notification: NotificationModel,
   InvoiceSettingsModel,
   VendorVendorModel,
-  PurchaseModel,
-  PurchaseItemModel,
+  PurchaseBillModel,
   PurchasePaymentModel,
-  VendorBillModel,
 };
