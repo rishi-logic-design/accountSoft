@@ -5,8 +5,6 @@ const {
   CustomerModel,
   BillModel,
   ChallanModel,
-  PurchaseModel,
-  VendorVendorModel,
   sequelize,
 } = require("../../models");
 const { generatePaymentNumber } = require("../../utils/paymentUtil");
@@ -62,14 +60,10 @@ exports.createPayment = async (vendorId, payload) => {
     if (!customerId) {
       throw new Error("customerId is required when subType is customer");
     }
-  } else if (subType === "vendor") {
-    if (!sellerId) {
-      throw new Error("sellerId is required when subType is vendor");
-    }
   } else {
-    if (customerId || sellerId) {
+    if (customerId) {
       throw new Error(
-        `customerId/sellerId should not be provided when subType is ${subType}`,
+        `customerId should not be provided when subType is ${subType}`,
       );
     }
   }
@@ -82,13 +76,6 @@ exports.createPayment = async (vendorId, payload) => {
         transaction: t,
       });
       if (!customer) throw new Error("Customer not found");
-    }
-
-    if (subType === "vendor") {
-      const seller = await VendorVendorModel.findByPk(sellerId, {
-        transaction: t,
-      });
-      if (!seller) throw new Error("Seller not found");
     }
 
     const paymentNumber = await generatePaymentNumber(PaymentModel, t);
@@ -108,19 +95,6 @@ exports.createPayment = async (vendorId, payload) => {
       } else {
         outstandingAfterPayment = totalOutstanding;
       }
-    } else if (sellerId) {
-      totalOutstanding = parseFloat(
-        await calculateSellerOutstanding(vendorId, sellerId, t),
-      );
-
-      // type === 'debit' means money paid to vendor (decreases outstanding)
-      if (type === "debit") {
-        outstandingAfterPayment = totalOutstanding - toNumber(amount);
-      } else if (type === "credit") {
-        outstandingAfterPayment = totalOutstanding + toNumber(amount);
-      } else {
-        outstandingAfterPayment = totalOutstanding;
-      }
     }
 
     const payment = await PaymentModel.create(
@@ -128,7 +102,6 @@ exports.createPayment = async (vendorId, payload) => {
         paymentNumber,
         vendorId,
         customerId: subType === "customer" ? customerId : null,
-        sellerId: subType === "vendor" ? sellerId : null,
         type,
         subType,
         amount: toNumber(amount).toFixed(2),
@@ -143,7 +116,6 @@ exports.createPayment = async (vendorId, payload) => {
         totalOutstanding: totalOutstanding.toFixed(2),
         outstandingAfterPayment: outstandingAfterPayment.toFixed(2),
         adjustedInvoices: adjustedInvoices || [],
-        adjustedPurchases: adjustedPurchases || [],
       },
       { transaction: t },
     );
@@ -231,48 +203,6 @@ exports.createPayment = async (vendorId, payload) => {
       }
     }
 
-    if (
-      type === "debit" &&
-      Array.isArray(adjustedPurchases) &&
-      adjustedPurchases.length > 0
-    ) {
-      console.log("Processing adjusted purchases:", adjustedPurchases);
-
-      for (const pur of adjustedPurchases) {
-        if (!pur.purchaseId) continue;
-
-        const purchase = await PurchaseModel.findByPk(pur.purchaseId, {
-          transaction: t,
-        });
-
-        if (!purchase) continue;
-
-        const previousPaid = toNumber(purchase.paidAmount);
-        const payAmount = toNumber(pur.payAmount);
-        const totalPur = toNumber(purchase.totalAmount);
-
-        const newPaidAmount = previousPaid + payAmount;
-        const pendingAmount = totalPur - newPaidAmount;
-
-        let newStatus = "unpaid";
-        if (pendingAmount <= 0.01) {
-          newStatus = "paid";
-        } else if (newPaidAmount > 0) {
-          newStatus = "partial";
-        }
-
-        await purchase.update(
-          {
-            paidAmount: newPaidAmount.toFixed(2),
-            pendingAmount:
-              pendingAmount > 0 ? pendingAmount.toFixed(2) : "0.00",
-            status: newStatus,
-          },
-          { transaction: t },
-        );
-      }
-    }
-
     const completePayment = await PaymentModel.findByPk(payment.id, {
       include: [
         {
@@ -285,11 +215,6 @@ exports.createPayment = async (vendorId, payload) => {
             "mobileNumber",
             "email",
           ],
-        },
-        {
-          model: VendorVendorModel,
-          as: "seller",
-          attributes: ["id", "vendorName", "businessName", "mobile", "email"],
         },
       ],
       transaction: t,
@@ -304,7 +229,6 @@ exports.listPayments = async (options = {}) => {
     vendorId,
     type,
     customerId,
-    sellerId,
     method,
     status,
     fromDate,
@@ -319,7 +243,6 @@ exports.listPayments = async (options = {}) => {
   if (vendorId) where.vendorId = vendorId;
   if (type) where.type = type;
   if (customerId) where.customerId = customerId;
-  if (sellerId) where.sellerId = sellerId;
   if (method) where.method = method;
   if (status) where.status = status;
 
@@ -350,11 +273,6 @@ exports.listPayments = async (options = {}) => {
           "mobileNumber",
           "email",
         ],
-      },
-      {
-        model: VendorVendorModel,
-        as: "seller",
-        attributes: ["id", "vendorName", "businessName", "mobile", "email"],
       },
     ],
     limit: Number(size),
@@ -392,11 +310,6 @@ exports.getPaymentById = async (id, vendorId) => {
           "mobileNumber",
           "email",
         ],
-      },
-      {
-        model: VendorVendorModel,
-        as: "seller",
-        attributes: ["id", "vendorName", "businessName", "mobile", "email"],
       },
     ],
   });
@@ -552,48 +465,6 @@ exports.deletePayment = async (id, vendorId) => {
         }
 
         await bill.update(
-          {
-            paidAmount: newPaidAmount > 0 ? newPaidAmount.toFixed(2) : "0.00",
-            pendingAmount:
-              pendingAmount > 0 ? pendingAmount.toFixed(2) : "0.00",
-            status: newStatus,
-          },
-          { transaction: t },
-        );
-      }
-    }
-
-    // If payment was adjusted with purchases, reverse the purchase updates
-    if (
-      payment.type === "debit" &&
-      payment.adjustedPurchases &&
-      payment.adjustedPurchases.length > 0
-    ) {
-      console.log("Reversing purchase adjustments for deleted payment");
-
-      for (const pur of payment.adjustedPurchases) {
-        if (!pur.purchaseId) continue;
-
-        const purchase = await PurchaseModel.findByPk(pur.purchaseId, {
-          transaction: t,
-        });
-        if (!purchase) continue;
-
-        const previousPaid = toNumber(purchase.paidAmount);
-        const payAmount = toNumber(pur.payAmount);
-        const totalPur = toNumber(purchase.totalAmount);
-
-        const newPaidAmount = previousPaid - payAmount;
-        const pendingAmount = totalPur - newPaidAmount;
-
-        let newStatus = "unpaid";
-        if (pendingAmount <= 0.01) {
-          newStatus = "paid";
-        } else if (newPaidAmount > 0) {
-          newStatus = "partial";
-        }
-
-        await purchase.update(
           {
             paidAmount: newPaidAmount > 0 ? newPaidAmount.toFixed(2) : "0.00",
             pendingAmount:
@@ -932,103 +803,3 @@ async function calculateCustomerOutstanding(
 
   return toNumber(totalBilled) - toNumber(totalPaid);
 }
-
-async function calculateSellerOutstanding(
-  vendorId,
-  sellerId,
-  transaction = null,
-) {
-  const totalPurchased = await PurchaseModel.sum("totalAmount", {
-    where: {
-      vendorId,
-      sellerId,
-      status: { [Op.ne]: "cancelled" },
-    },
-    transaction,
-  });
-
-  const totalPaid = await PaymentModel.sum("amount", {
-    where: {
-      vendorId,
-      sellerId,
-      type: "debit",
-      status: "completed",
-    },
-    transaction,
-  });
-
-  return toNumber(totalPurchased) - toNumber(totalPaid);
-}
-
-exports.getSellerOutstanding = async (vendorId, sellerId) => {
-  const outstanding = await calculateSellerOutstanding(vendorId, sellerId);
-
-  const recentPayments = await PaymentModel.findAll({
-    where: { vendorId, sellerId },
-    order: [["paymentDate", "DESC"]],
-    limit: 5,
-    attributes: [
-      "id",
-      "paymentNumber",
-      "paymentDate",
-      "amount",
-      "type",
-      "method",
-      "status",
-    ],
-  });
-
-  return {
-    sellerId: parseInt(sellerId),
-    outstanding: parseFloat(outstanding).toFixed(2),
-    recentPayments,
-  };
-};
-
-exports.getSellerPendingPurchases = async (vendorId, sellerId) => {
-  const purchases = await PurchaseModel.findAll({
-    where: {
-      vendorId,
-      sellerId,
-      status: {
-        [Op.in]: ["pending", "unpaid", "partial"],
-      },
-    },
-    attributes: [
-      "id",
-      "purchaseNumber",
-      "purchaseDate",
-      "totalAmount",
-      "paidAmount",
-      "pendingAmount",
-      "status",
-    ],
-    order: [["purchaseDate", "ASC"]],
-  });
-
-  const processedPurchases = purchases.map((pur) => {
-    const total = toNumber(pur.totalAmount);
-    const paid = toNumber(pur.paidAmount);
-    const pending = toNumber(pur.pendingAmount || total - paid);
-
-    return {
-      id: pur.id,
-      purchaseNumber: pur.purchaseNumber,
-      purchaseDate: pur.purchaseDate,
-      totalAmount: total.toFixed(2),
-      paidAmount: paid.toFixed(2),
-      pendingAmount: pending.toFixed(2),
-      status: pur.status,
-    };
-  });
-
-  const totalPending = processedPurchases.reduce(
-    (sum, item) => sum + toNumber(item.pendingAmount),
-    0,
-  );
-
-  return {
-    purchases: processedPurchases,
-    totalPending: totalPending.toFixed(2),
-  };
-};

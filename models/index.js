@@ -25,6 +25,7 @@ const InvoiceSettings = require("./vendor/invoiceSettingsModel");
 const VendorVendor = require("./vendor/vendorVendorModel");
 const Purchase = require("./vendor/purchaseModel");
 const PurchaseItem = require("./vendor/purchaseItemModel");
+const PurchasePayment = require("./vendor/purchasePaymentModel");
 
 const UserModel = User(sequelize, Sequelize);
 const VendorModel = Vendor(sequelize, Sequelize);
@@ -51,6 +52,7 @@ const InvoiceSettingsModel = InvoiceSettings(sequelize, Sequelize);
 const VendorVendorModel = VendorVendor(sequelize, Sequelize);
 const PurchaseModel = Purchase(sequelize, Sequelize);
 const PurchaseItemModel = PurchaseItem(sequelize, Sequelize);
+const PurchasePaymentModel = PurchasePayment(sequelize, Sequelize);
 
 // Vendor - Customer
 VendorModel.hasMany(NotificationModel, {
@@ -221,14 +223,6 @@ PaymentModel.belongsTo(CustomerModel, {
   foreignKey: "customerId",
   as: "customer",
 });
-VendorVendorModel.hasMany(PaymentModel, {
-  foreignKey: "sellerId",
-  as: "sellerPayments",
-});
-PaymentModel.belongsTo(VendorVendorModel, {
-  foreignKey: "sellerId",
-  as: "seller",
-});
 
 // Vendor - Firm
 VendorModel.hasOne(FirmModel, {
@@ -327,6 +321,26 @@ PurchaseItemModel.belongsTo(PurchaseModel, {
   as: "purchase",
 });
 
+// Vendor - PurchasePayment
+VendorModel.hasMany(PurchasePaymentModel, {
+  foreignKey: "vendorId",
+  as: "purchasePayments",
+});
+PurchasePaymentModel.belongsTo(VendorModel, {
+  foreignKey: "vendorId",
+  as: "buyer",
+});
+
+// VendorVendor - PurchasePayment
+VendorVendorModel.hasMany(PurchasePaymentModel, {
+  foreignKey: "sellerId",
+  as: "incomingPayments",
+});
+PurchasePaymentModel.belongsTo(VendorVendorModel, {
+  foreignKey: "sellerId",
+  as: "seller",
+});
+
 module.exports = {
   sequelize,
   Sequelize,
@@ -363,4 +377,5 @@ module.exports = {
   VendorVendorModel,
   PurchaseModel,
   PurchaseItemModel,
+  PurchasePaymentModel,
 };
