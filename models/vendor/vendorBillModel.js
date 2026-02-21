@@ -1,16 +1,20 @@
 module.exports = (sequelize, DataTypes) => {
-  const PurchasePayment = sequelize.define(
-    "PurchasePayment",
+  const VendorBill = sequelize.define(
+    "VendorBill",
     {
       id: {
         type: DataTypes.INTEGER.UNSIGNED,
         primaryKey: true,
         autoIncrement: true,
       },
-      receiptNumber: {
+      billNumber: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
+        comment: "Purchase Invoice Number",
+      },
+      billDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: false,
       },
       vendorId: {
         type: DataTypes.INTEGER.UNSIGNED,
@@ -27,54 +31,37 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0.0,
       },
-      advanceAmount: {
+      paidAmount: {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
         defaultValue: 0.0,
       },
-      paymentDate: {
-        type: DataTypes.DATEONLY,
+      pendingAmount: {
+        type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
+        defaultValue: 0.0,
       },
-      method: {
-        type: DataTypes.ENUM(
-          "cash",
-          "bank",
-          "cheque",
-          "online",
-          "upi",
-          "card",
-
-          "other",
-        ),
-        allowNull: false,
-        defaultValue: "cash",
-      },
-      reference: {
+      billImage: {
         type: DataTypes.STRING,
         allowNull: true,
+        comment: "Firebase URL of the uploaded bill",
       },
       note: {
         type: DataTypes.TEXT,
         allowNull: true,
       },
       status: {
-        type: DataTypes.ENUM("pending", "completed", "failed", "cancelled"),
+        type: DataTypes.ENUM("unpaid", "partial", "paid", "cancelled"),
         allowNull: false,
-        defaultValue: "completed",
-      },
-      adjustedPurchases: {
-        type: DataTypes.JSON,
-        allowNull: true,
-        comment: "Array of purchase IDs and amounts adjusted",
+        defaultValue: "unpaid",
       },
     },
     {
-      tableName: "purchase_payments",
+      tableName: "vendor_bills",
       timestamps: true,
       paranoid: true,
     },
   );
 
-  return PurchasePayment;
+  return VendorBill;
 };

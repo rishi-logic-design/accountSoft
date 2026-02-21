@@ -39,6 +39,11 @@ async function generateReceiptNumber(transaction = null) {
 }
 
 exports.createPayment = async (vendorId, payload) => {
+  console.log(
+    "Creating Purchase Payment. Payload:",
+    JSON.stringify(payload, null, 2),
+  );
+
   const {
     sellerId,
     amount,
@@ -56,8 +61,19 @@ exports.createPayment = async (vendorId, payload) => {
     throw new Error("Valid amount is required");
   if (!paymentDate) throw new Error("Payment date is required");
 
+  // Ensure adjustedPurchases is actually an array
+  let adjustments = Array.isArray(adjustedPurchases) ? adjustedPurchases : [];
+  if (typeof adjustedPurchases === "string") {
+    try {
+      adjustments = JSON.parse(adjustedPurchases);
+    } catch (e) {
+      console.error("Failed to parse adjustedPurchases", e);
+    }
+  }
+
   return await sequelize.transaction(async (t) => {
     const receiptNumber = await generateReceiptNumber(t);
+    console.log("Generated Receipt:", receiptNumber);
 
     const payment = await PurchasePaymentModel.create(
       {
@@ -71,35 +87,51 @@ exports.createPayment = async (vendorId, payload) => {
         reference,
         note,
         status,
-        adjustedPurchases,
+        adjustedPurchases: adjustments,
       },
       { transaction: t },
     );
 
+    console.log(`Processing ${adjustments.length} adjusted purchases...`);
+
     // Update purchases
-    if (status === "completed" && Array.isArray(adjustedPurchases)) {
-      for (const adj of adjustedPurchases) {
+    if (status === "completed" && adjustments.length > 0) {
+      for (const adj of adjustments) {
+        console.log(
+          "Updating Purchase ID:",
+          adj.purchaseId,
+          "with amount:",
+          adj.payAmount,
+        );
         if (!adj.purchaseId) continue;
 
         const purchase = await PurchaseModel.findByPk(adj.purchaseId, {
           transaction: t,
         });
 
-        if (!purchase) continue;
+        if (!purchase) {
+          console.warn(`Purchase with ID ${adj.purchaseId} not found!`);
+          continue;
+        }
 
         const payAmt = toNumber(adj.payAmount);
         const previousPaid = toNumber(purchase.paidAmount);
         const totalPur = toNumber(purchase.totalAmount);
 
-        const newPaidAmount = previousPaid + payAmt;
-        const pendingAmount = totalPur - newPaidAmount;
+        const newPaidAmount = +(previousPaid + payAmt).toFixed(2);
+        const pendingAmount = +(totalPur - newPaidAmount).toFixed(2);
 
         let newStatus = "unpaid";
-        if (pendingAmount <= 0.01) {
+        if (pendingAmount <= 0.05) {
+          // Handle small float precision issues
           newStatus = "paid";
         } else if (newPaidAmount > 0) {
           newStatus = "partial";
         }
+
+        console.log(
+          `New Status: ${newStatus}, New Paid: ${newPaidAmount}, Pending: ${pendingAmount}`,
+        );
 
         await purchase.update(
           {
@@ -111,6 +143,8 @@ exports.createPayment = async (vendorId, payload) => {
           { transaction: t },
         );
       }
+    } else {
+      console.log("No adjustments to process or status not completed.");
     }
 
     return await PurchasePaymentModel.findByPk(payment.id, {
