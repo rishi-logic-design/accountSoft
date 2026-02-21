@@ -65,6 +65,14 @@ module.exports = (sequelize, DataTypes) => {
         ),
         defaultValue: "pending",
       },
+      paidAmount: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.0,
+      },
+      pendingAmount: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.0,
+      },
     },
     {
       tableName: "purchases",

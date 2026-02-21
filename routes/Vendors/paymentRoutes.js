@@ -17,6 +17,14 @@ router.get(
   "/customer/:customerId/invoices",
   paymentController.getCustomerPendingInvoices,
 );
+router.get(
+  "/seller/:sellerId/outstanding",
+  paymentController.getSellerOutstanding,
+);
+router.get(
+  "/seller/:sellerId/purchases",
+  paymentController.getSellerPendingPurchases,
+);
 router.get("/:id", paymentController.getPaymentById);
 router.put("/:id", paymentController.updatePayment);
 router.delete("/:id", paymentController.deletePayment);

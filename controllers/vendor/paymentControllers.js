@@ -153,6 +153,7 @@ exports.listPayments = asyncHandler(async (req, res) => {
   const {
     type,
     customerId,
+    sellerId,
     method,
     status,
     fromDate,
@@ -166,6 +167,7 @@ exports.listPayments = asyncHandler(async (req, res) => {
     vendorId,
     type,
     customerId,
+    sellerId,
     method,
     status,
     fromDate,
@@ -355,4 +357,48 @@ exports.getCustomerPendingInvoices = asyncHandler(async (req, res) => {
   );
 
   success(res, invoices, "Pending invoices retrieved successfully");
+});
+
+exports.getSellerOutstanding = asyncHandler(async (req, res) => {
+  const vendorId =
+    req.user?.role === "vendor" ? req.user.id : req.query.vendorId;
+
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
+
+  const { sellerId } = req.params;
+
+  if (!sellerId || isNaN(sellerId)) {
+    return error(res, "Invalid seller ID", 400);
+  }
+
+  const outstanding = await paymentService.getSellerOutstanding(
+    vendorId,
+    sellerId,
+  );
+
+  success(res, outstanding, "Seller outstanding retrieved successfully");
+});
+
+exports.getSellerPendingPurchases = asyncHandler(async (req, res) => {
+  const vendorId =
+    req.user?.role === "vendor" ? req.user.id : req.query.vendorId;
+
+  if (!vendorId) {
+    return error(res, "Vendor ID is required", 400);
+  }
+
+  const { sellerId } = req.params;
+
+  if (!sellerId || isNaN(sellerId)) {
+    return error(res, "Invalid seller ID", 400);
+  }
+
+  const purchases = await paymentService.getSellerPendingPurchases(
+    vendorId,
+    sellerId,
+  );
+
+  success(res, purchases, "Pending purchases retrieved successfully");
 });

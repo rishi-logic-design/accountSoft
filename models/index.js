@@ -221,6 +221,14 @@ PaymentModel.belongsTo(CustomerModel, {
   foreignKey: "customerId",
   as: "customer",
 });
+VendorVendorModel.hasMany(PaymentModel, {
+  foreignKey: "sellerId",
+  as: "sellerPayments",
+});
+PaymentModel.belongsTo(VendorVendorModel, {
+  foreignKey: "sellerId",
+  as: "seller",
+});
 
 // Vendor - Firm
 VendorModel.hasOne(FirmModel, {

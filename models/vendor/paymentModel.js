@@ -20,6 +20,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER.UNSIGNED,
         allowNull: true,
       },
+      sellerId: {
+        type: DataTypes.INTEGER.UNSIGNED,
+        allowNull: true,
+        comment: "Linked Seller (Vendor's Vendor) ID",
+      },
       openingBalance: {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
@@ -116,6 +121,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         comment: "Array of invoices adjusted with this payment",
       },
+      adjustedPurchases: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        comment: "Array of purchases adjusted with this payment",
+      },
     },
     {
       tableName: "payments",
@@ -124,6 +134,7 @@ module.exports = (sequelize, DataTypes) => {
       indexes: [
         { fields: ["vendorId"] },
         { fields: ["customerId"] },
+        { fields: ["sellerId"] },
         { fields: ["paymentDate"] },
         { fields: ["type"] },
         { fields: ["subType"] },
