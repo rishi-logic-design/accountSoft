@@ -39,6 +39,7 @@ const invoiceSettingsRoutes = require("./routes/Vendors/invoiceSettingsRoutes");
 const vendorVendorRoutes = require("./routes/Vendors/vendorVendorRoutes");
 const purchaseBillRoutes = require("./routes/Vendors/purchaseBillRoutes");
 const purchasePaymentRoutes = require("./routes/Vendors/purchasePaymentRoutes");
+const purchaseRoutes = require("./routes/Vendors/purchaseRoutes");
 
 app.use(
   cors({
@@ -97,7 +98,7 @@ app.use("/api/customer/vendor-gst-number", customerGstNumberRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/vendor/invoice-settings", invoiceSettingsRoutes);
 app.use("/api/vendor/vendors", vendorVendorRoutes);
-app.use("/api/purchases", purchaseBillRoutes);
+app.use("/api/purchases", purchaseRoutes); // Using the new purchase routes
 app.use("/api/purchase-payments", purchasePaymentRoutes);
 
 const PORT = process.env.PORT || 5000;
