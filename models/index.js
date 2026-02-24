@@ -26,6 +26,7 @@ const VendorVendor = require("./vendor/vendorVendorModel");
 const PurchaseBill = require("./vendor/purchaseBillModel");
 const PurchasePayment = require("./vendor/purchasePaymentModel");
 const Purchase = require("./vendor/purchaseModel");
+const PurchaseItem = require("./vendor/purchaseItemModel");
 const InventoryCategory = require("./vendor/inventoryCategoryModel");
 const Inventory = require("./vendor/inventoryModel");
 
@@ -55,6 +56,7 @@ const VendorVendorModel = VendorVendor(sequelize, Sequelize);
 const PurchaseBillModel = PurchaseBill(sequelize, Sequelize);
 const PurchasePaymentModel = PurchasePayment(sequelize, Sequelize);
 const PurchaseModel = Purchase(sequelize, Sequelize);
+const PurchaseItemModel = PurchaseItem(sequelize, Sequelize);
 const InventoryCategoryModel = InventoryCategory(sequelize, Sequelize);
 const InventoryModel = Inventory(sequelize, Sequelize);
 
@@ -359,6 +361,26 @@ PurchaseModel.belongsTo(VendorVendorModel, {
   as: "seller",
 });
 
+// Purchase - PurchaseItem
+PurchaseModel.hasMany(PurchaseItemModel, {
+  foreignKey: "purchaseId",
+  as: "items",
+});
+PurchaseItemModel.belongsTo(PurchaseModel, {
+  foreignKey: "purchaseId",
+  as: "purchase",
+});
+
+// Product - PurchaseItem (Optional link)
+ProductModel.hasMany(PurchaseItemModel, {
+  foreignKey: "productId",
+  as: "purchaseItems",
+});
+PurchaseItemModel.belongsTo(ProductModel, {
+  foreignKey: "productId",
+  as: "product",
+});
+
 // Inventory - Vendor
 VendorModel.hasMany(InventoryModel, {
   foreignKey: "vendorId",
@@ -426,6 +448,7 @@ module.exports = {
   PurchaseBillModel,
   PurchasePaymentModel,
   PurchaseModel,
+  PurchaseItemModel,
   InventoryModel,
   InventoryCategoryModel,
 };
