@@ -17,7 +17,7 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT || 15307,
     dialect: "mysql",
-
+    logging: false,
     dialectOptions: isProduction
       ? {
           ssl: {
@@ -40,7 +40,7 @@ const sequelize = new Sequelize(
     retry: {
       max: 3,
     },
-  }
+  },
 );
 
 (async () => {

@@ -19,6 +19,13 @@ exports.createBill = async (vendorId, payload) => {
     throw new Error("Valid amount is required");
   if (!sellerId) throw new Error("Seller is required");
 
+  const seller = await VendorVendorModel.findByPk(sellerId);
+  if (!seller) {
+    throw new Error(
+      `Seller with ID ${sellerId} not found. Please use a valid Seller ID.`,
+    );
+  }
+
   const billAmount = toNumber(amount);
 
   return await PurchaseBillModel.create({
