@@ -21,6 +21,13 @@ exports.createPurchase = async (vendorId, payload) => {
     if (!purchaseDate) throw new Error("Purchase Date is required");
     if (!sellerId) throw new Error("Seller selection is required");
 
+    const seller = await VendorVendorModel.findByPk(sellerId);
+    if (!seller) {
+      throw new Error(
+        `Seller with ID ${sellerId} not found. Please use a valid Seller ID.`,
+      );
+    }
+
     const amount = toNumber(totalAmount);
 
     const purchase = await PurchaseModel.create({

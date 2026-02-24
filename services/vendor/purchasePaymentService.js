@@ -61,6 +61,14 @@ exports.createPayment = async (vendorId, payload) => {
     throw new Error("Valid amount is required");
   if (!paymentDate) throw new Error("Payment date is required");
 
+  // Validate Seller
+  const seller = await VendorVendorModel.findByPk(sellerId);
+  if (!seller) {
+    throw new Error(
+      `Seller with ID ${sellerId} not found. Please use a valid Seller ID.`,
+    );
+  }
+
   // Ensure adjustedPurchases is actually an array
   let adjustments = Array.isArray(adjustedPurchases) ? adjustedPurchases : [];
   if (typeof adjustedPurchases === "string") {
