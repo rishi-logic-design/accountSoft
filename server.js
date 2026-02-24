@@ -37,6 +37,7 @@ const customerGstNumberRoutes = require("./routes/Customer/customerGstNumberRout
 const notificationRoutes = require("./routes/Vendors/notificationRoutes");
 const invoiceSettingsRoutes = require("./routes/Vendors/invoiceSettingsRoutes");
 const vendorVendorRoutes = require("./routes/Vendors/vendorVendorRoutes");
+const purchaseBillRoutes = require("./routes/Vendors/purchaseBillRoutes");
 const purchasePaymentRoutes = require("./routes/Vendors/purchasePaymentRoutes");
 const purchaseRoutes = require("./routes/Vendors/purchaseRoutes");
 const inventoryRoutes = require("./routes/Vendors/inventoryRoutes");
@@ -98,6 +99,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/vendor/invoice-settings", invoiceSettingsRoutes);
 app.use("/api/vendor/vendors", vendorVendorRoutes);
 app.use("/api/purchases", purchaseRoutes);
+app.use("/api/purchase-bills", purchaseBillRoutes);
 app.use("/api/purchase-payments", purchasePaymentRoutes);
 app.use("/api/inventory", inventoryRoutes);
 
