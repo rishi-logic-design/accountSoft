@@ -146,7 +146,9 @@ exports.getDashboardStats = async (vendorId) => {
     (item) => item.currentStock <= (item.lowStockThreshold || 10),
   ).length;
   const stockValue = items.reduce(
-    (sum, item) => sum + item.currentStock * item.purchasePrice,
+    (sum, item) =>
+      sum +
+      (Number(item.currentStock) || 0) * (Number(item.purchasePrice) || 0),
     0,
   );
 

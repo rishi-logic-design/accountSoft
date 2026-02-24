@@ -110,7 +110,17 @@ const PORT = process.env.PORT || 5000;
     console.log("🔄 Connecting to database...");
     await sequelize.authenticate();
     console.log("✅ Database connected successfully");
-    await sequelize.sync({ alter: true });
+    try {
+      console.log("🔄 Syncing database tables...");
+      await sequelize.sync({ alter: true });
+      console.log("✅ Database synced successfully");
+    } catch (syncError) {
+      console.error(
+        "⚠️ Database sync warning (falling back to simple sync):",
+        syncError.message,
+      );
+      await sequelize.sync();
+    }
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV}`);

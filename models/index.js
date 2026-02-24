@@ -80,8 +80,12 @@ CustomerModel.hasMany(NotificationModel, {
 });
 
 TransactionModel.belongsTo(CustomerModel, {
-  foreignKey: "customerId",
+  foreignKey: {
+    name: "customerId",
+    allowNull: true,
+  },
   as: "customer",
+  onDelete: "SET NULL",
 });
 
 // Vendor - Transaction
