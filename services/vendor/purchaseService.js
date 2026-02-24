@@ -7,33 +7,39 @@ function toNumber(v) {
 }
 
 exports.createPurchase = async (vendorId, payload) => {
-  const {
-    purchaseNumber,
-    purchaseDate,
-    totalAmount,
-    sellerId,
-    billImage,
-    note,
-  } = payload;
+  try {
+    const {
+      purchaseNumber,
+      purchaseDate,
+      totalAmount,
+      sellerId,
+      billImage,
+      note,
+    } = payload;
 
-  if (!purchaseNumber) throw new Error("Purchase Invoice Number is required");
-  if (!purchaseDate) throw new Error("Purchase Date is required");
-  if (!sellerId) throw new Error("Seller selection is required");
+    if (!purchaseNumber) throw new Error("Purchase Invoice Number is required");
+    if (!purchaseDate) throw new Error("Purchase Date is required");
+    if (!sellerId) throw new Error("Seller selection is required");
 
-  const amount = toNumber(totalAmount);
+    const amount = toNumber(totalAmount);
 
-  return await PurchaseModel.create({
-    purchaseNumber,
-    purchaseDate,
-    totalAmount: amount.toFixed(2),
-    pendingAmount: amount.toFixed(2),
-    paidAmount: "0.00",
-    vendorId,
-    sellerId,
-    billImage: billImage || null,
-    note: note || null,
-    status: "unpaid",
-  });
+    const purchase = await PurchaseModel.create({
+      purchaseNumber,
+      purchaseDate,
+      totalAmount: amount.toFixed(2),
+      pendingAmount: amount.toFixed(2),
+      paidAmount: "0.00",
+      vendorId,
+      sellerId,
+      billImage: billImage || null,
+      note: note || null,
+      status: "unpaid",
+    });
+    return purchase;
+  } catch (err) {
+    console.error("Error creating purchase:", err);
+    throw err;
+  }
 };
 
 exports.listPurchases = async ({

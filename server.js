@@ -87,7 +87,6 @@ app.use("/api/vendor-gst-numbers", vendorGstNumberRoutes);
 app.use("/api/vendor-payments", vendorPaymentRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/", vendorProfileImageRoutes);
-app.use(errorMiddleware);
 app.use("/api/customer/profile", customerProfileRoutes);
 app.use("/api/customer/bills", customerBillRoutes);
 app.use("/api/customer/challans", customerChallanRoutes);
@@ -98,9 +97,11 @@ app.use("/api/customer/vendor-gst-number", customerGstNumberRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/vendor/invoice-settings", invoiceSettingsRoutes);
 app.use("/api/vendor/vendors", vendorVendorRoutes);
-app.use("/api/purchases", purchaseRoutes); // Using the new purchase routes
+app.use("/api/purchases", purchaseRoutes);
 app.use("/api/purchase-payments", purchasePaymentRoutes);
 app.use("/api/inventory", inventoryRoutes);
+
+app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 5000;
 
@@ -109,7 +110,7 @@ const PORT = process.env.PORT || 5000;
     console.log("🔄 Connecting to database...");
     await sequelize.authenticate();
     console.log("✅ Database connected successfully");
-    await sequelize.sync();
+    await sequelize.sync({ alter: true });
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
