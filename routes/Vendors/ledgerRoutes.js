@@ -6,6 +6,13 @@ const role = require("../../middleware/roleMiddleware");
 router.use(auth);
 router.use(role(["vendor", "admin", "superadmin"]));
 
+router.get("/customers", ledgerController.getCustomerList);
+router.get("/customers/:customerId", ledgerController.getCustomerLedger);
+
+router.get("/vendors", ledgerController.getVendorList);
+router.get("/vendors/:sellerId", ledgerController.getVendorLedger);
+
+// ── LEGACY ROUTES (kept for backward compat) ──────────────────────────────
 router.get("/summary", ledgerController.getLedgerSummary);
 router.post("/export", ledgerController.exportLedger);
 
