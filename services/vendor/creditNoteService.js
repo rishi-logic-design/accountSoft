@@ -135,7 +135,7 @@ exports.listCreditNotes = async ({
       {
         model: CustomerModel,
         as: "customer",
-        attributes: ["id", "customerName", "businessName", "mobile"],
+        attributes: ["id", "customerName", "businessName", "mobileNumber"],
       },
     ],
     limit: Number(size),
