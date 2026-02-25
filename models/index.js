@@ -32,6 +32,8 @@ const Inventory = require("./vendor/inventoryModel");
 const CreditNote = require("./vendor/creditNoteModel");
 const CreditNoteItem = require("./vendor/creditNoteItemModel");
 const Service = require("./vendor/serviceModel");
+const SalesDebitNote = require("./vendor/salesDebitNoteModel");
+const SalesDebitNoteItem = require("./vendor/salesDebitNoteItemModel");
 
 const UserModel = User(sequelize, Sequelize);
 const VendorModel = Vendor(sequelize, Sequelize);
@@ -65,6 +67,8 @@ const InventoryModel = Inventory(sequelize, Sequelize);
 const CreditNoteModel = CreditNote(sequelize, Sequelize);
 const CreditNoteItemModel = CreditNoteItem(sequelize, Sequelize);
 const ServiceModel = Service(sequelize, Sequelize);
+const SalesDebitNoteModel = SalesDebitNote(sequelize, Sequelize);
+const SalesDebitNoteItemModel = SalesDebitNoteItem(sequelize, Sequelize);
 
 // Vendor - Customer
 VendorModel.hasMany(NotificationModel, {
@@ -437,6 +441,36 @@ CreditNoteModel.belongsTo(VendorModel, {
   as: "vendor",
 });
 
+// SalesDebitNote - SalesDebitNoteItem
+SalesDebitNoteModel.hasMany(SalesDebitNoteItemModel, {
+  foreignKey: "salesDebitNoteId",
+  as: "items",
+});
+SalesDebitNoteItemModel.belongsTo(SalesDebitNoteModel, {
+  foreignKey: "salesDebitNoteId",
+  as: "salesDebitNote",
+});
+
+// Vendor - SalesDebitNote
+VendorModel.hasMany(SalesDebitNoteModel, {
+  foreignKey: "vendorId",
+  as: "salesDebitNotes",
+});
+SalesDebitNoteModel.belongsTo(VendorModel, {
+  foreignKey: "vendorId",
+  as: "vendor",
+});
+
+// Customer - SalesDebitNote
+CustomerModel.hasMany(SalesDebitNoteModel, {
+  foreignKey: "customerId",
+  as: "salesDebitNotes",
+});
+SalesDebitNoteModel.belongsTo(CustomerModel, {
+  foreignKey: "customerId",
+  as: "customer",
+});
+
 // Vendor - Service
 VendorModel.hasMany(ServiceModel, {
   foreignKey: "vendorId",
@@ -500,4 +534,6 @@ module.exports = {
   CreditNoteModel,
   CreditNoteItemModel,
   ServiceModel,
+  SalesDebitNoteModel,
+  SalesDebitNoteItemModel,
 };
