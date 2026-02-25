@@ -131,7 +131,6 @@ exports.createPayment = async (vendorId, payload) => {
 
         let newStatus = "unpaid";
         if (pendingAmount <= 0.05) {
-          // Handle small float precision issues
           newStatus = "paid";
         } else if (newPaidAmount > 0) {
           newStatus = "partial";
