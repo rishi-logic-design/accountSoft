@@ -317,7 +317,7 @@ exports.listBills = async ({
       {
         model: CustomerModel,
         as: "customer",
-        attributes: ["id", "customerName", "businessName", "mobile"],
+        attributes: ["id", "customerName", "businessName", "mobileNumber"],
         where: search
           ? {
               [Op.or]: [
