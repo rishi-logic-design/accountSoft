@@ -88,3 +88,23 @@ exports.deleteCreditNote = async (req, res) => {
     });
   }
 };
+
+exports.updateCreditNote = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const result = await creditNoteService.updateCreditNote(
+      req.params.id,
+      vendorId,
+      req.body,
+    );
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

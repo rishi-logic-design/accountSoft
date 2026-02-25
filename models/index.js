@@ -31,6 +31,7 @@ const InventoryCategory = require("./vendor/inventoryCategoryModel");
 const Inventory = require("./vendor/inventoryModel");
 const CreditNote = require("./vendor/creditNoteModel");
 const CreditNoteItem = require("./vendor/creditNoteItemModel");
+const Service = require("./vendor/serviceModel");
 
 const UserModel = User(sequelize, Sequelize);
 const VendorModel = Vendor(sequelize, Sequelize);
@@ -63,6 +64,7 @@ const InventoryCategoryModel = InventoryCategory(sequelize, Sequelize);
 const InventoryModel = Inventory(sequelize, Sequelize);
 const CreditNoteModel = CreditNote(sequelize, Sequelize);
 const CreditNoteItemModel = CreditNoteItem(sequelize, Sequelize);
+const ServiceModel = Service(sequelize, Sequelize);
 
 // Vendor - Customer
 VendorModel.hasMany(NotificationModel, {
@@ -435,6 +437,16 @@ CreditNoteModel.belongsTo(VendorModel, {
   as: "vendor",
 });
 
+// Vendor - Service
+VendorModel.hasMany(ServiceModel, {
+  foreignKey: "vendorId",
+  as: "services",
+});
+ServiceModel.belongsTo(VendorModel, {
+  foreignKey: "vendorId",
+  as: "vendor",
+});
+
 // Customer - CreditNote
 CustomerModel.hasMany(CreditNoteModel, {
   foreignKey: "customerId",
@@ -487,4 +499,5 @@ module.exports = {
   InventoryCategoryModel,
   CreditNoteModel,
   CreditNoteItemModel,
+  ServiceModel,
 };

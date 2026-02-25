@@ -191,3 +191,98 @@ exports.deleteCreditNote = async (id, vendorId) => {
     return true;
   });
 };
+
+exports.updateCreditNote = async (id, vendorId, payload) => {
+  const {
+    customerId,
+    type,
+    noteNumber,
+    noteDate,
+    items = [],
+    termsAndConditions,
+    signatureImage,
+    showSignature,
+    note,
+    status,
+  } = payload;
+
+  return await sequelize.transaction(async (t) => {
+    const creditNote = await CreditNoteModel.findOne({
+      where: { id, vendorId },
+      transaction: t,
+    });
+
+    if (!creditNote) throw new Error("Credit Note not found");
+
+    let subtotal = 0;
+    let gstTotal = 0;
+
+    const creditNoteItems = items.map((item) => {
+      const qty = toNumber(item.qty || 1);
+      const price = toNumber(item.price || 0);
+      const amount = +(qty * price).toFixed(2);
+      const gstPercent = toNumber(item.gstPercent || 0);
+      const gstAmt = +((amount * gstPercent) / 100).toFixed(2);
+      const total = +(amount + gstAmt).toFixed(2);
+
+      subtotal += amount;
+      gstTotal += gstAmt;
+
+      return {
+        itemName: item.itemName || "Item",
+        hsn: item.hsn || "",
+        qty,
+        unit: item.unit || "",
+        price,
+        gstPercent,
+        total,
+        creditNoteId: id,
+      };
+    });
+
+    const totalAmount = +(subtotal + gstTotal).toFixed(2);
+
+    await creditNote.update(
+      {
+        noteNumber: noteNumber || creditNote.noteNumber,
+        noteDate: noteDate || creditNote.noteDate,
+        type: type || creditNote.type,
+        customerId: customerId || creditNote.customerId,
+        subtotal,
+        gstTotal,
+        totalAmount,
+        termsAndConditions:
+          termsAndConditions !== undefined
+            ? termsAndConditions
+            : creditNote.termsAndConditions,
+        signatureImage:
+          signatureImage !== undefined
+            ? signatureImage
+            : creditNote.signatureImage,
+        showSignature:
+          showSignature !== undefined
+            ? !!showSignature
+            : creditNote.showSignature,
+        status: status || creditNote.status,
+        note: note !== undefined ? note : creditNote.note,
+      },
+      { transaction: t },
+    );
+
+    // Recreate items
+    await CreditNoteItemModel.destroy({
+      where: { creditNoteId: id },
+      transaction: t,
+    });
+
+    await CreditNoteItemModel.bulkCreate(creditNoteItems, { transaction: t });
+
+    return await CreditNoteModel.findByPk(id, {
+      include: [
+        { model: CreditNoteItemModel, as: "items" },
+        { model: CustomerModel, as: "customer" },
+      ],
+      transaction: t,
+    });
+  });
+};

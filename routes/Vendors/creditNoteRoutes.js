@@ -10,6 +10,7 @@ router.use(role(["vendor", "admin", "superadmin"]));
 router.post("/", creditNoteCtrl.createCreditNote);
 router.get("/", creditNoteCtrl.listCreditNotes);
 router.get("/:id", creditNoteCtrl.getCreditNoteById);
+router.put("/:id", creditNoteCtrl.updateCreditNote);
 router.delete("/:id", creditNoteCtrl.deleteCreditNote);
 
 module.exports = router;

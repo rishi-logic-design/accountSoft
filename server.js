@@ -42,6 +42,7 @@ const purchasePaymentRoutes = require("./routes/Vendors/purchasePaymentRoutes");
 const purchaseRoutes = require("./routes/Vendors/purchaseRoutes");
 const inventoryRoutes = require("./routes/Vendors/inventoryRoutes");
 const creditNoteRoutes = require("./routes/Vendors/creditNoteRoutes");
+const serviceRoutes = require("./routes/Vendors/serviceRoutes");
 
 app.use(
   cors({
@@ -104,6 +105,7 @@ app.use("/api/purchase-bills", purchaseBillRoutes);
 app.use("/api/purchase-payments", purchasePaymentRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/credit-notes", creditNoteRoutes);
+app.use("/api/services", serviceRoutes);
 
 app.use(errorMiddleware);
 
