@@ -606,7 +606,13 @@ exports.getBillHtml = async (billId, vendorId) => {
       phone: bill.customer?.mobileNumber || "",
     },
 
-    items: bill.items || [],
+    items: (bill.items || []).map((i) => ({
+      ...i.toJSON(),
+      amount: i.totalWithGst,
+      total: i.totalWithGst,
+      rate: i.price,
+      quantity: i.qty,
+    })),
     subtotal: bill.subtotal || 0,
     gstTotal: bill.gstTotal || 0,
     totalAmount: bill.totalWithGST || 0,
