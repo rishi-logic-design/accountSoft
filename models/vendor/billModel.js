@@ -52,11 +52,18 @@ module.exports = (sequelize, DataTypes) => {
       },
       pendingAmount: {
         type: DataTypes.DECIMAL(12, 2),
-        defaultValue: 0.0, 
+        defaultValue: 0.0,
         comment: "Remaining amount to be paid",
       },
       status: {
-        type: DataTypes.ENUM("pending", "paid", "partial", "cancelled"),
+        type: DataTypes.ENUM(
+          "pending",
+          "unpaid",
+          "paid",
+          "partial",
+          "completed",
+          "cancelled",
+        ),
         defaultValue: "pending",
       },
       note: { type: DataTypes.TEXT, allowNull: true },
@@ -70,7 +77,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
         comment: "Signature and stamp image URL/path",
-      },                
+      },
       showSignatureStamp: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,

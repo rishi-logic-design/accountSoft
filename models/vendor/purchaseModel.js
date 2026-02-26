@@ -47,7 +47,14 @@ module.exports = (sequelize, DataTypes) => {
         comment: "Firebase URL of the uploaded bill",
       },
       status: {
-        type: DataTypes.ENUM("unpaid", "partial", "paid", "cancelled"),
+        type: DataTypes.ENUM(
+          "unpaid",
+          "pending",
+          "partial",
+          "paid",
+          "completed",
+          "cancelled",
+        ),
         allowNull: false,
         defaultValue: "unpaid",
       },

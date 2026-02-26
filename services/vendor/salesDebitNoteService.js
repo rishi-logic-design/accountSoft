@@ -100,7 +100,7 @@ exports.createSalesDebitNote = async (vendorId, payload) => {
         termsAndConditions,
         signatureImage,
         showSignature: !!showSignature,
-        status: "pending",
+        status: payload.status || "unpaid",
         note,
       },
       { transaction: t },
@@ -406,6 +406,8 @@ exports.recordPayment = async (vendorId, payload) => {
     let newStatus = "partial";
     if (newPendingAmount <= 0) {
       newStatus = "paid";
+    } else if (newPaidAmount === 0) {
+      newStatus = "unpaid";
     }
 
     await noteEntry.update(
