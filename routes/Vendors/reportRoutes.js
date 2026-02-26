@@ -12,5 +12,7 @@ router.get(
   "/product-wise-purchase",
   reportController.getProductWisePurchaseReport,
 );
+router.get("/party-wise-sales", reportController.getPartyWiseSalesReport);
+router.get("/party-wise-purchase", reportController.getPartyWisePurchaseReport);
 
 module.exports = router;

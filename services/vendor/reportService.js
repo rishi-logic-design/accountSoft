@@ -4,6 +4,7 @@ const {
   CustomerModel,
   PurchaseModel,
   PurchaseItemModel,
+  VendorVendorModel,
   sequelize,
 } = require("../../models");
 const { Op, fn, col, literal } = require("sequelize");
@@ -175,5 +176,163 @@ exports.getProductWisePurchaseReport = async (
     totalPages: Math.ceil(total / Number(size)),
     grandTotalAmount: +grandTotalAmount.toFixed(2),
     grandTotalQty: +grandTotalQty.toFixed(2),
+  };
+};
+
+/**
+ * Party Wise Sales Report
+ * Groups bills by customer, sums total bill amounts
+ */
+exports.getPartyWiseSalesReport = async (
+  vendorId,
+  { fromDate, toDate, search, page = 1, size = 10 } = {},
+) => {
+  const billWhere = { vendorId, status: { [Op.ne]: "cancelled" } };
+
+  if (fromDate || toDate) {
+    billWhere.billDate = {};
+    if (fromDate) billWhere.billDate[Op.gte] = new Date(fromDate);
+    if (toDate) {
+      const end = new Date(toDate);
+      end.setHours(23, 59, 59, 999);
+      billWhere.billDate[Op.lte] = end;
+    }
+  }
+
+  const customerWhere = {};
+  if (search) {
+    customerWhere[Op.or] = [
+      { customerName: { [Op.like]: `%${search}%` } },
+      { businessName: { [Op.like]: `%${search}%` } },
+    ];
+  }
+
+  const grouped = await BillModel.findAll({
+    where: billWhere,
+    attributes: [
+      "customerId",
+      [fn("SUM", col("BillModel.totalAmount")), "totalAmount"],
+      [fn("COUNT", col("BillModel.id")), "invoiceCount"],
+    ],
+    include: [
+      {
+        model: CustomerModel,
+        as: "customer",
+        attributes: ["id", "customerName", "businessName"],
+        where: Object.keys(customerWhere).length ? customerWhere : undefined,
+        required: !!search,
+      },
+    ],
+    group: [
+      "customerId",
+      "customer.id",
+      "customer.customerName",
+      "customer.businessName",
+    ],
+    order: [[literal("totalAmount"), "DESC"]],
+    raw: true,
+    nest: true,
+  });
+
+  const total = grouped.length;
+  const paged = grouped.slice(
+    (Number(page) - 1) * Number(size),
+    Number(page) * Number(size),
+  );
+
+  const grandTotalAmount = grouped.reduce(
+    (s, r) => s + toNum(r.totalAmount),
+    0,
+  );
+
+  return {
+    rows: paged.map((r, i) => ({
+      serialNo: (Number(page) - 1) * Number(size) + i + 1,
+      buyerName:
+        r.customer?.customerName || r.customer?.businessName || "Unknown",
+      businessName: r.customer?.businessName || "",
+      customerId: r.customerId,
+      totalAmount: +toNum(r.totalAmount).toFixed(2),
+      invoiceCount: Number(r.invoiceCount),
+    })),
+    total,
+    page: Number(page),
+    size: Number(size),
+    totalPages: Math.ceil(total / Number(size)),
+    grandTotalAmount: +grandTotalAmount.toFixed(2),
+  };
+};
+
+/**
+ * Party Wise Purchase Report
+ * Groups purchases by vendor/seller, sums total amounts
+ */
+exports.getPartyWisePurchaseReport = async (
+  vendorId,
+  { fromDate, toDate, search, page = 1, size = 10 } = {},
+) => {
+  const purchaseWhere = { vendorId, status: { [Op.ne]: "cancelled" } };
+
+  if (fromDate || toDate) {
+    purchaseWhere.purchaseDate = {};
+    if (fromDate) purchaseWhere.purchaseDate[Op.gte] = new Date(fromDate);
+    if (toDate) {
+      const end = new Date(toDate);
+      end.setHours(23, 59, 59, 999);
+      purchaseWhere.purchaseDate[Op.lte] = end;
+    }
+  }
+
+  const sellerWhere = {};
+  if (search) {
+    sellerWhere[Op.or] = [{ vendorName: { [Op.like]: `%${search}%` } }];
+  }
+
+  const grouped = await PurchaseModel.findAll({
+    where: purchaseWhere,
+    attributes: [
+      "sellerId",
+      [fn("SUM", col("PurchaseModel.totalAmount")), "totalAmount"],
+      [fn("COUNT", col("PurchaseModel.id")), "purchaseCount"],
+    ],
+    include: [
+      {
+        model: VendorVendorModel,
+        as: "seller",
+        attributes: ["id", "vendorName", "mobile"],
+        where: Object.keys(sellerWhere).length ? sellerWhere : undefined,
+        required: !!search,
+      },
+    ],
+    group: ["sellerId", "seller.id", "seller.vendorName", "seller.mobile"],
+    order: [[literal("totalAmount"), "DESC"]],
+    raw: true,
+    nest: true,
+  });
+
+  const total = grouped.length;
+  const paged = grouped.slice(
+    (Number(page) - 1) * Number(size),
+    Number(page) * Number(size),
+  );
+
+  const grandTotalAmount = grouped.reduce(
+    (s, r) => s + toNum(r.totalAmount),
+    0,
+  );
+
+  return {
+    rows: paged.map((r, i) => ({
+      serialNo: (Number(page) - 1) * Number(size) + i + 1,
+      sellerName: r.seller?.vendorName || "Unknown",
+      sellerId: r.sellerId,
+      totalAmount: +toNum(r.totalAmount).toFixed(2),
+      purchaseCount: Number(r.purchaseCount),
+    })),
+    total,
+    page: Number(page),
+    size: Number(size),
+    totalPages: Math.ceil(total / Number(size)),
+    grandTotalAmount: +grandTotalAmount.toFixed(2),
   };
 };
