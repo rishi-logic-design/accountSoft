@@ -5,7 +5,6 @@ const {
   PurchaseModel,
   PurchaseItemModel,
   VendorVendorModel,
-  sequelize,
 } = require("../../models");
 const { Op, fn, col, literal } = require("sequelize");
 
@@ -179,10 +178,6 @@ exports.getProductWisePurchaseReport = async (
   };
 };
 
-/**
- * Party Wise Sales Report
- * Groups bills by customer, sums total bill amounts
- */
 exports.getPartyWiseSalesReport = async (
   vendorId,
   { fromDate, toDate, search, page = 1, size = 10 } = {},
@@ -211,8 +206,8 @@ exports.getPartyWiseSalesReport = async (
     where: billWhere,
     attributes: [
       "customerId",
-      [fn("SUM", col("BillModel.totalAmount")), "totalAmount"],
-      [fn("COUNT", col("BillModel.id")), "invoiceCount"],
+      [fn("SUM", col("bills.totalAmount")), "totalAmount"],
+      [fn("COUNT", col("bills.id")), "invoiceCount"],
     ],
     include: [
       {
@@ -263,10 +258,6 @@ exports.getPartyWiseSalesReport = async (
   };
 };
 
-/**
- * Party Wise Purchase Report
- * Groups purchases by vendor/seller, sums total amounts
- */
 exports.getPartyWisePurchaseReport = async (
   vendorId,
   { fromDate, toDate, search, page = 1, size = 10 } = {},
@@ -292,8 +283,8 @@ exports.getPartyWisePurchaseReport = async (
     where: purchaseWhere,
     attributes: [
       "sellerId",
-      [fn("SUM", col("PurchaseModel.totalAmount")), "totalAmount"],
-      [fn("COUNT", col("PurchaseModel.id")), "purchaseCount"],
+      [fn("SUM", col("purchases.totalAmount")), "totalAmount"],
+      [fn("COUNT", col("purchases.id")), "purchaseCount"],
     ],
     include: [
       {
