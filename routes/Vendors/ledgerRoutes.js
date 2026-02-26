@@ -12,6 +12,9 @@ router.get("/customers/:customerId", ledgerController.getCustomerLedger);
 router.get("/vendors", ledgerController.getVendorList);
 router.get("/vendors/:sellerId", ledgerController.getVendorLedger);
 
+router.get("/accounts", ledgerController.getAccountList);
+router.get("/accounts/:id", ledgerController.getAccountLedger);
+
 // ── LEGACY ROUTES (kept for backward compat) ──────────────────────────────
 router.get("/summary", ledgerController.getLedgerSummary);
 router.post("/export", ledgerController.exportLedger);

@@ -1,13 +1,6 @@
 const ledgerService = require("../../services/vendor/ledgerService");
+const accountService = require("../../services/vendor/accountService");
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DEBTORS (CUSTOMERS)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * GET /api/ledger/customers
- * Query: search, page, size
- */
 exports.getCustomerList = async (req, res) => {
   try {
     const vendorId = req.user.id;
@@ -23,10 +16,6 @@ exports.getCustomerList = async (req, res) => {
   }
 };
 
-/**
- * GET /api/ledger/customers/:customerId
- * Query: fromDate, toDate, search
- */
 exports.getCustomerLedger = async (req, res) => {
   try {
     const vendorId = req.user.id;
@@ -43,14 +32,6 @@ exports.getCustomerLedger = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CREDITORS (VENDORS)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * GET /api/ledger/vendors
- * Query: search, page, size
- */
 exports.getVendorList = async (req, res) => {
   try {
     const vendorId = req.user.id;
@@ -66,10 +47,6 @@ exports.getVendorList = async (req, res) => {
   }
 };
 
-/**
- * GET /api/ledger/vendors/:sellerId
- * Query: fromDate, toDate, search
- */
 exports.getVendorLedger = async (req, res) => {
   try {
     const vendorId = req.user.id;
@@ -86,9 +63,35 @@ exports.getVendorLedger = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LEGACY (kept for backwards compatibility)
-// ─────────────────────────────────────────────────────────────────────────────
+exports.getAccountList = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { accountType, search } = req.query;
+    const accounts = await accountService.getAccountList(vendorId, {
+      accountType,
+      search,
+    });
+    res.json({ success: true, data: accounts });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getAccountLedger = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const { id } = req.params;
+    const { fromDate, toDate, search } = req.query;
+    const ledger = await accountService.getAccountLedger(vendorId, id, {
+      fromDate,
+      toDate,
+      search,
+    });
+    res.json({ success: true, data: ledger });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 const asyncHandler = require("../../utils/asyncHandler");
 const { Op } = require("sequelize");

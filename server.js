@@ -44,6 +44,7 @@ const inventoryRoutes = require("./routes/Vendors/inventoryRoutes");
 const creditNoteRoutes = require("./routes/Vendors/creditNoteRoutes");
 const serviceRoutes = require("./routes/Vendors/serviceRoutes");
 const salesDebitNoteRoutes = require("./routes/Vendors/salesDebitNoteRoutes");
+const accountRoutes = require("./routes/Vendors/accountRoutes");
 
 app.use(
   cors({
@@ -108,6 +109,7 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/credit-notes", creditNoteRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/sales-debit-notes", salesDebitNoteRoutes);
+app.use("/api/accounts", accountRoutes);
 
 app.use(errorMiddleware);
 

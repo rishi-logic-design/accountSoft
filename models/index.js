@@ -34,6 +34,8 @@ const CreditNoteItem = require("./vendor/creditNoteItemModel");
 const Service = require("./vendor/serviceModel");
 const SalesDebitNote = require("./vendor/salesDebitNoteModel");
 const SalesDebitNoteItem = require("./vendor/salesDebitNoteItemModel");
+const Account = require("./vendor/accountModel");
+const AccountTransaction = require("./vendor/accountTransactionModel");
 
 const UserModel = User(sequelize, Sequelize);
 const VendorModel = Vendor(sequelize, Sequelize);
@@ -69,6 +71,8 @@ const CreditNoteItemModel = CreditNoteItem(sequelize, Sequelize);
 const ServiceModel = Service(sequelize, Sequelize);
 const SalesDebitNoteModel = SalesDebitNote(sequelize, Sequelize);
 const SalesDebitNoteItemModel = SalesDebitNoteItem(sequelize, Sequelize);
+const AccountModel = Account(sequelize, Sequelize);
+const AccountTransactionModel = AccountTransaction(sequelize, Sequelize);
 
 // Vendor - Customer
 VendorModel.hasMany(NotificationModel, {
@@ -482,13 +486,45 @@ ServiceModel.belongsTo(VendorModel, {
 });
 
 // Customer - CreditNote
-CustomerModel.hasMany(CreditNoteModel, {
-  foreignKey: "customerId",
-  as: "creditNotes",
-});
 CreditNoteModel.belongsTo(CustomerModel, {
   foreignKey: "customerId",
   as: "customer",
+});
+
+// Vendor - Account
+VendorModel.hasMany(AccountModel, {
+  foreignKey: "vendorId",
+  as: "accounts",
+});
+AccountModel.belongsTo(VendorModel, {
+  foreignKey: "vendorId",
+  as: "vendor",
+});
+
+// Vendor - AccountTransaction
+VendorModel.hasMany(AccountTransactionModel, {
+  foreignKey: "vendorId",
+  as: "accountTransactions",
+});
+AccountTransactionModel.belongsTo(VendorModel, {
+  foreignKey: "vendorId",
+  as: "vendor",
+});
+
+// Account - AccountTransaction
+AccountModel.hasMany(AccountTransactionModel, {
+  foreignKey: "accountId",
+  as: "transactions",
+});
+AccountTransactionModel.belongsTo(AccountModel, {
+  foreignKey: "accountId",
+  as: "account",
+});
+
+// AccountTransaction - Account (for transfers)
+AccountTransactionModel.belongsTo(AccountModel, {
+  foreignKey: "toAccountId",
+  as: "toAccount",
 });
 
 module.exports = {
@@ -536,4 +572,6 @@ module.exports = {
   ServiceModel,
   SalesDebitNoteModel,
   SalesDebitNoteItemModel,
+  AccountModel,
+  AccountTransactionModel,
 };
