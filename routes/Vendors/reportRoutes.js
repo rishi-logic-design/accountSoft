@@ -8,5 +8,9 @@ router.use(auth);
 router.use(role(["vendor", "admin", "superadmin"]));
 
 router.get("/product-wise-sales", reportController.getProductWiseSalesReport);
+router.get(
+  "/product-wise-purchase",
+  reportController.getProductWisePurchaseReport,
+);
 
 module.exports = router;

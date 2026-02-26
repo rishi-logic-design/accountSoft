@@ -2,6 +2,8 @@ const {
   BillModel,
   BillItemModel,
   CustomerModel,
+  PurchaseModel,
+  PurchaseItemModel,
   sequelize,
 } = require("../../models");
 const { Op, fn, col, literal } = require("sequelize");
@@ -81,6 +83,89 @@ exports.getProductWiseSalesReport = async (
       serialNo: (Number(page) - 1) * Number(size) + i + 1,
       productName: r.itemName,
       totalQty: toNum(r.totalQty),
+      totalAmount: +toNum(r.totalAmount).toFixed(2),
+      orderCount: Number(r.orderCount),
+    })),
+    total,
+    page: Number(page),
+    size: Number(size),
+    totalPages: Math.ceil(total / Number(size)),
+    grandTotalAmount: +grandTotalAmount.toFixed(2),
+    grandTotalQty: +grandTotalQty.toFixed(2),
+  };
+};
+
+exports.getProductWisePurchaseReport = async (
+  vendorId,
+  { fromDate, toDate, search, page = 1, size = 10 } = {},
+) => {
+  const purchaseWhere = { vendorId, status: { [Op.ne]: "cancelled" } };
+
+  if (fromDate || toDate) {
+    purchaseWhere.purchaseDate = {};
+    if (fromDate) purchaseWhere.purchaseDate[Op.gte] = new Date(fromDate);
+    if (toDate) {
+      const end = new Date(toDate);
+      end.setHours(23, 59, 59, 999);
+      purchaseWhere.purchaseDate[Op.lte] = end;
+    }
+  }
+
+  const purchases = await PurchaseModel.findAll({
+    where: purchaseWhere,
+    attributes: ["id"],
+    raw: true,
+  });
+
+  const purchaseIds = purchases.map((p) => p.id);
+
+  if (purchaseIds.length === 0) {
+    return {
+      rows: [],
+      total: 0,
+      page: Number(page),
+      size: Number(size),
+      totalPages: 0,
+      grandTotalAmount: 0,
+      grandTotalQty: 0,
+    };
+  }
+
+  const itemWhere = { purchaseId: { [Op.in]: purchaseIds } };
+  if (search) {
+    itemWhere.itemName = { [Op.like]: `%${search}%` };
+  }
+
+  const grouped = await PurchaseItemModel.findAll({
+    where: itemWhere,
+    attributes: [
+      "itemName",
+      [fn("SUM", col("qty")), "totalQty"],
+      [fn("SUM", col("totalWithGst")), "totalAmount"],
+      [fn("COUNT", col("id")), "orderCount"],
+    ],
+    group: ["itemName"],
+    order: [[literal("totalAmount"), "DESC"]],
+    raw: true,
+  });
+
+  const total = grouped.length;
+  const paged = grouped.slice(
+    (Number(page) - 1) * Number(size),
+    Number(page) * Number(size),
+  );
+
+  const grandTotalAmount = grouped.reduce(
+    (s, r) => s + toNum(r.totalAmount),
+    0,
+  );
+  const grandTotalQty = grouped.reduce((s, r) => s + toNum(r.totalQty), 0);
+
+  return {
+    rows: paged.map((r, i) => ({
+      serialNo: (Number(page) - 1) * Number(size) + i + 1,
+      productName: r.itemName,
+      totalQty: +toNum(r.totalQty).toFixed(2),
       totalAmount: +toNum(r.totalAmount).toFixed(2),
       orderCount: Number(r.orderCount),
     })),
