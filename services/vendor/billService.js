@@ -52,7 +52,7 @@ exports.createBill = async (vendorId, payload) => {
   const {
     customerId,
     challanIds = [],
-    items = [], // New: Direct items without challan
+    items = [],
     discountPercent = 0,
     gstPercent = 0,
     note,
@@ -66,16 +66,13 @@ exports.createBill = async (vendorId, payload) => {
 
   if (!customerId) throw new Error("customerId required");
 
-  // Check if creating bill WITH challan or WITHOUT challan
   const isWithoutChallan = items && items.length > 0;
   const isWithChallan = challanIds && challanIds.length > 0;
 
-  // Validate: Either challans OR items must be provided
   if (!isWithoutChallan && !isWithChallan) {
     throw new Error("Either challanIds or items must be provided");
   }
 
-  // If both are provided, prioritize items (without challan mode)
   if (isWithoutChallan && isWithChallan) {
     throw new Error(
       "Cannot provide both challanIds and items. Choose one method.",
@@ -97,7 +94,6 @@ exports.createBill = async (vendorId, payload) => {
     let challanIdsToUpdate = [];
 
     if (isWithChallan) {
-      // ===== MODE 1: CREATE BILL FROM CHALLANS (Existing Logic) =====
       const challans = await ChallanModel.findAll({
         where: {
           id: challanIds,
@@ -201,7 +197,6 @@ exports.createBill = async (vendorId, payload) => {
 
     const finalBillNumber = `${finalPrefix}${billNumberInfo.count}`;
 
-    // Use provided template or default from settings
     const template = invoiceTemplate || billNumberInfo.template || "template1";
 
     const bill = await BillModel.create(
@@ -243,7 +238,6 @@ exports.createBill = async (vendorId, payload) => {
       { transaction: t },
     );
 
-    // Only update challan status if bill was created from challans
     if (challanIdsToUpdate.length > 0) {
       await ChallanModel.update(
         {
@@ -578,7 +572,7 @@ exports.getBillHtml = async (billId, vendorId) => {
         attributes: [
           "customerName",
           "businessName",
-          "mobile",
+          "mobileNumber",
           "homeAddress",
           "gstNumber",
         ],
@@ -609,7 +603,7 @@ exports.getBillHtml = async (billId, vendorId) => {
       company: bill.customer?.businessName || "",
       address: formatAddress(bill.customerId?.homeAddress),
       gstNumber: bill.customer?.gstNumber || "",
-      phone: bill.customer?.mobile || "",
+      phone: bill.customer?.mobileNumber || "",
     },
 
     items: bill.items || [],
