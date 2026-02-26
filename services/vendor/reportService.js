@@ -194,7 +194,6 @@ exports.getPartyWiseSalesReport = async (
     }
   }
 
-  // Step 1: Aggregate bills grouped by customerId (no JOIN = no alias conflict)
   const grouped = await BillModel.findAll({
     where: billWhere,
     attributes: [
@@ -207,7 +206,6 @@ exports.getPartyWiseSalesReport = async (
     raw: true,
   });
 
-  // Step 2: Fetch customer names for the grouped IDs
   const customerIds = grouped.map((r) => r.customerId);
   const customers = customerIds.length
     ? await CustomerModel.findAll({
@@ -222,7 +220,6 @@ exports.getPartyWiseSalesReport = async (
     customerMap[c.id] = c;
   });
 
-  // Step 3: Merge + optional search filter
   let merged = grouped.map((r) => ({
     customerId: r.customerId,
     buyerName:
@@ -279,7 +276,6 @@ exports.getPartyWisePurchaseReport = async (
     }
   }
 
-  // Step 1: Aggregate purchases grouped by sellerId (no JOIN)
   const grouped = await PurchaseModel.findAll({
     where: purchaseWhere,
     attributes: [
@@ -292,7 +288,6 @@ exports.getPartyWisePurchaseReport = async (
     raw: true,
   });
 
-  // Step 2: Fetch seller names
   const sellerIds = grouped.map((r) => r.sellerId);
   const sellers = sellerIds.length
     ? await VendorVendorModel.findAll({
@@ -307,7 +302,6 @@ exports.getPartyWisePurchaseReport = async (
     sellerMap[s.id] = s;
   });
 
-  // Step 3: Merge + optional search filter
   let merged = grouped.map((r) => ({
     sellerId: r.sellerId,
     sellerName: sellerMap[r.sellerId]?.vendorName || "Unknown",
