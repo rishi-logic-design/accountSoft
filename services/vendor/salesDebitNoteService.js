@@ -4,6 +4,8 @@ const {
   CustomerModel,
   VendorModel,
   FirmModel,
+  SalesDebitNotePaymentModel,
+  AccountTransactionModel,
   sequelize,
 } = require("../../models");
 const { Op } = require("sequelize");
@@ -93,6 +95,8 @@ exports.createSalesDebitNote = async (vendorId, payload) => {
         invoiceDiscount: toNumber(invoiceDiscount),
         totalAmount,
         finalAmount,
+        paidAmount: 0,
+        pendingAmount: finalAmount,
         termsAndConditions,
         signatureImage,
         showSignature: !!showSignature,
@@ -280,6 +284,9 @@ exports.updateSalesDebitNote = async (id, vendorId, payload) => {
         invoiceDiscount: currentInvoiceDiscount,
         totalAmount,
         finalAmount,
+        pendingAmount: +(
+          finalAmount - toNumber(salesDebitNote.paidAmount)
+        ).toFixed(2),
         termsAndConditions:
           termsAndConditions !== undefined
             ? termsAndConditions
@@ -334,5 +341,100 @@ exports.deleteSalesDebitNote = async (id, vendorId) => {
     await salesDebitNote.destroy({ transaction: t });
 
     return true;
+  });
+};
+
+exports.recordPayment = async (vendorId, payload) => {
+  const {
+    salesDebitNoteId,
+    amount,
+    paymentDate,
+    method,
+    accountId,
+    reference,
+    note,
+    receiptNumber,
+  } = payload;
+
+  if (!salesDebitNoteId) throw new Error("salesDebitNoteId is required");
+  if (!amount || amount <= 0) throw new Error("Valid amount is required");
+
+  return await sequelize.transaction(async (t) => {
+    const noteEntry = await SalesDebitNoteModel.findOne({
+      where: { id: salesDebitNoteId, vendorId },
+      transaction: t,
+    });
+
+    if (!noteEntry) throw new Error("Sales Debit Note not found");
+
+    // Generate receipt number if not provided
+    let finalReceiptNumber = receiptNumber;
+    if (!finalReceiptNumber) {
+      const count = await SalesDebitNotePaymentModel.count({
+        where: { vendorId },
+        transaction: t,
+      });
+      finalReceiptNumber = `PR-${count + 1}`;
+    }
+
+    // Create payment record
+    const payment = await SalesDebitNotePaymentModel.create(
+      {
+        receiptNumber: finalReceiptNumber,
+        salesDebitNoteId,
+        vendorId,
+        customerId: noteEntry.customerId,
+        accountId,
+        amount,
+        paymentDate: paymentDate || new Date(),
+        method,
+        reference,
+        note,
+        status: "completed",
+      },
+      { transaction: t },
+    );
+
+    // Update Note balance and status
+    const newPaidAmount = +(
+      toNumber(noteEntry.paidAmount) + toNumber(amount)
+    ).toFixed(2);
+    const newPendingAmount = +(
+      toNumber(noteEntry.finalAmount) - newPaidAmount
+    ).toFixed(2);
+
+    let newStatus = "partial";
+    if (newPendingAmount <= 0) {
+      newStatus = "paid";
+    }
+
+    await noteEntry.update(
+      {
+        paidAmount: newPaidAmount,
+        pendingAmount: Math.max(0, newPendingAmount),
+        status: newStatus,
+      },
+      { transaction: t },
+    );
+
+    // Create Account Transaction if account is selected
+    if (accountId) {
+      await AccountTransactionModel.create(
+        {
+          vendorId,
+          accountId,
+          transactionType: "PAYMENT_IN",
+          amount,
+          transactionDate: paymentDate || new Date(),
+          remark: note || `Payment for Debit Note ${noteEntry.noteNumber}`,
+          voucherNumber: finalReceiptNumber,
+          refId: payment.id,
+          refType: "SalesDebitNotePayment",
+        },
+        { transaction: t },
+      );
+    }
+
+    return payment;
   });
 };

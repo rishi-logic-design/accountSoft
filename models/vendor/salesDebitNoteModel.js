@@ -58,6 +58,14 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DECIMAL(12, 2),
         defaultValue: 0.0,
       },
+      paidAmount: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.0,
+      },
+      pendingAmount: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.0,
+      },
       termsAndConditions: {
         type: DataTypes.TEXT,
         allowNull: true,
@@ -71,7 +79,13 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: false,
       },
       status: {
-        type: DataTypes.ENUM("pending", "completed", "cancelled"),
+        type: DataTypes.ENUM(
+          "pending",
+          "partial",
+          "paid",
+          "completed",
+          "cancelled",
+        ),
         defaultValue: "pending",
       },
       note: {

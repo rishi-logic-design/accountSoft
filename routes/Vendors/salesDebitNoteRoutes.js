@@ -12,5 +12,6 @@ router.get("/", salesDebitNoteCtrl.listSalesDebitNotes);
 router.get("/:id", salesDebitNoteCtrl.getSalesDebitNoteById);
 router.put("/:id", salesDebitNoteCtrl.updateSalesDebitNote);
 router.delete("/:id", salesDebitNoteCtrl.deleteSalesDebitNote);
+router.post("/record-payment", salesDebitNoteCtrl.recordPayment);
 
 module.exports = router;

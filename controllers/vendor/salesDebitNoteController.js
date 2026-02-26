@@ -111,3 +111,22 @@ exports.deleteSalesDebitNote = async (req, res) => {
     });
   }
 };
+exports.recordPayment = async (req, res) => {
+  try {
+    const vendorId = req.user.id;
+    const result = await salesDebitNoteService.recordPayment(
+      vendorId,
+      req.body,
+    );
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Payment recorded successfully",
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
