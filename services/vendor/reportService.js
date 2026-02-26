@@ -194,61 +194,66 @@ exports.getPartyWiseSalesReport = async (
     }
   }
 
-  const customerWhere = {};
-  if (search) {
-    customerWhere[Op.or] = [
-      { customerName: { [Op.like]: `%${search}%` } },
-      { businessName: { [Op.like]: `%${search}%` } },
-    ];
-  }
-
+  // Step 1: Aggregate bills grouped by customerId (no JOIN = no alias conflict)
   const grouped = await BillModel.findAll({
     where: billWhere,
     attributes: [
       "customerId",
-      [fn("SUM", col("bills.totalAmount")), "totalAmount"],
-      [fn("COUNT", col("bills.id")), "invoiceCount"],
+      [fn("SUM", col("totalAmount")), "totalAmount"],
+      [fn("COUNT", col("id")), "invoiceCount"],
     ],
-    include: [
-      {
-        model: CustomerModel,
-        as: "customer",
-        attributes: ["id", "customerName", "businessName"],
-        where: Object.keys(customerWhere).length ? customerWhere : undefined,
-        required: !!search,
-      },
-    ],
-    group: [
-      "customerId",
-      "customer.id",
-      "customer.customerName",
-      "customer.businessName",
-    ],
-    order: [[literal("totalAmount"), "DESC"]],
+    group: ["customerId"],
+    order: [[literal("SUM(totalAmount)"), "DESC"]],
     raw: true,
-    nest: true,
   });
 
-  const total = grouped.length;
-  const paged = grouped.slice(
+  // Step 2: Fetch customer names for the grouped IDs
+  const customerIds = grouped.map((r) => r.customerId);
+  const customers = customerIds.length
+    ? await CustomerModel.findAll({
+        where: { id: { [Op.in]: customerIds } },
+        attributes: ["id", "customerName", "businessName"],
+        raw: true,
+      })
+    : [];
+
+  const customerMap = {};
+  customers.forEach((c) => {
+    customerMap[c.id] = c;
+  });
+
+  // Step 3: Merge + optional search filter
+  let merged = grouped.map((r) => ({
+    customerId: r.customerId,
+    buyerName:
+      customerMap[r.customerId]?.customerName ||
+      customerMap[r.customerId]?.businessName ||
+      "Unknown",
+    businessName: customerMap[r.customerId]?.businessName || "",
+    totalAmount: +toNum(r.totalAmount).toFixed(2),
+    invoiceCount: Number(r.invoiceCount),
+  }));
+
+  if (search) {
+    const s = search.toLowerCase();
+    merged = merged.filter(
+      (r) =>
+        r.buyerName.toLowerCase().includes(s) ||
+        r.businessName.toLowerCase().includes(s),
+    );
+  }
+
+  const total = merged.length;
+  const grandTotalAmount = merged.reduce((s, r) => s + r.totalAmount, 0);
+  const paged = merged.slice(
     (Number(page) - 1) * Number(size),
     Number(page) * Number(size),
-  );
-
-  const grandTotalAmount = grouped.reduce(
-    (s, r) => s + toNum(r.totalAmount),
-    0,
   );
 
   return {
     rows: paged.map((r, i) => ({
       serialNo: (Number(page) - 1) * Number(size) + i + 1,
-      buyerName:
-        r.customer?.customerName || r.customer?.businessName || "Unknown",
-      businessName: r.customer?.businessName || "",
-      customerId: r.customerId,
-      totalAmount: +toNum(r.totalAmount).toFixed(2),
-      invoiceCount: Number(r.invoiceCount),
+      ...r,
     })),
     total,
     page: Number(page),
@@ -274,51 +279,58 @@ exports.getPartyWisePurchaseReport = async (
     }
   }
 
-  const sellerWhere = {};
-  if (search) {
-    sellerWhere[Op.or] = [{ vendorName: { [Op.like]: `%${search}%` } }];
-  }
-
+  // Step 1: Aggregate purchases grouped by sellerId (no JOIN)
   const grouped = await PurchaseModel.findAll({
     where: purchaseWhere,
     attributes: [
       "sellerId",
-      [fn("SUM", col("purchases.totalAmount")), "totalAmount"],
-      [fn("COUNT", col("purchases.id")), "purchaseCount"],
+      [fn("SUM", col("totalAmount")), "totalAmount"],
+      [fn("COUNT", col("id")), "purchaseCount"],
     ],
-    include: [
-      {
-        model: VendorVendorModel,
-        as: "seller",
-        attributes: ["id", "vendorName", "mobile"],
-        where: Object.keys(sellerWhere).length ? sellerWhere : undefined,
-        required: !!search,
-      },
-    ],
-    group: ["sellerId", "seller.id", "seller.vendorName", "seller.mobile"],
-    order: [[literal("totalAmount"), "DESC"]],
+    group: ["sellerId"],
+    order: [[literal("SUM(totalAmount)"), "DESC"]],
     raw: true,
-    nest: true,
   });
 
-  const total = grouped.length;
-  const paged = grouped.slice(
+  // Step 2: Fetch seller names
+  const sellerIds = grouped.map((r) => r.sellerId);
+  const sellers = sellerIds.length
+    ? await VendorVendorModel.findAll({
+        where: { id: { [Op.in]: sellerIds } },
+        attributes: ["id", "vendorName", "mobile"],
+        raw: true,
+      })
+    : [];
+
+  const sellerMap = {};
+  sellers.forEach((s) => {
+    sellerMap[s.id] = s;
+  });
+
+  // Step 3: Merge + optional search filter
+  let merged = grouped.map((r) => ({
+    sellerId: r.sellerId,
+    sellerName: sellerMap[r.sellerId]?.vendorName || "Unknown",
+    totalAmount: +toNum(r.totalAmount).toFixed(2),
+    purchaseCount: Number(r.purchaseCount),
+  }));
+
+  if (search) {
+    const s = search.toLowerCase();
+    merged = merged.filter((r) => r.sellerName.toLowerCase().includes(s));
+  }
+
+  const total = merged.length;
+  const grandTotalAmount = merged.reduce((s, r) => s + r.totalAmount, 0);
+  const paged = merged.slice(
     (Number(page) - 1) * Number(size),
     Number(page) * Number(size),
-  );
-
-  const grandTotalAmount = grouped.reduce(
-    (s, r) => s + toNum(r.totalAmount),
-    0,
   );
 
   return {
     rows: paged.map((r, i) => ({
       serialNo: (Number(page) - 1) * Number(size) + i + 1,
-      sellerName: r.seller?.vendorName || "Unknown",
-      sellerId: r.sellerId,
-      totalAmount: +toNum(r.totalAmount).toFixed(2),
-      purchaseCount: Number(r.purchaseCount),
+      ...r,
     })),
     total,
     page: Number(page),
