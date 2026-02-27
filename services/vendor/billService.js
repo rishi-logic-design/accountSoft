@@ -578,6 +578,10 @@ exports.getBillHtml = async (billId, vendorId) => {
         ],
       },
       {
+        model: VendorModel,
+        as: "vendor",
+      },
+      {
         model: BillItemModel,
         as: "items",
       },
@@ -598,10 +602,21 @@ exports.getBillHtml = async (billId, vendorId) => {
     billNumber: bill.billNumber,
     date: bill.billDate || new Date(),
 
+    vendor: {
+      name:
+        bill.vendor?.businessName || bill.vendor?.vendorName || "Our Business",
+      address: bill.vendor?.address || "",
+      phone: bill.vendor?.mobile || "",
+      email: bill.vendor?.email || "",
+      gstNumber: bill.vendor?.gst || "",
+      website: bill.vendor?.website || "",
+      logo: bill.vendor?.profileImage || "",
+    },
+
     customer: {
       name: bill.customer?.customerName || "N/A",
       company: bill.customer?.businessName || "",
-      address: formatAddress(bill.customerId?.homeAddress),
+      address: formatAddress(bill.customer?.homeAddress),
       gstNumber: bill.customer?.gstNumber || "",
       phone: bill.customer?.mobileNumber || "",
     },
@@ -620,6 +635,9 @@ exports.getBillHtml = async (billId, vendorId) => {
     pendingAmount: bill.pendingAmount || 0,
     status: bill.status || "pending",
     notes: bill.note || "",
+    termsAndConditions: bill.termsAndConditions || "",
+    signatureStamp: bill.signatureStamp || "",
+    showSignatureStamp: bill.showSignatureStamp || false,
   };
 
   const html = renderTemplate(templateId, templateData);
