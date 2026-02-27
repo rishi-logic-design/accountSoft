@@ -390,10 +390,7 @@ exports.getGSTSalesReport = async (
   return {
     rows: paged.map((b, i) => {
       const taxable = +toNum(b.totalWithoutGST || b.subtotal).toFixed(2);
-      const gstAmt = +toNum(b.gstTotal).toFixed(2);
-      const cgst = +(gstAmt / 2).toFixed(2);
-      const sgst = +(gstAmt / 2).toFixed(2);
-      const igst = 0; // Intrastate default; adjust if interstate
+      const igst = +toNum(b.gstTotal).toFixed(2); // Show full GST as IGST
       return {
         serialNo: (Number(page) - 1) * Number(size) + i + 1,
         invoiceNo: b.billNumber,
@@ -401,10 +398,10 @@ exports.getGSTSalesReport = async (
         buyerName: b.customer?.customerName || b.customer?.businessName || "—",
         buyerGST: b.customer?.gstNo || "—",
         taxableAmount: taxable,
-        cgst,
-        sgst,
+        cgst: 0,
+        sgst: 0,
         igst,
-        totalGST: gstAmt,
+        cess: 0,
         totalAmount: +toNum(b.totalAmount).toFixed(2),
       };
     }),
@@ -413,7 +410,7 @@ exports.getGSTSalesReport = async (
     size: Number(size),
     totalPages: Math.ceil(total / Number(size)),
     grandTaxable: +grandTaxable.toFixed(2),
-    grandGST: +grandGST.toFixed(2),
+    grandIGST: +grandGST.toFixed(2),
     grandTotal: +grandTotal.toFixed(2),
   };
 };
