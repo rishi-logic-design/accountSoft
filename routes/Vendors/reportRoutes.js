@@ -15,5 +15,6 @@ router.get(
 router.get("/party-wise-sales", reportController.getPartyWiseSalesReport);
 router.get("/party-wise-purchase", reportController.getPartyWisePurchaseReport);
 router.get("/gst-sales", reportController.getGSTSalesReport);
+router.get("/gst-purchase", reportController.getGSTPurchaseReport);
 
 module.exports = router;

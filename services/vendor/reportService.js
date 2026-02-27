@@ -414,3 +414,110 @@ exports.getGSTSalesReport = async (
     grandTotal: +grandTotal.toFixed(2),
   };
 };
+
+/**
+ * GST Purchase Report
+ * Per-purchase GST breakdown: taxable, CGST, SGST, IGST, CESS, total
+ * CGST = SGST = gstTotal/2  (intrastate), IGST = 0
+ */
+exports.getGSTPurchaseReport = async (
+  vendorId,
+  { fromDate, toDate, search, page = 1, size = 10 } = {},
+) => {
+  const purchaseWhere = { vendorId, status: { [Op.ne]: "cancelled" } };
+
+  if (fromDate || toDate) {
+    purchaseWhere.purchaseDate = {};
+    if (fromDate) purchaseWhere.purchaseDate[Op.gte] = new Date(fromDate);
+    if (toDate) {
+      const end = new Date(toDate);
+      end.setHours(23, 59, 59, 999);
+      purchaseWhere.purchaseDate[Op.lte] = end;
+    }
+  }
+
+  const sellerWhere = {};
+  if (search) {
+    sellerWhere.vendorName = { [Op.like]: `%${search}%` };
+  }
+
+  const purchases = await PurchaseModel.findAll({
+    where: purchaseWhere,
+    include: [
+      {
+        model: VendorVendorModel,
+        as: "seller",
+        attributes: ["id", "vendorName", "gst"],
+        where: Object.keys(sellerWhere).length ? sellerWhere : undefined,
+        required: !!search,
+      },
+      {
+        model: PurchaseItemModel,
+        as: "items",
+        attributes: ["gstTotal", "totalWithGst", "price", "qty", "discount"],
+      },
+    ],
+    order: [["purchaseDate", "DESC"]],
+  });
+
+  const total = purchases.length;
+  const paged = purchases.slice(
+    (Number(page) - 1) * Number(size),
+    Number(page) * Number(size),
+  );
+
+  // Compute grand totals across all purchases
+  let grandTaxable = 0,
+    grandGST = 0,
+    grandTotal = 0;
+  purchases.forEach((p) => {
+    const items = p.items || [];
+    const taxable = items.reduce(
+      (s, it) => s + toNum(it.totalWithGst) - toNum(it.gstTotal),
+      0,
+    );
+    const gst = items.reduce((s, it) => s + toNum(it.gstTotal), 0);
+    const total_ = items.reduce((s, it) => s + toNum(it.totalWithGst), 0);
+    grandTaxable += taxable;
+    grandGST += gst;
+    grandTotal += total_;
+  });
+
+  return {
+    rows: paged.map((p, i) => {
+      const items = p.items || [];
+      const taxable = +items
+        .reduce((s, it) => s + toNum(it.totalWithGst) - toNum(it.gstTotal), 0)
+        .toFixed(2);
+      const gstAmt = +items
+        .reduce((s, it) => s + toNum(it.gstTotal), 0)
+        .toFixed(2);
+      const totalAmt = +items
+        .reduce((s, it) => s + toNum(it.totalWithGst), 0)
+        .toFixed(2);
+      const cgst = +(gstAmt / 2).toFixed(2);
+      const sgst = +(gstAmt / 2).toFixed(2);
+      return {
+        serialNo: (Number(page) - 1) * Number(size) + i + 1,
+        purchaseNo: p.purchaseNumber,
+        purchaseDate: p.purchaseDate,
+        sellerName: p.seller?.vendorName || "—",
+        sellerGST: p.seller?.gst || "—",
+        taxableAmount: taxable,
+        cgst,
+        sgst,
+        igst: 0,
+        cess: 0,
+        totalAmount: totalAmt,
+      };
+    }),
+    total,
+    page: Number(page),
+    size: Number(size),
+    totalPages: Math.ceil(total / Number(size)),
+    grandTaxable: +grandTaxable.toFixed(2),
+    grandCGST: +(grandGST / 2).toFixed(2),
+    grandSGST: +(grandGST / 2).toFixed(2),
+    grandTotal: +grandTotal.toFixed(2),
+  };
+};
