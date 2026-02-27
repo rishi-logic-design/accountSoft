@@ -101,3 +101,20 @@ exports.getGSTPurchaseReport = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.getInvoiceDetailsReport = async (req, res) => {
+  try {
+    const vendorId = req.user.vendorId || req.user.id;
+    const { fromDate, toDate, search, page, size } = req.query;
+    const result = await reportService.getInvoiceDetailsReport(vendorId, {
+      fromDate,
+      toDate,
+      search,
+      page,
+      size,
+    });
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

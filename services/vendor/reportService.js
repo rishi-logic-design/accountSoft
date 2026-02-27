@@ -521,3 +521,115 @@ exports.getGSTPurchaseReport = async (
     grandTotal: +grandTotal.toFixed(2),
   };
 };
+
+/**
+ * Invoice Details Report
+ * Item-level breakdown: one row per bill item with full GST details
+ */
+exports.getInvoiceDetailsReport = async (
+  vendorId,
+  { fromDate, toDate, search, page = 1, size = 10 } = {},
+) => {
+  const billWhere = { vendorId, status: { [Op.ne]: "cancelled" } };
+
+  if (fromDate || toDate) {
+    billWhere.billDate = {};
+    if (fromDate) billWhere.billDate[Op.gte] = new Date(fromDate);
+    if (toDate) {
+      const end = new Date(toDate);
+      end.setHours(23, 59, 59, 999);
+      billWhere.billDate[Op.lte] = end;
+    }
+  }
+
+  const customerWhere = {};
+  if (search) {
+    customerWhere[Op.or] = [
+      { customerName: { [Op.like]: `%${search}%` } },
+      { businessName: { [Op.like]: `%${search}%` } },
+    ];
+  }
+
+  const bills = await BillModel.findAll({
+    where: billWhere,
+    include: [
+      {
+        model: CustomerModel,
+        as: "customer",
+        attributes: ["id", "customerName", "businessName", "gstNo"],
+        where: Object.keys(customerWhere).length ? customerWhere : undefined,
+        required: !!search,
+      },
+      {
+        model: BillItemModel,
+        as: "items",
+        attributes: [
+          "itemName",
+          "hsn",
+          "qty",
+          "price",
+          "discount",
+          "gstPercent",
+          "gstTotal",
+          "totalWithGst",
+        ],
+      },
+    ],
+    order: [["billDate", "DESC"]],
+  });
+
+  // Flatten to one row per bill item
+  const allRows = [];
+  bills.forEach((bill) => {
+    const partyName =
+      bill.customer?.customerName || bill.customer?.businessName || "—";
+    const gstNo = bill.customer?.gstNo || "—";
+    (bill.items || []).forEach((item) => {
+      const qty = toNum(item.qty);
+      const rate = toNum(item.price);
+      const discount = toNum(item.discount);
+      const saleAmt = +(qty * rate - discount).toFixed(2);
+      const gstPct = toNum(item.gstPercent);
+      const gstAmt = toNum(item.gstTotal);
+      const igst = +gstAmt.toFixed(2);
+      const taxable = +saleAmt.toFixed(2);
+      const grandTot = +(saleAmt + gstAmt).toFixed(2);
+
+      allRows.push({
+        billNumber: bill.billNumber,
+        billDate: bill.billDate,
+        partyName,
+        gstNo,
+        itemName: item.itemName,
+        hsn: item.hsn || "—",
+        qty,
+        ratePerUnit: rate,
+        saleAmount: saleAmt,
+        gstPercent: gstPct,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+        igst,
+        taxableAmount: taxable,
+        grandTotal: grandTot,
+      });
+    });
+  });
+
+  const total = allRows.length;
+  const paged = allRows.slice(
+    (Number(page) - 1) * Number(size),
+    Number(page) * Number(size),
+  );
+
+  return {
+    rows: paged.map((r, i) => ({
+      serialNo: (Number(page) - 1) * Number(size) + i + 1,
+      ...r,
+    })),
+    total,
+    page: Number(page),
+    size: Number(size),
+    totalPages: Math.ceil(total / Number(size)),
+  };
+};
