@@ -333,3 +333,87 @@ exports.getPartyWisePurchaseReport = async (
     grandTotalAmount: +grandTotalAmount.toFixed(2),
   };
 };
+
+exports.getGSTSalesReport = async (
+  vendorId,
+  { fromDate, toDate, search, page = 1, size = 10 } = {},
+) => {
+  const where = { vendorId, status: { [Op.ne]: "cancelled" } };
+
+  if (fromDate || toDate) {
+    where.billDate = {};
+    if (fromDate) where.billDate[Op.gte] = new Date(fromDate);
+    if (toDate) {
+      const end = new Date(toDate);
+      end.setHours(23, 59, 59, 999);
+      where.billDate[Op.lte] = end;
+    }
+  }
+
+  const customerWhere = {};
+  if (search) {
+    customerWhere[Op.or] = [
+      { customerName: { [Op.like]: `%${search}%` } },
+      { businessName: { [Op.like]: `%${search}%` } },
+    ];
+  }
+
+  const bills = await BillModel.findAll({
+    where,
+    include: [
+      {
+        model: CustomerModel,
+        as: "customer",
+        attributes: ["id", "customerName", "businessName", "gstNumber"],
+        where: Object.keys(customerWhere).length ? customerWhere : undefined,
+        required: !!search,
+      },
+    ],
+    order: [["billDate", "DESC"]],
+    raw: true,
+    nest: true,
+  });
+
+  const total = bills.length;
+  const paged = bills.slice(
+    (Number(page) - 1) * Number(size),
+    Number(page) * Number(size),
+  );
+
+  const grandTaxable = bills.reduce(
+    (s, b) => s + toNum(b.totalWithoutGST || b.subtotal),
+    0,
+  );
+  const grandGST = bills.reduce((s, b) => s + toNum(b.gstTotal), 0);
+  const grandTotal = bills.reduce((s, b) => s + toNum(b.totalAmount), 0);
+
+  return {
+    rows: paged.map((b, i) => {
+      const taxable = +toNum(b.totalWithoutGST || b.subtotal).toFixed(2);
+      const gstAmt = +toNum(b.gstTotal).toFixed(2);
+      const cgst = +(gstAmt / 2).toFixed(2);
+      const sgst = +(gstAmt / 2).toFixed(2);
+      const igst = 0; // Intrastate default; adjust if interstate
+      return {
+        serialNo: (Number(page) - 1) * Number(size) + i + 1,
+        invoiceNo: b.billNumber,
+        invoiceDate: b.billDate,
+        buyerName: b.customer?.customerName || b.customer?.businessName || "—",
+        buyerGST: b.customer?.gstNo || "—",
+        taxableAmount: taxable,
+        cgst,
+        sgst,
+        igst,
+        totalGST: gstAmt,
+        totalAmount: +toNum(b.totalAmount).toFixed(2),
+      };
+    }),
+    total,
+    page: Number(page),
+    size: Number(size),
+    totalPages: Math.ceil(total / Number(size)),
+    grandTaxable: +grandTaxable.toFixed(2),
+    grandGST: +grandGST.toFixed(2),
+    grandTotal: +grandTotal.toFixed(2),
+  };
+};
