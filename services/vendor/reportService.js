@@ -522,10 +522,6 @@ exports.getGSTPurchaseReport = async (
   };
 };
 
-/**
- * Invoice Details Report
- * Item-level breakdown: one row per bill item with full GST details
- */
 exports.getInvoiceDetailsReport = async (
   vendorId,
   { fromDate, toDate, search, page = 1, size = 10 } = {},
@@ -556,7 +552,7 @@ exports.getInvoiceDetailsReport = async (
       {
         model: CustomerModel,
         as: "customer",
-        attributes: ["id", "customerName", "businessName", "gstNo"],
+        attributes: ["id", "customerName", "businessName", "gstNumber"],
         where: Object.keys(customerWhere).length ? customerWhere : undefined,
         required: !!search,
       },
