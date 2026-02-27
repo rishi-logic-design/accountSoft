@@ -37,6 +37,7 @@ const SalesDebitNoteItem = require("./vendor/salesDebitNoteItemModel");
 const Account = require("./vendor/accountModel");
 const AccountTransaction = require("./vendor/accountTransactionModel");
 const SalesDebitNotePayment = require("./vendor/salesDebitNotePaymentModel");
+const BulkExport = require("./vendor/bulkExportModel");
 
 const UserModel = User(sequelize, Sequelize);
 const VendorModel = Vendor(sequelize, Sequelize);
@@ -75,6 +76,7 @@ const SalesDebitNoteItemModel = SalesDebitNoteItem(sequelize, Sequelize);
 const AccountModel = Account(sequelize, Sequelize);
 const AccountTransactionModel = AccountTransaction(sequelize, Sequelize);
 const SalesDebitNotePaymentModel = SalesDebitNotePayment(sequelize, Sequelize);
+const BulkExportModel = BulkExport(sequelize, Sequelize);
 
 // Vendor - Customer
 VendorModel.hasMany(NotificationModel, {
@@ -597,4 +599,5 @@ module.exports = {
   AccountModel,
   AccountTransactionModel,
   SalesDebitNotePaymentModel,
+  BulkExportModel,
 };

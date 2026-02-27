@@ -17,5 +17,15 @@ router.get("/party-wise-purchase", reportController.getPartyWisePurchaseReport);
 router.get("/gst-sales", reportController.getGSTSalesReport);
 router.get("/gst-purchase", reportController.getGSTPurchaseReport);
 router.get("/invoice-details", reportController.getInvoiceDetailsReport);
+router.get("/purchase-details", reportController.getPurchaseDetailsReport);
+router.get("/current-stock", reportController.getCurrentStockReport);
+router.get("/delivery-challan", reportController.getDeliveryChallanReport);
+router.get(
+  "/challan-details",
+  reportController.getDeliveryChallanDetailsReport,
+);
+router.get("/activity-logs", reportController.getActivityLogs);
+router.get("/bulk-exports", reportController.getBulkExports);
+router.post("/bulk-exports", reportController.createBulkExport);
 
 module.exports = router;
